@@ -1,0 +1,7 @@
+TEAM_ID=
+
+PRODUCT_NAME=SmartRoundClinic
+PRODUCT_BUNDLE_IDENTIFIER=ke.co.smartroundclinic.doctor.SmartRoundClinic$(TEAM_ID)
+
+CURRENT_PROJECT_VERSION=1
+MARKETING_VERSION=1.0

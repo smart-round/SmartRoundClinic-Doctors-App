@@ -1,0 +1,25 @@
+package ke.co.smartroundclinic.doctor.koin
+
+import ke.co.smartroundclinic.doctor.core.database.AppDatabase
+import ke.co.smartroundclinic.doctor.data.repository.AuthRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.BankLocalRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.BankRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.DatastoreRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.SpecialityLocalRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.SpecialityRepositoryImpl
+import ke.co.smartroundclinic.doctor.domain.repository.AuthRepository
+import ke.co.smartroundclinic.doctor.domain.repository.BankLocalRepository
+import ke.co.smartroundclinic.doctor.domain.repository.BankRepository
+import ke.co.smartroundclinic.doctor.domain.repository.DatastoreRepository
+import ke.co.smartroundclinic.doctor.domain.repository.SpecialityLocalRepository
+import ke.co.smartroundclinic.doctor.domain.repository.SpecialityRepository
+import org.koin.dsl.module
+
+val repositoryModule = module {
+    single<DatastoreRepository> { DatastoreRepositoryImpl(get()) }
+    single<AuthRepository> { AuthRepositoryImpl(get()) }
+    single<BankRepository> { BankRepositoryImpl(get()) }
+    single<BankLocalRepository> { BankLocalRepositoryImpl(get<AppDatabase>().bankDao) }
+    single<SpecialityRepository> { SpecialityRepositoryImpl(get()) }
+    single<SpecialityLocalRepository> { SpecialityLocalRepositoryImpl(get<AppDatabase>().specialityDao) }
+}
