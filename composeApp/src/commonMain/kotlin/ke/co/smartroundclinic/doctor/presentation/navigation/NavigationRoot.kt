@@ -31,14 +31,18 @@ fun NavigationRoot(
         entryProvider = entryProvider {
             entry<SplashScreen> {
                 SplashScreen(
-                    onNavigateToNext = {
+                    onNavigateToOnboarding = {
                         backStack.add(OnBoardingRoot)
                         backStack.remove(SplashScreen)
                     },
-                    onSkipOnBoarding = {
+                    onNavigateToSignIn = {
                         backStack.add(AuthRoot)
                         backStack.remove(SplashScreen)
-                    }
+                    },
+                    onNavigateToDashboard = {
+                        backStack.add(MainRoot)
+                        backStack.remove(SplashScreen)
+                    },
                 )
             }
             entry<OnBoardingRoot> {

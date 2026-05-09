@@ -1,5 +1,6 @@
 package ke.co.smartroundclinic.doctor.koin
 
+import ke.co.smartroundclinic.doctor.domain.usecase.auth.RefreshTokenUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.RequestPasswordResetUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.ResendAccountUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.ResendPasswordResetOtpUseCase
@@ -15,6 +16,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.datastore.SetKeyUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetSpecialitiesUseCase
 import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
 import ke.co.smartroundclinic.doctor.presentation.auth.SignInViewModel
+import ke.co.smartroundclinic.doctor.presentation.splash.SplashViewModel
 import ke.co.smartroundclinic.doctor.presentation.onboarding.OnboardingScreenViewModel
 import ke.co.smartroundclinic.doctor.presentation.signup.AccountVerificationViewModel
 import ke.co.smartroundclinic.doctor.presentation.signup.BankDetailsViewModel
@@ -34,10 +36,12 @@ val useCaseModule = module {
     single { VerifyAccountUseCase(get()) }
     single { ResendAccountUseCase(get()) }
     single { SignInUseCase(get(), get()) }
+    single { RefreshTokenUseCase(get(), get()) }
     single { RequestPasswordResetUseCase(get()) }
     single { ResendPasswordResetOtpUseCase(get()) }
     single { UpdatePasswordUseCase(get()) }
 
+    viewModel { SplashViewModel(get(), get()) }
     viewModel { OnboardingScreenViewModel(get(), get()) }
     viewModel { SpecializationComplianceViewModel(get()) }
     viewModel { BankDetailsViewModel(get(), get(), get()) }

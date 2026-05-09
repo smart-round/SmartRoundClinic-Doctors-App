@@ -15,6 +15,7 @@ import ke.co.smartroundclinic.doctor.data.remote.dto.request.SignInReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpdatePasswordReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.SignInRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.SuccessRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.refreshToken.RefreshTokenRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.toDomain
 import ke.co.smartroundclinic.doctor.domain.model.AuthTokens
 import ke.co.smartroundclinic.doctor.domain.model.DoctorSignUpData
@@ -165,6 +166,18 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
                 Resource.Error("An unknown error occurred")
             }
         }
+
+    override suspend fun requestRefreshToken(refreshToken: String): Resource<RefreshTokenRes>  = withContext(
+        Dispatchers.IO){
+        try {
+            val response = client.post("/auth/user/token/refresh") {
+                parameter(key = "refreshToken", refreshToken)
+            }.body<RefreshTokenRes>()
+            Resource.Success(data = response, message = response.message)
+        } catch (e: Exception) {
+            Resource.Error("An unknown error occurred")
+        }
+    }
 }
 
 private fun mimeTypeFromFilename(name: String): String =

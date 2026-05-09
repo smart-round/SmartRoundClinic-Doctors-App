@@ -16,7 +16,7 @@ import io.ktor.serialization.kotlinx.json.json
 import ke.co.smartroundclinic.doctor.common.Constants.BASE_URL
 import kotlinx.serialization.json.Json
 
-internal fun buildHttpClient(engine: HttpClientEngine): HttpClient = HttpClient(engine) {
+internal fun buildHttpClient(engine: HttpClientEngine, tokenProvider: () -> String? = { null }): HttpClient = HttpClient(engine) {
     install(ContentNegotiation) {
         json(Json {
             ignoreUnknownKeys = true
@@ -59,7 +59,10 @@ internal fun buildHttpClient(engine: HttpClientEngine): HttpClient = HttpClient(
     defaultRequest {
         url(BASE_URL)
         contentType(ContentType.Application.Json)
+        tokenProvider()?.let { token ->
+            headers.append("Authorization", "Bearer $token")
+        }
     }
 }
 
-expect fun createHttpClient(): HttpClient
+expect fun createHttpClient(tokenProvider: () -> String?): HttpClient
