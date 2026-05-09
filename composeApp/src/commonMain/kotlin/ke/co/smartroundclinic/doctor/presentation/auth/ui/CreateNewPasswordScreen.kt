@@ -1,7 +1,6 @@
 package ke.co.smartroundclinic.doctor.presentation.auth.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,14 +10,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -28,30 +23,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ke.co.smartroundclinic.doctor.common.isValidPassword
+import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
-import ke.co.smartroundclinic.doctor.presentation.theme.ShapeButton
-import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeInput
-import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 import ke.co.smartroundclinic.doctor.presentation.theme.smartRoundColors
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateNewPasswordScreen(
-    onSubmit: (newPassword: String) -> Unit,
-    showSuccessDialog: Boolean,
-    isLoading: Boolean,
-    onPasswordReset: () -> Unit,
+    viewModel: ForgotPasswordViewModel,
+    onSuccess: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -59,13 +46,13 @@ fun CreateNewPasswordScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var newPasswordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val passwordError = if (newPassword.isNotBlank() && !newPassword.isValidPassword()) "Password must be at least 8 characters" else null
     val confirmError = if (confirmPassword.isNotBlank() && confirmPassword != newPassword) "Passwords do not match" else null
     val canSubmit = newPassword.isNotBlank() && passwordError == null && confirmError == null && confirmPassword == newPassword && !isLoading
 
     Column(
-        modifier = modifier
-            .fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.Start,
     ) {
         Box(
@@ -81,17 +68,13 @@ fun CreateNewPasswordScreen(
                     )
                 )
         ) {
-            Column(
-                modifier = modifier.padding(vertical = 8.dp, horizontal = 16.dp)
-            ) {
+            Column(modifier = modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
                 Text(
                     text = "Create A New Password",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
-
                 Spacer(Modifier.height(8.dp))
-
                 Text(
                     text = "Set a secure password to complete the reset process",
                     style = MaterialTheme.typography.bodySmall,
@@ -102,12 +85,7 @@ fun CreateNewPasswordScreen(
 
         Spacer(Modifier.height(32.dp))
 
-        Column(
-            modifier = modifier
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-        ) {
-
-
+        Column(modifier = modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
             Column {
                 OutlinedTextField(
                     value = newPassword,
@@ -175,7 +153,7 @@ fun CreateNewPasswordScreen(
             Spacer(Modifier.height(32.dp))
 
             PrimaryButton(
-                onClick = { onSubmit(newPassword) },
+                onClick = { viewModel.updatePassword(newPassword, onSuccess) },
                 enabled = canSubmit,
             ) {
                 if (isLoading) {
@@ -196,73 +174,6 @@ fun CreateNewPasswordScreen(
                         color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(vertical = 14.dp),
                     )
-                }
-            }
-        }
-
-        if (showSuccessDialog) {
-            BasicAlertDialog(
-                onDismissRequest = {},
-            ) {
-                Surface(
-                    shape = ShapeCard,
-                    color = MaterialTheme.colorScheme.surface,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(24.dp),
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(Tertiary40),
-                        ) {
-                            Text(
-                                text = "✓",
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                ),
-                            )
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        Text(
-                            text = "Password Changed!",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onBackground,
-                            textAlign = TextAlign.Center,
-                        )
-
-                        Spacer(Modifier.height(8.dp))
-
-                        Text(
-                            text = "You have successfully created a new password. You can now sign in with your new credentials.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
-
-                        Spacer(Modifier.height(24.dp))
-
-                        Surface(
-                            onClick = onPasswordReset,
-                            shape = ShapeButton,
-                            color = Tertiary40,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = "Sign In",
-                                style = MaterialTheme.typography.labelLarge.copy(color = Color.White),
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(vertical = 14.dp),
-                            )
-                        }
-                    }
                 }
             }
         }

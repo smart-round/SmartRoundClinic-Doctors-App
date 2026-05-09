@@ -21,9 +21,6 @@ class ForgotPasswordViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
-    private val _showSuccessDialog = MutableStateFlow(false)
-    val showSuccessDialog = _showSuccessDialog.asStateFlow()
-
     private var email = ""
     private var otp = ""
 
@@ -56,11 +53,11 @@ class ForgotPasswordViewModel(
         }
     }
 
-    fun updatePassword(newPassword: String) {
+    fun updatePassword(newPassword: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             _isLoading.value = true
             when (val result = updatePasswordUseCase(email, newPassword, otp)) {
-                is Resource.Success -> _showSuccessDialog.value = true
+                is Resource.Success -> onSuccess()
                 is Resource.Error -> snackbarController.show(result.message ?: "Failed to update password")
                 is Resource.Loading -> Unit
             }
@@ -71,6 +68,5 @@ class ForgotPasswordViewModel(
     fun resetState() {
         email = ""
         otp = ""
-        _showSuccessDialog.value = false
     }
 }

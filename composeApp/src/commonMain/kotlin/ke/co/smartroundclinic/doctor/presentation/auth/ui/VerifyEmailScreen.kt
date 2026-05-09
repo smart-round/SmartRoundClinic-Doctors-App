@@ -27,27 +27,29 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeInput
 import ke.co.smartroundclinic.doctor.presentation.theme.smartRoundColors
+import kotlinx.coroutines.delay
 
 @Composable
 fun VerifyEmailScreen(
-    onContinue: (otp: String) -> Unit,
-    onResendCode: () -> Unit,
-    isLoading: Boolean,
+    viewModel: ForgotPasswordViewModel,
+    onContinue: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var otp by remember { mutableStateOf("") }
     val otpLength = 4
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     var resendCountdown by remember { mutableIntStateOf(60) }
 
     LaunchedEffect(resendCountdown) {
@@ -58,8 +60,7 @@ fun VerifyEmailScreen(
     }
 
     Column(
-        modifier = modifier
-            .fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.Start,
     ) {
         Box(
@@ -75,17 +76,13 @@ fun VerifyEmailScreen(
                     )
                 )
         ) {
-            Column(
-                modifier = modifier.padding(vertical = 8.dp, horizontal = 16.dp)
-            ) {
+            Column(modifier = modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
                 Text(
                     text = "Verify Email",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
-
                 Spacer(Modifier.height(8.dp))
-
                 Text(
                     text = "Enter the verification code sent to your email to proceed with resetting your password",
                     style = MaterialTheme.typography.bodySmall,
@@ -95,11 +92,8 @@ fun VerifyEmailScreen(
         }
 
         Spacer(Modifier.height(32.dp))
-        Column(
-            modifier = modifier
-                .padding(horizontal = 24.dp, vertical = 24.dp),
 
-            ) {
+        Column(modifier = modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
             BasicTextField(
                 value = otp,
                 onValueChange = {
@@ -166,7 +160,7 @@ fun VerifyEmailScreen(
                     )
                     else -> TextButton(
                         onClick = {
-                            onResendCode()
+                            viewModel.resendPasswordResetOtp()
                             resendCountdown = 60
                         },
                         contentPadding = PaddingValues(0.dp),
@@ -183,7 +177,10 @@ fun VerifyEmailScreen(
             Spacer(Modifier.height(32.dp))
 
             PrimaryButton(
-                onClick = { onContinue(otp) },
+                onClick = {
+                    viewModel.saveOtp(otp)
+                    onContinue()
+                },
                 enabled = otp.length == otpLength,
             ) {
                 Text(

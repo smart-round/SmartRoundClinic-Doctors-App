@@ -12,8 +12,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.retain.retain
 import androidx.compose.ui.Alignment
@@ -26,10 +24,12 @@ import androidx.navigation3.ui.NavDisplay
 import ke.co.smartroundclinic.doctor.presentation.auth.destinations.AccountVerification
 import ke.co.smartroundclinic.doctor.presentation.auth.destinations.CreateNewPassword
 import ke.co.smartroundclinic.doctor.presentation.auth.destinations.ForgotPassword
+import ke.co.smartroundclinic.doctor.presentation.auth.destinations.PasswordRestSuccessfully
 import ke.co.smartroundclinic.doctor.presentation.auth.destinations.SignIn
 import ke.co.smartroundclinic.doctor.presentation.auth.destinations.VerifyEmail
 import ke.co.smartroundclinic.doctor.presentation.auth.ui.CreateNewPasswordScreen
 import ke.co.smartroundclinic.doctor.presentation.auth.ui.ForgotPasswordScreen
+import ke.co.smartroundclinic.doctor.presentation.auth.ui.PasswordResetSuccessScreen
 import ke.co.smartroundclinic.doctor.presentation.auth.ui.SignInScreen
 import ke.co.smartroundclinic.doctor.presentation.auth.ui.VerifyEmailScreen
 import ke.co.smartroundclinic.doctor.presentation.signup.ui.AccountVerificationScreen
@@ -47,8 +47,6 @@ fun AuthRoot(
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(SignIn) }
     val forgotPasswordViewModel: ForgotPasswordViewModel = koinViewModel()
-    val isLoading by forgotPasswordViewModel.isLoading.collectAsState()
-    val showSuccessDialog by forgotPasswordViewModel.showSuccessDialog.collectAsState()
 
     fun navigateTo(destination: NavKey) = backStack.add(destination)
     fun navigateBack() = backStack.removeLastOrNull()
@@ -107,39 +105,34 @@ fun AuthRoot(
                 }
                 entry<ForgotPassword> {
                     ForgotPasswordScreen(
-                        onProceed = { email ->
-                            forgotPasswordViewModel.requestPasswordReset(email) {
-                                navigateTo(VerifyEmail)
-                            }
-                        },
-                        isLoading = isLoading,
+                        viewModel = forgotPasswordViewModel,
+                        onProceed = { navigateTo(VerifyEmail) },
                         onBack = ::navigateBack,
                     )
                 }
                 entry<VerifyEmail> {
                     VerifyEmailScreen(
-                        onContinue = { otp ->
-                            forgotPasswordViewModel.saveOtp(otp)
-                            navigateTo(CreateNewPassword)
-                        },
-                        onResendCode = { forgotPasswordViewModel.resendPasswordResetOtp() },
-                        isLoading = isLoading,
+                        viewModel = forgotPasswordViewModel,
+                        onContinue = { navigateTo(CreateNewPassword) },
                         onBack = ::navigateBack,
                     )
                 }
                 entry<CreateNewPassword> {
                     CreateNewPasswordScreen(
-                        onSubmit = { newPassword ->
-                            forgotPasswordViewModel.updatePassword(newPassword)
-                        },
-                        showSuccessDialog = showSuccessDialog,
-                        isLoading = isLoading,
-                        onPasswordReset = {
+                        viewModel = forgotPasswordViewModel,
+                        onSuccess = {
                             forgotPasswordViewModel.resetState()
-                            backStack.clear()
-                            backStack.add(SignIn)
+                            navigateTo(PasswordRestSuccessfully)
                         },
                         onBack = ::navigateBack,
+                    )
+                }
+                entry<PasswordRestSuccessfully> {
+                    PasswordResetSuccessScreen(
+                        onNavigateToLoginScreen = {
+                            backStack.clear()
+                            backStack.add(SignIn)
+                        }
                     )
                 }
             }
