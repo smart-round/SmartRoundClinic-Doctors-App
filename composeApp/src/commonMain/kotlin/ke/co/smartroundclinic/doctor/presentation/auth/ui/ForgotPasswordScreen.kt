@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import ke.co.smartroundclinic.doctor.common.isValidEmail
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeInput
 import ke.co.smartroundclinic.doctor.presentation.theme.smartRoundColors
@@ -37,6 +38,8 @@ fun ForgotPasswordScreen(
     modifier: Modifier = Modifier,
 ) {
     var email by remember { mutableStateOf("") }
+    val emailError = if (email.isNotBlank() && !email.isValidEmail()) "Enter a valid email address" else null
+    val canProceed = email.isNotBlank() && emailError == null && !isLoading
 
     Column(
         modifier = modifier
@@ -77,33 +80,35 @@ fun ForgotPasswordScreen(
 
         Spacer(Modifier.height(32.dp))
 
-        Column(
-            modifier = Modifier
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-
-            ) {
+        Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
 
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email", style = MaterialTheme.typography.bodySmall) },
                 placeholder = {
-                    Text(
-                        "Enter your email",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Text("Enter your email", style = MaterialTheme.typography.bodySmall)
                 },
+                isError = emailError != null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 shape = ShapeInput,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (emailError != null) {
+                Text(
+                    text = emailError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp),
+                )
+            }
 
             Spacer(Modifier.height(32.dp))
 
             PrimaryButton(
                 onClick = { onProceed(email) },
-                enabled = email.isNotBlank() && !isLoading,
+                enabled = canProceed,
             ) {
                 if (isLoading) {
                     Box(

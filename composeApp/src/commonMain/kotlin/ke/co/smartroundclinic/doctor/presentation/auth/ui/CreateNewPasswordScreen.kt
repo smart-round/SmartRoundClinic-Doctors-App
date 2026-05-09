@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import ke.co.smartroundclinic.doctor.common.isValidPassword
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeButton
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
@@ -58,6 +59,9 @@ fun CreateNewPasswordScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var newPasswordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+    val passwordError = if (newPassword.isNotBlank() && !newPassword.isValidPassword()) "Password must be at least 8 characters" else null
+    val confirmError = if (confirmPassword.isNotBlank() && confirmPassword != newPassword) "Passwords do not match" else null
+    val canSubmit = newPassword.isNotBlank() && passwordError == null && confirmError == null && confirmPassword == newPassword && !isLoading
 
     Column(
         modifier = modifier
@@ -104,53 +108,75 @@ fun CreateNewPasswordScreen(
         ) {
 
 
-            OutlinedTextField(
-                value = newPassword,
-                onValueChange = { newPassword = it },
-                label = { Text("New Password", style = MaterialTheme.typography.bodySmall) },
-                visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    TextButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
-                        Text(
-                            text = if (newPasswordVisible) "Hide" else "Show",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                shape = ShapeInput,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Column {
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it },
+                    label = { Text("New Password", style = MaterialTheme.typography.bodySmall) },
+                    isError = passwordError != null,
+                    visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        TextButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
+                            Text(
+                                text = if (newPasswordVisible) "Hide" else "Show",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    shape = ShapeInput,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (passwordError != null) {
+                    Text(
+                        text = passwordError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp),
+                    )
+                }
+            }
 
             Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label = { Text("Confirm Password", style = MaterialTheme.typography.bodySmall) },
-                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    TextButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                        Text(
-                            text = if (confirmPasswordVisible) "Hide" else "Show",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                shape = ShapeInput,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Column {
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = { Text("Confirm Password", style = MaterialTheme.typography.bodySmall) },
+                    isError = confirmError != null,
+                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        TextButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                            Text(
+                                text = if (confirmPasswordVisible) "Hide" else "Show",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    shape = ShapeInput,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (confirmError != null) {
+                    Text(
+                        text = confirmError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp),
+                    )
+                }
+            }
 
             Spacer(Modifier.height(32.dp))
 
             PrimaryButton(
                 onClick = { onSubmit(newPassword) },
-                enabled = newPassword.isNotBlank() && confirmPassword == newPassword && !isLoading,
+                enabled = canSubmit,
             ) {
                 if (isLoading) {
                     Box(
