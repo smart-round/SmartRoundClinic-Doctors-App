@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,6 +39,7 @@ import ke.co.smartroundclinic.doctor.presentation.theme.smartRoundColors
 fun VerifyEmailScreen(
     onContinue: (otp: String) -> Unit,
     onResendCode: () -> Unit,
+    isLoading: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -140,15 +142,23 @@ fun VerifyEmailScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                TextButton(
-                    onClick = onResendCode,
-                    contentPadding = PaddingValues(0.dp),
-                ) {
-                    Text(
-                        text = "Resend Code",
-                        style = MaterialTheme.typography.bodySmall,
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp).padding(start = 4.dp),
+                        strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.primary,
                     )
+                } else {
+                    TextButton(
+                        onClick = onResendCode,
+                        contentPadding = PaddingValues(0.dp),
+                    ) {
+                        Text(
+                            text = "Resend Code",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
 

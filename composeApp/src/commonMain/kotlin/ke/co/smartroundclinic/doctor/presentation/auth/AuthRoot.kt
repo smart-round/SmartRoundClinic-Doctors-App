@@ -123,6 +123,7 @@ fun AuthRoot(
                             navigateTo(CreateNewPassword)
                         },
                         onResendCode = { forgotPasswordViewModel.resendPasswordResetOtp() },
+                        isLoading = isLoading,
                         onBack = ::navigateBack,
                     )
                 }
