@@ -21,10 +21,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -45,6 +48,14 @@ fun VerifyEmailScreen(
 ) {
     var otp by remember { mutableStateOf("") }
     val otpLength = 4
+    var resendCountdown by remember { mutableIntStateOf(60) }
+
+    LaunchedEffect(resendCountdown) {
+        if (resendCountdown > 0) {
+            delay(1000)
+            resendCountdown--
+        }
+    }
 
     Column(
         modifier = modifier
@@ -142,15 +153,22 @@ fun VerifyEmailScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                if (isLoading) {
-                    CircularProgressIndicator(
+                when {
+                    isLoading -> CircularProgressIndicator(
                         modifier = Modifier.size(16.dp).padding(start = 4.dp),
                         strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.primary,
                     )
-                } else {
-                    TextButton(
-                        onClick = onResendCode,
+                    resendCountdown > 0 -> Text(
+                        text = "Resend in ${resendCountdown}s",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    else -> TextButton(
+                        onClick = {
+                            onResendCode()
+                            resendCountdown = 60
+                        },
                         contentPadding = PaddingValues(0.dp),
                     ) {
                         Text(
