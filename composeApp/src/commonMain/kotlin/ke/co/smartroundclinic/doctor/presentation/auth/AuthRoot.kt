@@ -54,29 +54,34 @@ fun AuthRoot(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                modifier = Modifier.wrapContentHeight(),
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                title = {
-                    Column(
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Image(
-                            painter = painterResource(Res.drawable.top_appbar_logo),
-                            contentScale = ContentScale.Crop,
-                            contentDescription = "Smart Round Clinic",
-                        )
+            if (backStack.last() != PasswordRestSuccessfully){
+                TopAppBar(
+                    modifier = Modifier.wrapContentHeight(),
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                    title = {
+                        Column(
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Image(
+                                painter = painterResource(Res.drawable.top_appbar_logo),
+                                contentScale = ContentScale.Crop,
+                                contentDescription = "Smart Round Clinic",
+                            )
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     ) { paddingValues ->
         NavDisplay(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .then(
+                    if (backStack.lastOrNull() == PasswordRestSuccessfully) Modifier
+                    else Modifier.padding(paddingValues)
+                ),
             backStack = backStack,
             onBack = ::navigateBack,
             entryProvider = entryProvider {
