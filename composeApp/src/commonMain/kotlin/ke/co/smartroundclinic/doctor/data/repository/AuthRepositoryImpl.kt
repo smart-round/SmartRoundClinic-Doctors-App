@@ -11,6 +11,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import ke.co.smartroundclinic.doctor.common.Resource
+import ke.co.smartroundclinic.doctor.data.remote.dto.request.RequestRefreshTokenReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.SignInReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpdatePasswordReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.SignInRes
@@ -171,7 +172,7 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
         Dispatchers.IO){
         try {
             val response = client.post("/auth/user/token/refresh") {
-                parameter(key = "refreshToken", refreshToken)
+                setBody(RequestRefreshTokenReq(refreshToken))
             }.body<RefreshTokenRes>()
             Resource.Success(data = response, message = response.message)
         } catch (e: Exception) {

@@ -1,0 +1,10 @@
+package ke.co.smartroundclinic.doctor.data.remote.dto.request
+
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class RequestRefreshTokenReq(
+    val refreshToken: String // eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJzbWFydHJvdW5kY2xpbmljIiwiaXNzIjoic21hcnRyb3VuZGNsaW5pYy5jby5rZSIsInVzZXJJZCI6IjY5Zjg4NDZjMzE5ZDU5ZTE1NGZkYWIzYyIsImV4cCI6MTc4MDkzOTU5Mn0.mZASmJRWB0wI3I7tCHMox9OL1TsrImuDVBv8FEiC4IM
+)

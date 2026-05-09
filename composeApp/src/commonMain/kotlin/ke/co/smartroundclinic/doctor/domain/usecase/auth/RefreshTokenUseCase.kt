@@ -1,6 +1,8 @@
 package ke.co.smartroundclinic.doctor.domain.usecase.auth
 
 import com.liftric.kvault.KVault
+import ke.co.smartroundclinic.doctor.common.Constants.KEY_ACCESS_TOKEN
+import ke.co.smartroundclinic.doctor.common.Constants.KEY_REFRESH_TOKEN
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.domain.repository.AuthRepository
 
