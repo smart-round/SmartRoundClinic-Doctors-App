@@ -2,11 +2,13 @@ package ke.co.smartroundclinic.doctor.data.repository
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
@@ -14,8 +16,13 @@ import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.RequestRefreshTokenReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.SignInReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpdatePasswordReq
+import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpdatePersonalInformationReq
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.DeleteProfilePictureRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetUserRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.SignInRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.SuccessRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.UpdatePersonalInformationRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.UploadProfilePictureRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.refreshToken.RefreshTokenRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.toDomain
 import ke.co.smartroundclinic.doctor.domain.model.AuthTokens
@@ -174,6 +181,67 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
             val response = client.post("/auth/user/token/refresh") {
                 setBody(RequestRefreshTokenReq(refreshToken))
             }.body<RefreshTokenRes>()
+            Resource.Success(data = response, message = response.message)
+        } catch (e: Exception) {
+            Resource.Error("An unknown error occurred")
+        }
+    }
+
+    override suspend fun getUser(): Resource<GetUserRes> = withContext(Dispatchers.IO){
+        try {
+            val response = client.get("/auth/user") {
+            }.body<GetUserRes>()
+            Resource.Success(data = response, message = response.message)
+        } catch (e: Exception) {
+            Resource.Error("An unknown error occurred")
+        }
+    }
+
+    override suspend fun uploadProfilePicture(profilePicture: ByteArray): Resource<UploadProfilePictureRes> = withContext(
+        Dispatchers.IO) {
+        try {
+            val response = client.post("/auth/user/profile-picture") {
+                setBody(
+                    MultiPartFormDataContent(
+                        formData {
+                            append(
+                                key = "profilePicture",
+                                value = profilePicture,
+                                headers = Headers.build {
+                                    append(
+                                        HttpHeaders.ContentDisposition,
+                                        "form-data; name=\"profilePicture\"; filename=\"profile.jpg\""
+                                    )
+                                    append(HttpHeaders.ContentType, "image/jpeg")
+                                },
+                            )
+                        }
+                    )
+                )
+            }.body<UploadProfilePictureRes>()
+            Resource.Success(data = response, message = response.message)
+        } catch (e: Exception) {
+            Resource.Error("An unknown error occurred")
+        }
+    }
+
+    override suspend fun deleteProfilePicture(): Resource<DeleteProfilePictureRes> = withContext(
+        Dispatchers.IO) {
+        try {
+            val response = client.delete  ("/auth/user/profile-picture") {
+            }.body<DeleteProfilePictureRes>()
+            Resource.Success(data = response, message = response.message)
+        } catch (e: Exception) {
+            Resource.Error("An unknown error occurred")
+        }
+    }
+
+    override suspend fun updatePersonalInfo(body: UpdatePersonalInformationReq): Resource<UpdatePersonalInformationRes> = withContext(
+        Dispatchers.IO) {
+        try {
+            val response = client.put("/auth/user") {
+                setBody(body)
+            }.body<UpdatePersonalInformationRes>()
             Resource.Success(data = response, message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")

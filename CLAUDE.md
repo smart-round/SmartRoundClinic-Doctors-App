@@ -88,14 +88,75 @@ NavDisplay(
 
 **Navigation hierarchy:**
 ```
-NavigationRoot           — top-level NavDisplay (Splash → Onboarding → SignUp → Auth)
+NavigationRoot           — top-level NavDisplay (Splash → Onboarding → SignUp → Auth → Main)
   ├── SplashScreen       — checks onboarding flag, routes to Onboarding or SignUp
   ├── OnboardingRoot     — nested NavDisplay with 3 onboarding screens
   ├── SignUpRoot          — nested NavDisplay: SignUp → Specialization → BankDetails → Verification → UnderReview
-  └── AuthRoot           — nested NavDisplay: SignIn → ForgotPassword → VerifyEmail → CreateNewPassword
+  ├── AuthRoot           — nested NavDisplay: SignIn → ForgotPassword → VerifyEmail → CreateNewPassword
+  └── MainRoot           — bottom-nav shell; tab destinations: Home, Bookings, Articles, Chat
+        ├── HomeRoot     — nested NavDisplay: HomeList
+        ├── BookingsRoot — nested NavDisplay: BookingList → BookingDetail(bookingId)
+        ├── ArticlesRoot — nested NavDisplay: ArticleList → WriteArticle | ArticleDetail(articleId)
+        └── ChatRoot     — nested NavDisplay: ChatList → Conversation(chatId) → Call(chatId, isVideo)
 ```
 
 Each root composable owns its own `NavDisplay` and back stack. Cross-root navigation is done by passing lambdas (`onSignIn`, `onSignUp`, etc.) up to `NavigationRoot`.
+
+### Bottom-nav tab architecture (standard pattern for this app)
+
+Every bottom-nav tab follows the same structure. **This is the required pattern — do not use monolithic screen files or local `var view` state for in-tab navigation.**
+
+```
+presentation/main/<tab>/
+  destinations/
+    Screens.kt          — @Serializable NavKey objects/classes for this tab's screens
+  ui/
+    <Tab>ListScreen.kt  — root list/home screen for the tab (no sub-nav state)
+    <Detail>Screen.kt   — one file per sub-screen
+  <Tab>Root.kt          — owns retain{} back stack + NavDisplay; defines placeholder data models
+```
+
+**`<Tab>Root.kt` pattern:**
+```kotlin
+@Composable
+fun BookingsRoot(modifier: Modifier = Modifier, onAtRootChanged: (Boolean) -> Unit = {}) {
+    val backStack = retain { mutableStateListOf<NavKey>(BookingList) }
+    val isAtRoot = backStack.size == 1  // read in composition scope to create reactive subscription
+
+    // Drives MainRoot's shared header/navbar visibility
+    SideEffect { onAtRootChanged(isAtRoot) }
+
+    NavDisplay(
+        modifier = modifier,
+        backStack = backStack,
+        onBack = { backStack.removeLastOrNull() },
+        entryProvider = entryProvider {
+            entry<BookingList> {
+                BookingListScreen(bookings = allBookings, onBookingClick = { backStack.add(BookingDetail(it.id)) })
+            }
+            entry<BookingDetail> { dest ->
+                AppointmentDetailScreen(booking = allBookings.first { it.id == dest.bookingId }, onBack = { backStack.removeLastOrNull() })
+            }
+        },
+    )
+}
+```
+
+**`destinations/Screens.kt` pattern (primitives only in data classes):**
+```kotlin
+@Serializable data object BookingList : NavKey
+@Serializable data class BookingDetail(val bookingId: Int) : NavKey  // ID only — never full objects
+```
+
+**Sub-screens** call `statusBarsPadding()` / `navigationBarsPadding()` themselves since `MainRoot`'s shared header and bottom bar are hidden when `backStack.size > 1`.
+
+**`MainRoot`** renders the four tab Roots and hides/shows the shared `DashboardHeader` and `BottomNavBar` based on `onAtRootChanged`:
+```kotlin
+entry<Home> { HomeRoot(onAtRootChanged = { isAtRoot = it }) }
+entry<Bookings> { BookingsRoot(onAtRootChanged = { isAtRoot = it }) }
+entry<Articles> { ArticlesRoot(onAtRootChanged = { isAtRoot = it }) }
+entry<Chat> { ChatRoot(onAtRootChanged = { isAtRoot = it }) }
+```
 
 ## Feature layer conventions
 

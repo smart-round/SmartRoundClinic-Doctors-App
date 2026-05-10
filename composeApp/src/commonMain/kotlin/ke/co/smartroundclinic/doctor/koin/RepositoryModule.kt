@@ -5,14 +5,20 @@ import ke.co.smartroundclinic.doctor.data.repository.AuthRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.BankLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.BankRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.DatastoreRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.DoctorSpecializationLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.SpecialityLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.SpecialityRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.PaymentDetailsLocalRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.UserLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.domain.repository.AuthRepository
 import ke.co.smartroundclinic.doctor.domain.repository.BankLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.BankRepository
 import ke.co.smartroundclinic.doctor.domain.repository.DatastoreRepository
+import ke.co.smartroundclinic.doctor.domain.repository.DoctorSpecializationLocalRepository
+import ke.co.smartroundclinic.doctor.domain.repository.PaymentDetailsLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.SpecialityLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.SpecialityRepository
+import ke.co.smartroundclinic.doctor.domain.repository.UserLocalRepository
 import org.koin.dsl.module
 
 val repositoryModule = module {
@@ -22,4 +28,7 @@ val repositoryModule = module {
     single<BankLocalRepository> { BankLocalRepositoryImpl(get<AppDatabase>().bankDao) }
     single<SpecialityRepository> { SpecialityRepositoryImpl(get()) }
     single<SpecialityLocalRepository> { SpecialityLocalRepositoryImpl(get<AppDatabase>().specialityDao) }
+    single<UserLocalRepository> { UserLocalRepositoryImpl(get<AppDatabase>().userDao) }
+    single<PaymentDetailsLocalRepository> { PaymentDetailsLocalRepositoryImpl(get<AppDatabase>().paymentDetailsDao) }
+    single<DoctorSpecializationLocalRepository> { DoctorSpecializationLocalRepositoryImpl(get<AppDatabase>().doctorSpecializationDao) }
 }

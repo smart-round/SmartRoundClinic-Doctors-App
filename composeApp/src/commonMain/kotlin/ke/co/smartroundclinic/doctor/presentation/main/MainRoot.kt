@@ -9,14 +9,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -34,24 +33,27 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.retain.retain
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import ke.co.smartroundclinic.doctor.presentation.main.articles.ArticlesRoot
+import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingsRoot
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ChatRoot
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Articles
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Bookings
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Chat
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Home
-import ke.co.smartroundclinic.doctor.presentation.main.ui.ArticlesScreen
-import ke.co.smartroundclinic.doctor.presentation.main.ui.BookingsScreen
-import ke.co.smartroundclinic.doctor.presentation.main.ui.ChatScreen
-import ke.co.smartroundclinic.doctor.presentation.main.ui.HomeScreen
+import ke.co.smartroundclinic.doctor.presentation.main.home.HomeRoot
 
 private data class BottomTab(
     val destination: NavKey,
@@ -68,25 +70,24 @@ private val tabs = listOf(
 )
 
 @Composable
-fun MainRoot(modifier: Modifier = Modifier) {
+fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
     val backStack = retain { mutableStateListOf<NavKey>(Home) }
     val currentTab = backStack.lastOrNull() ?: Home
+
+    var isAtRoot by remember { mutableStateOf(true) }
 
     fun selectTab(dest: NavKey) {
         if (currentTab != dest) {
             backStack.clear()
             backStack.add(dest)
+            isAtRoot = true
         }
     }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        bottomBar = {
-            BottomNavBar(
-                currentTab = currentTab,
-                onTabSelected = ::selectTab,
-            )
-        },
+        bottomBar = { if (isAtRoot) BottomNavBar(currentTab = currentTab, onTabSelected = ::selectTab) },
+        contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         NavDisplay(
             modifier = Modifier
@@ -97,13 +98,14 @@ fun MainRoot(modifier: Modifier = Modifier) {
                 if (currentTab != Home) {
                     backStack.clear()
                     backStack.add(Home)
+                    isAtRoot = true
                 }
             },
             entryProvider = entryProvider {
-                entry<Home> { HomeScreen() }
-                entry<Bookings> { BookingsScreen() }
-                entry<Articles> { ArticlesScreen() }
-                entry<Chat> { ChatScreen() }
+                entry<Home> { HomeRoot(onAtRootChanged = { isAtRoot = it }, onSignOut = onSignOut) }
+                entry<Bookings> { BookingsRoot(onAtRootChanged = { isAtRoot = it }) }
+                entry<Articles> { ArticlesRoot(onAtRootChanged = { isAtRoot = it }) }
+                entry<Chat> { ChatRoot(onAtRootChanged = { isAtRoot = it }) }
             },
         )
     }
@@ -163,29 +165,23 @@ private fun BottomNavItem(
             )
             .padding(bottom = 10.dp),
     ) {
-        // Active indicator bar at the very top
         Box(
             modifier = Modifier
-                .width(32.dp)
-                .height(3.dp)
-                .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+                .size(width = 32.dp, height = 3.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
                 .background(
                     if (isSelected) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.surface
                 ),
         )
-
         Spacer(Modifier.height(6.dp))
-
         Icon(
             imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
             contentDescription = tab.label,
             tint = iconColor,
             modifier = Modifier.size(24.dp),
         )
-
         Spacer(Modifier.height(2.dp))
-
         Text(
             text = tab.label,
             style = MaterialTheme.typography.labelSmall,

@@ -74,7 +74,12 @@ fun NavigationRoot(
                 )
             }
             entry<MainRoot> {
-                MainRoot()
+                MainRoot(
+                    onSignOut = {
+                        backStack.add(AuthRoot)
+                        backStack.remove(MainRoot)
+                    }
+                )
             }
         }
     )

@@ -1,5 +1,8 @@
 package ke.co.smartroundclinic.doctor.koin
 
+import ke.co.smartroundclinic.doctor.domain.usecase.auth.DeleteProfilePictureUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.auth.SignOutUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.auth.GetUserUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.RefreshTokenUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.RequestPasswordResetUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.ResendAccountUseCase
@@ -7,15 +10,26 @@ import ke.co.smartroundclinic.doctor.domain.usecase.auth.ResendPasswordResetOtpU
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.SignInUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.SignUpUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.UpdatePasswordUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.auth.UpdatePersonalInfoUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.auth.UploadProfilePictureUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.VerifyAccountUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.bank.AddPaymentDetailsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.bank.GetLocalBanksUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.bank.GetPaymentDetailsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.bank.SearchBanksUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.bank.UpdatePaymentDetailsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.datastore.GetKeyUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.datastore.ObserveKeyUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.datastore.SetKeyUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.speciality.AddDoctorSpecializationUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetDoctorSpecializationUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetSpecialitiesUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.speciality.UpdateDoctorSpecializationUseCase
 import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
 import ke.co.smartroundclinic.doctor.presentation.auth.SignInViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.profile.PaymentDetailsViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.profile.SpecializationViewModel
 import ke.co.smartroundclinic.doctor.presentation.splash.SplashViewModel
 import ke.co.smartroundclinic.doctor.presentation.onboarding.OnboardingScreenViewModel
 import ke.co.smartroundclinic.doctor.presentation.signup.AccountVerificationViewModel
@@ -31,7 +45,13 @@ val useCaseModule = module {
     single { SetKeyUseCase(get()) }
     single { GetLocalBanksUseCase(get(), get()) }
     single { SearchBanksUseCase(get(), get()) }
+    single { GetPaymentDetailsUseCase(get(), get()) }
+    single { UpdatePaymentDetailsUseCase(get(), get()) }
+    single { AddPaymentDetailsUseCase(get()) }
     single { GetSpecialitiesUseCase(get(), get()) }
+    single { GetDoctorSpecializationUseCase(get(), get()) }
+    single { AddDoctorSpecializationUseCase(get()) }
+    single { UpdateDoctorSpecializationUseCase(get()) }
     single { SignUpUseCase(get()) }
     single { VerifyAccountUseCase(get()) }
     single { ResendAccountUseCase(get()) }
@@ -40,6 +60,11 @@ val useCaseModule = module {
     single { RequestPasswordResetUseCase(get()) }
     single { ResendPasswordResetOtpUseCase(get()) }
     single { UpdatePasswordUseCase(get()) }
+    single { UpdatePersonalInfoUseCase(get()) }
+    single { UploadProfilePictureUseCase(get()) }
+    single { DeleteProfilePictureUseCase(get()) }
+    single { GetUserUseCase(get(), get()) }
+    single { SignOutUseCase(get(), get(), get(), get()) }
 
     viewModel { SplashViewModel(get(), get()) }
     viewModel { OnboardingScreenViewModel(get(), get()) }
@@ -49,4 +74,7 @@ val useCaseModule = module {
     viewModel { AccountVerificationViewModel(get(), get(), get()) }
     viewModel { SignInViewModel(get(), get()) }
     viewModel { ForgotPasswordViewModel(get(), get(), get(), get()) }
+    viewModel { PersonalInfoViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { PaymentDetailsViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { SpecializationViewModel(get(), get(), get(), get(), get(), get()) }
 }
