@@ -21,10 +21,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -42,8 +45,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingStatus
-import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingUi
+import ke.co.smartroundclinic.doctor.domain.model.Appointment
+import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
@@ -54,35 +57,55 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 
-private enum class BookingTab(val label: String) {
-    UPCOMING("Upcoming"),
-    PAST("Past"),
+private enum class BookingTab(val label: String, val filter: String?) {
+    UPCOMING("Upcoming", "upcoming"),
+    TODAY("Today", "today"),
+    PAST("Past", "past"),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun BookingListScreen(
-    bookings: List<BookingUi>,
-    onBookingClick: (BookingUi) -> Unit,
+    appointments: List<Appointment>,
+    isLoading: Boolean,
+    onRefresh: () -> Unit,
+    onBookingClick: (Appointment) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by remember { mutableStateOf(BookingTab.UPCOMING) }
-    val filtered = bookings.filter {
-        if (selectedTab == BookingTab.UPCOMING) it.status == BookingStatus.UPCOMING
-        else it.status != BookingStatus.UPCOMING
+
+    val filtered = appointments.filter { appt ->
+        when (selectedTab) {
+            BookingTab.UPCOMING -> appt.status == AppointmentStatus.BOOKED || appt.status == AppointmentStatus.CONFIRMED
+            BookingTab.TODAY -> appt.status == AppointmentStatus.BOOKED || appt.status == AppointmentStatus.CONFIRMED
+            BookingTab.PAST -> appt.status == AppointmentStatus.COMPLETED ||
+                    appt.status == AppointmentStatus.CANCELLED ||
+                    appt.status == AppointmentStatus.NO_SHOW
+        }
     }
 
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(title = { Text("Bookings", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) })
+            TopAppBar(
+                title = { Text("Bookings", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+                actions = {
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp).padding(end = 8.dp), strokeWidth = 2.dp)
+                    } else {
+                        IconButton(onClick = onRefresh) {
+                            Icon(imageVector = Icons.Filled.Refresh, contentDescription = "Refresh")
+                        }
+                    }
+                }
+            )
         },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             BookingTabRow(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
 
-            if (filtered.isEmpty()) {
+            if (filtered.isEmpty() && !isLoading) {
                 EmptyBookingsView(tab = selectedTab, modifier = Modifier.weight(1f))
             } else {
                 LazyColumn(
@@ -90,8 +113,8 @@ internal fun BookingListScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(filtered, key = { it.id }) { booking ->
-                        BookingCard(booking = booking, onClick = { onBookingClick(booking) })
+                    items(filtered, key = { it.id }) { appt ->
+                        BookingCard(appointment = appt, onClick = { onBookingClick(appt) })
                     }
                 }
             }
@@ -142,14 +165,21 @@ private fun EmptyBookingsView(tab: BookingTab, modifier: Modifier = Modifier) {
         }
         Spacer(Modifier.height(16.dp))
         Text(
-            text = if (tab == BookingTab.UPCOMING) "No Upcoming Appointments" else "No Past Appointments",
+            text = when (tab) {
+                BookingTab.UPCOMING -> "No Upcoming Appointments"
+                BookingTab.TODAY -> "No Appointments Today"
+                BookingTab.PAST -> "No Past Appointments"
+            },
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = if (tab == BookingTab.UPCOMING) "Your consultation bookings will appear here"
-                   else "Completed and cancelled appointments will appear here",
+            text = when (tab) {
+                BookingTab.UPCOMING -> "Your consultation bookings will appear here"
+                BookingTab.TODAY -> "No appointments scheduled for today"
+                BookingTab.PAST -> "Completed and cancelled appointments will appear here"
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -158,11 +188,11 @@ private fun EmptyBookingsView(tab: BookingTab, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun BookingCard(booking: BookingUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val dotColor = when (booking.status) {
-        BookingStatus.UPCOMING -> Primary40
-        BookingStatus.COMPLETED -> Tertiary40
-        BookingStatus.CANCELLED -> Error40
+private fun BookingCard(appointment: Appointment, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val dotColor = when (appointment.status) {
+        AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED -> Primary40
+        AppointmentStatus.COMPLETED -> Tertiary40
+        AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW -> Error40
     }
     Card(
         onClick = onClick,
@@ -178,14 +208,18 @@ private fun BookingCard(booking: BookingUi, onClick: () -> Unit, modifier: Modif
                 Text(text = "Appointment Date/Time", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(2.dp))
-            Text(text = booking.dateTime, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 14.dp))
+            Text(
+                text = "${appointment.date}  ${appointment.slotStart} – ${appointment.slotEnd}",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 14.dp),
+            )
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(Secondary90), contentAlignment = Alignment.Center) {
                     Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(20.dp))
                 }
                 Spacer(Modifier.width(8.dp))
-                Text(text = booking.patientName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(text = appointment.patientName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 OutlinedButton(
                     onClick = onClick,
                     shape = ShapePill,
@@ -194,6 +228,15 @@ private fun BookingCard(booking: BookingUi, onClick: () -> Unit, modifier: Modif
                 ) {
                     Text(text = "View", style = MaterialTheme.typography.labelMedium, color = Tertiary40)
                 }
+            }
+            if (appointment.status == AppointmentStatus.CONFIRMED) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Confirmed",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Primary40,
+                    modifier = Modifier.padding(start = 14.dp),
+                )
             }
         }
     }

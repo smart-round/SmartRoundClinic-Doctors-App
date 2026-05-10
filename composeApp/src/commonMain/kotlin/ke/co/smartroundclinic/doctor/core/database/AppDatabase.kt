@@ -4,20 +4,32 @@ import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
+import ke.co.smartroundclinic.doctor.core.database.dao.AppointmentDao
 import ke.co.smartroundclinic.doctor.core.database.dao.BankDao
+import ke.co.smartroundclinic.doctor.core.database.dao.DoctorAvailabilityDao
 import ke.co.smartroundclinic.doctor.core.database.dao.DoctorSpecializationDao
 import ke.co.smartroundclinic.doctor.core.database.dao.PaymentDetailsDao
 import ke.co.smartroundclinic.doctor.core.database.dao.SpecialityDao
 import ke.co.smartroundclinic.doctor.core.database.dao.UserDao
+import ke.co.smartroundclinic.doctor.core.database.entity.AppointmentEntity
 import ke.co.smartroundclinic.doctor.core.database.entity.BankEntity
+import ke.co.smartroundclinic.doctor.core.database.entity.DoctorAvailabilityEntity
 import ke.co.smartroundclinic.doctor.core.database.entity.DoctorSpecializationEntity
 import ke.co.smartroundclinic.doctor.core.database.entity.PaymentDetailsEntity
 import ke.co.smartroundclinic.doctor.core.database.entity.SpecialityEntity
 import ke.co.smartroundclinic.doctor.core.database.entity.UserEntity
 
 @Database(
-    entities = [BankEntity::class, SpecialityEntity::class, UserEntity::class, PaymentDetailsEntity::class, DoctorSpecializationEntity::class],
-    version = 4,
+    entities = [
+        BankEntity::class,
+        SpecialityEntity::class,
+        UserEntity::class,
+        PaymentDetailsEntity::class,
+        DoctorSpecializationEntity::class,
+        DoctorAvailabilityEntity::class,
+        AppointmentEntity::class,
+    ],
+    version = 5,
     exportSchema = false
 )
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -27,6 +39,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract val userDao: UserDao
     abstract val paymentDetailsDao: PaymentDetailsDao
     abstract val doctorSpecializationDao: DoctorSpecializationDao
+    abstract val doctorAvailabilityDao: DoctorAvailabilityDao
+    abstract val appointmentDao: AppointmentDao
 }
 
 // Room KSP generates the actual implementations per platform.

@@ -7,4 +7,4 @@ import kotlinx.serialization.Serializable
 data object BookingList : NavKey
 
 @Serializable
-data class BookingDetail(val bookingId: Int) : NavKey
+data class BookingDetail(val bookingId: String) : NavKey

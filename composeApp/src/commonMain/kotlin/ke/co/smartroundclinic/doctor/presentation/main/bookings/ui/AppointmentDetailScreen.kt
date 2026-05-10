@@ -22,13 +22,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -37,10 +36,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,13 +49,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingStatus
-import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingUi
+import ke.co.smartroundclinic.doctor.domain.model.Appointment
+import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
-import ke.co.smartroundclinic.doctor.presentation.theme.Neutral80
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
-import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
 import ke.co.smartroundclinic.doctor.presentation.theme.Secondary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Secondary90
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeBadge
@@ -69,13 +66,26 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary90
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AppointmentDetailScreen(
-    booking: BookingUi,
+    appointment: Appointment,
+    isActioning: Boolean,
     onBack: () -> Unit,
+    onConfirm: () -> Unit,
+    onComplete: () -> Unit,
+    onNoShow: () -> Unit,
+    onCancel: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var selectedRating by remember { mutableIntStateOf(booking.existingRating) }
-    var reviewText by remember { mutableStateOf(booking.existingReview) }
-    var reviewSubmitted by remember { mutableStateOf(booking.existingRating > 0) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+
+    if (showCancelDialog) {
+        CancelDialog(
+            onDismiss = { showCancelDialog = false },
+            onConfirm = { reason ->
+                showCancelDialog = false
+                onCancel(reason.ifBlank { null })
+            },
+        )
+    }
 
     Scaffold(
         modifier = modifier,
@@ -88,17 +98,8 @@ internal fun AppointmentDetailScreen(
                 },
                 title = { Text("Appointment Details") },
                 actions = {
-                    BookingStatusBadge(status = booking.status)
-                    Spacer(Modifier.width(4.dp))
-                    if (booking.status == BookingStatus.UPCOMING) {
-                        IconButton(onClick = {}) {
-                            Icon(imageVector = Icons.Filled.Phone, contentDescription = "Call patient", tint = Primary40)
-                        }
-                        IconButton(onClick = {}) {
-                            Icon(imageVector = Icons.Filled.Videocam, contentDescription = "Video call patient", tint = Primary40)
-                        }
-                    }
-                    Spacer(Modifier.width(4.dp))
+                    AppointmentStatusBadge(status = appointment.status)
+                    Spacer(Modifier.width(8.dp))
                 },
             )
         },
@@ -115,41 +116,136 @@ internal fun AppointmentDetailScreen(
                     .navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Card(shape = ShapeCard, colors = CardDefaults.cardColors(containerColor = CardBackground), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
+                Card(
+                    shape = ShapeCard,
+                    colors = CardDefaults.cardColors(containerColor = CardBackground),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        InfoRow(label = "Date/Time", value = booking.dateTime)
+                        InfoRow(label = "Date", value = appointment.date)
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        InfoRow(label = "Time", value = "${appointment.slotStart} – ${appointment.slotEnd}")
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Secondary90), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier.size(40.dp).clip(CircleShape).background(Secondary90),
+                                contentAlignment = Alignment.Center,
+                            ) {
                                 Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(24.dp))
                             }
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(text = "Patient", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(text = booking.patientName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                Text(text = appointment.patientName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                             }
                         }
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        InfoRow(label = "Consultation Fee", value = booking.fee)
+                        if (!appointment.notes.isNullOrBlank()) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            InfoRow(label = "Notes", value = appointment.notes)
+                        }
+                        if (!appointment.cancellationReason.isNullOrBlank()) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            InfoRow(label = "Cancellation Reason", value = appointment.cancellationReason)
+                        }
+                        if (appointment.doctorSpecialities.isNotEmpty()) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            InfoRow(label = "Speciality", value = appointment.doctorSpecialities.joinToString(", "))
+                        }
                     }
                 }
 
-                when (booking.status) {
-                    BookingStatus.UPCOMING -> UpcomingActions()
-                    BookingStatus.COMPLETED -> {
-                        if (reviewSubmitted) {
-                            SubmittedReviewCard(patientName = booking.patientName, rating = selectedRating, review = reviewText)
-                        } else {
-                            RateReviewForm(
-                                selectedRating = selectedRating,
-                                onRatingSelected = { selectedRating = it },
-                                reviewText = reviewText,
-                                onReviewTextChange = { reviewText = it },
-                                onSubmit = { reviewSubmitted = true },
-                            )
+                if (isActioning) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp), strokeWidth = 2.dp)
+                    }
+                } else {
+                    when (appointment.status) {
+                        AppointmentStatus.BOOKED -> {
+                            PrimaryButton(onClick = onConfirm) {
+                                Text("Confirm Appointment", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(vertical = 14.dp))
+                            }
+                            Button(
+                                onClick = { showCancelDialog = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = ShapePill,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.error,
+                                ),
+                            ) {
+                                Text("Cancel Appointment", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(vertical = 10.dp))
+                            }
+                        }
+                        AppointmentStatus.CONFIRMED -> {
+                            PrimaryButton(onClick = onComplete) {
+                                Text("Mark as Complete", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(vertical = 14.dp))
+                            }
+                            Button(
+                                onClick = onNoShow,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = ShapePill,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                            ) {
+                                Text("Patient No-Show", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(vertical = 10.dp))
+                            }
+                            Button(
+                                onClick = { showCancelDialog = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = ShapePill,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.error,
+                                ),
+                            ) {
+                                Text("Cancel Appointment", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(vertical = 10.dp))
+                            }
+                        }
+                        AppointmentStatus.COMPLETED -> {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = ShapeCard,
+                                colors = CardDefaults.cardColors(containerColor = Tertiary90),
+                            ) {
+                                Text(
+                                    text = "This appointment has been completed.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Tertiary40,
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
+                        }
+                        AppointmentStatus.CANCELLED -> {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = ShapeCard,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                            ) {
+                                Text(
+                                    text = "This appointment was cancelled.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
+                        }
+                        AppointmentStatus.NO_SHOW -> {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = ShapeCard,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                            ) {
+                                Text(
+                                    text = "Patient did not attend this appointment.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
                         }
                     }
-                    BookingStatus.CANCELLED -> CancelledNotice()
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -159,11 +255,13 @@ internal fun AppointmentDetailScreen(
 }
 
 @Composable
-internal fun BookingStatusBadge(status: BookingStatus, modifier: Modifier = Modifier) {
+internal fun AppointmentStatusBadge(status: AppointmentStatus, modifier: Modifier = Modifier) {
     val (label, bgColor, textColor) = when (status) {
-        BookingStatus.UPCOMING -> Triple("Upcoming", Tertiary90, Tertiary40)
-        BookingStatus.COMPLETED -> Triple("Completed", Tertiary90, Tertiary40)
-        BookingStatus.CANCELLED -> Triple("Cancelled", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.error)
+        AppointmentStatus.BOOKED -> Triple("Booked", Tertiary90, Tertiary40)
+        AppointmentStatus.CONFIRMED -> Triple("Confirmed", Primary40.copy(alpha = 0.12f), Primary40)
+        AppointmentStatus.COMPLETED -> Triple("Completed", Tertiary90, Tertiary40)
+        AppointmentStatus.CANCELLED -> Triple("Cancelled", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.error)
+        AppointmentStatus.NO_SHOW -> Triple("No-Show", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.error)
     }
     Box(modifier = modifier.clip(ShapeBadge).background(bgColor).padding(horizontal = 10.dp, vertical = 4.dp)) {
         Text(text = label, style = MaterialTheme.typography.labelSmall, color = textColor)
@@ -180,81 +278,33 @@ private fun InfoRow(label: String, value: String) {
 }
 
 @Composable
-private fun UpcomingActions(modifier: Modifier = Modifier) {
-    Column(modifier = modifier.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PrimaryButton(onClick = {}) {
-            Text(text = "Add Prescription", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(vertical = 14.dp))
-        }
-        Button(onClick = {}, modifier = Modifier.fillMaxWidth(), shape = ShapePill, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.error)) {
-            Text(text = "Cancel Appointment", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(vertical = 10.dp))
-        }
-    }
-}
-
-@Composable
-private fun RateReviewForm(
-    selectedRating: Int,
-    onRatingSelected: (Int) -> Unit,
-    reviewText: String,
-    onReviewTextChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    modifier: Modifier = Modifier,
+private fun CancelDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
 ) {
-    Card(modifier = modifier.fillMaxWidth(), shape = ShapeCard, colors = CardDefaults.cardColors(containerColor = CardBackground), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(text = "Rate & Review Patient", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-            StarRatingRow(selectedRating = selectedRating, onRatingSelected = onRatingSelected)
-            OutlinedTextField(value = reviewText, onValueChange = onReviewTextChange, placeholder = { Text("Write your review here...") }, shape = ShapeInput, modifier = Modifier.fillMaxWidth().height(120.dp), maxLines = Int.MAX_VALUE)
-            PrimaryButton(onClick = onSubmit, enabled = selectedRating > 0) {
-                Text(text = "Submit Review", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(vertical = 12.dp))
+    var reason by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Cancel Appointment") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Are you sure you want to cancel this appointment?", style = MaterialTheme.typography.bodyMedium)
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = { reason = it },
+                    placeholder = { Text("Reason (optional)", style = MaterialTheme.typography.bodySmall) },
+                    shape = ShapeInput,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
-        }
-    }
-}
-
-@Composable
-private fun StarRatingRow(selectedRating: Int, onRatingSelected: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        repeat(5) { index ->
-            val starIndex = index + 1
-            Icon(
-                imageVector = Icons.Filled.Star,
-                contentDescription = "Rate $starIndex",
-                tint = if (starIndex <= selectedRating) Primary40 else Neutral80,
-                modifier = Modifier.size(32.dp).clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { onRatingSelected(starIndex) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun SubmittedReviewCard(patientName: String, rating: Int, review: String, modifier: Modifier = Modifier) {
-    Card(modifier = modifier.fillMaxWidth(), shape = ShapeCard, colors = CardDefaults.cardColors(containerColor = CardBackground), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(text = "Patient Rating & Review", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(Secondary90), contentAlignment = Alignment.Center) {
-                    Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(22.dp))
-                }
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(text = "Dr. Abel", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold))
-                    Text(text = "Review for $patientName", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(reason) }) {
+                Text("Cancel Appointment", color = MaterialTheme.colorScheme.error)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                repeat(5) { index -> Icon(imageVector = Icons.Filled.Star, contentDescription = null, tint = if (index + 1 <= rating) Primary40 else Neutral80, modifier = Modifier.size(20.dp)) }
-            }
-            if (review.isNotBlank()) {
-                Text(text = review, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
-@Composable
-private fun CancelledNotice(modifier: Modifier = Modifier) {
-    Card(modifier = modifier.fillMaxWidth(), shape = ShapeCard, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
-        Text(text = "This appointment was cancelled.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
-    }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Keep") }
+        },
+    )
 }
