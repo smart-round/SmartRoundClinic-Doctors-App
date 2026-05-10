@@ -44,13 +44,17 @@ fun ArticlesRoot(
                 ArticleListScreen(
                     myArticles = myArticles,
                     liveArticles = liveArticles,
-                    isLoading = viewModel.isLoading,
+                    isLoadingMine = viewModel.isLoadingMine,
+                    isLoadingLive = viewModel.isLoadingLive,
                     onWriteArticle = { viewModel.clearThumbnail(); backStack.add(WriteArticle()) },
                     onEditArticle = { article -> viewModel.clearThumbnail(); backStack.add(WriteArticle(articleId = article.id)) },
                     onArticleClick = { article -> backStack.add(ArticleDetail(article.id)) },
                     onPublish = { article -> viewModel.publishArticle(article.id) },
                     onUnpublish = { article -> viewModel.unpublishArticle(article.id) },
                     onDelete = { article -> viewModel.deleteArticle(article.id) },
+                    onTabChanged = { isMyTab ->
+                        if (isMyTab) viewModel.refreshMyArticles() else viewModel.refreshLiveArticles()
+                    },
                 )
             }
             entry<WriteArticle> { dest ->

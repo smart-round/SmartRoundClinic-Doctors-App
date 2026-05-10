@@ -47,7 +47,10 @@ class ArticlesViewModel(
     val categories: StateFlow<List<ArticleCategory>> = categoryLocalRepository.observeActiveCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    var isLoading by mutableStateOf(false)
+    var isLoadingMine by mutableStateOf(false)
+        private set
+
+    var isLoadingLive by mutableStateOf(false)
         private set
 
     var isSaving by mutableStateOf(false)
@@ -60,16 +63,23 @@ class ArticlesViewModel(
         private set
 
     init {
-        refresh()
+        refreshMyArticles()
+        viewModelScope.launch { getCategoriesUseCase() }
     }
 
-    fun refresh() {
+    fun refreshMyArticles() {
         viewModelScope.launch {
-            isLoading = true
-            launch { getMyArticlesUseCase() }
-            launch { getLiveArticlesUseCase() }
-            getCategoriesUseCase()
-            isLoading = false
+            isLoadingMine = true
+            getMyArticlesUseCase()
+            isLoadingMine = false
+        }
+    }
+
+    fun refreshLiveArticles() {
+        viewModelScope.launch {
+            isLoadingLive = true
+            getLiveArticlesUseCase()
+            isLoadingLive = false
         }
     }
 

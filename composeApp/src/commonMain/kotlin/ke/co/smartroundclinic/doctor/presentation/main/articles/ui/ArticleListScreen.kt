@@ -72,17 +72,21 @@ private enum class ArticlesTab(val label: String) {
 internal fun ArticleListScreen(
     myArticles: List<Article>,
     liveArticles: List<Article>,
-    isLoading: Boolean,
+    isLoadingMine: Boolean,
+    isLoadingLive: Boolean,
     onWriteArticle: () -> Unit,
     onEditArticle: (Article) -> Unit,
     onArticleClick: (Article) -> Unit,
     onPublish: (Article) -> Unit,
     onUnpublish: (Article) -> Unit,
     onDelete: (Article) -> Unit,
+    onTabChanged: (isMyTab: Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by remember { mutableStateOf(ArticlesTab.MY_ARTICLES) }
-    val articles = if (selectedTab == ArticlesTab.MY_ARTICLES) myArticles else liveArticles
+    val isMyTab = selectedTab == ArticlesTab.MY_ARTICLES
+    val articles = if (isMyTab) myArticles else liveArticles
+    val isLoading = if (isMyTab) isLoadingMine else isLoadingLive
 
     Scaffold(
         modifier = modifier,
@@ -92,7 +96,13 @@ internal fun ArticleListScreen(
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            ArticleTabRow(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+            ArticleTabRow(
+                selectedTab = selectedTab,
+                onTabSelected = { tab ->
+                    selectedTab = tab
+                    onTabChanged(tab == ArticlesTab.MY_ARTICLES)
+                },
+            )
 
             if (isLoading && articles.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -104,8 +114,9 @@ internal fun ArticleListScreen(
                     modifier = Modifier.weight(1f),
                 )
             } else {
+                Box(modifier = Modifier.weight(1f)) {
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -120,6 +131,12 @@ internal fun ArticleListScreen(
                             onDelete = { onDelete(article) },
                         )
                     }
+                }
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                        CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp), color = Primary40)
+                    }
+                }
                 }
             }
 
