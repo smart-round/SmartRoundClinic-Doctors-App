@@ -78,11 +78,13 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeInput
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.viewmodel.koinViewModel
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
+
 
 private val dayLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 private val calDayHeaders = listOf("M", "T", "W", "T", "F", "S", "S")
@@ -90,8 +92,6 @@ private val monthNames = listOf(
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
 )
-private val slotDurations = listOf(25, 30)
-
 private enum class ScheduleTab { AVAILABILITY, CALENDAR }
 
 private fun parseHhmm(value: String): Pair<Int, Int> {
@@ -139,15 +139,16 @@ internal fun ScheduleManagementScreen(
 
     var selectedTab by remember { mutableStateOf(ScheduleTab.AVAILABILITY) }
 
+    LaunchedEffect(selectedTab) { viewModel.refresh() }
+
     // Availability form state
     var enabledDays by remember { mutableStateOf(emptySet<Int>()) }
     var windowStart by remember { mutableStateOf("08:00") }
     var windowEnd by remember { mutableStateOf("17:00") }
-    var slotDuration by remember { mutableStateOf(30) }
     var breakBlocks by remember { mutableStateOf(listOf<ScheduleBreakBlock>()) }
 
     // Calendar state
-    val today = remember { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
+    val today: LocalDate = remember { Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds()).toLocalDateTime(TimeZone.currentSystemDefault()).date }
     var calYear by remember { mutableStateOf(today.year) }
     var calMonth by remember { mutableStateOf(today.monthNumber) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(today) }
@@ -162,7 +163,6 @@ internal fun ScheduleManagementScreen(
             active.firstOrNull()?.let {
                 windowStart = it.windowStart
                 windowEnd = it.windowEnd
-                slotDuration = it.slotDuration
                 breakBlocks = it.breakBlocks
             }
         }
@@ -220,8 +220,6 @@ internal fun ScheduleManagementScreen(
                     onWindowStartChange = { windowStart = it },
                     windowEnd = windowEnd,
                     onWindowEndChange = { windowEnd = it },
-                    slotDuration = slotDuration,
-                    onSlotDurationChange = { slotDuration = it },
                     breakBlocks = breakBlocks,
                     onAddBreak = { breakBlocks = breakBlocks + ScheduleBreakBlock("12:00", "13:00") },
                     onBreakStartChange = { i, v -> breakBlocks = breakBlocks.toMutableList().also { it[i] = it[i].copy(start = v) } },
@@ -233,7 +231,7 @@ internal fun ScheduleManagementScreen(
                             enabledDays = enabledDays,
                             windowStart = windowStart,
                             windowEnd = windowEnd,
-                            slotDuration = slotDuration,
+                            slotDuration = 30,
                             breakBlocks = breakBlocks,
                             onSuccess = {},
                         )
@@ -272,8 +270,6 @@ private fun AvailabilityContent(
     onWindowStartChange: (String) -> Unit,
     windowEnd: String,
     onWindowEndChange: (String) -> Unit,
-    slotDuration: Int,
-    onSlotDurationChange: (Int) -> Unit,
     breakBlocks: List<ScheduleBreakBlock>,
     onAddBreak: () -> Unit,
     onBreakStartChange: (Int, String) -> Unit,
@@ -331,17 +327,12 @@ private fun AvailabilityContent(
         SectionLabel("Slot Duration")
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Length of each appointment slot in minutes.",
+            text = "Each appointment slot is 30 minutes.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(10.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            slotDurations.forEach { dur ->
-                DayChip(label = "${dur}m", isSelected = slotDuration == dur, onClick = { onSlotDurationChange(dur) })
-            }
-        }
+        DayChip(label = "30 min", isSelected = true, onClick = {})
 
         Spacer(Modifier.height(20.dp))
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)

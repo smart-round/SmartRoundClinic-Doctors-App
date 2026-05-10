@@ -14,6 +14,7 @@ import ke.co.smartroundclinic.doctor.domain.model.DoctorAvailability
 import ke.co.smartroundclinic.doctor.domain.model.ScheduleBreakBlock
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ScheduleLocalRepository
+import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetAppointmentsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetScheduleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpsertAvailabilityUseCase
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,6 +24,7 @@ import kotlinx.coroutines.launch
 
 class ScheduleViewModel(
     private val getScheduleUseCase: GetScheduleUseCase,
+    private val getAppointmentsUseCase: GetAppointmentsUseCase,
     private val upsertAvailabilityUseCase: UpsertAvailabilityUseCase,
     private val scheduleLocalRepository: ScheduleLocalRepository,
     private val appointmentLocalRepository: AppointmentLocalRepository,
@@ -49,6 +51,7 @@ class ScheduleViewModel(
         viewModelScope.launch {
             isLoading = true
             getScheduleUseCase()
+            getAppointmentsUseCase()
             isLoading = false
         }
     }

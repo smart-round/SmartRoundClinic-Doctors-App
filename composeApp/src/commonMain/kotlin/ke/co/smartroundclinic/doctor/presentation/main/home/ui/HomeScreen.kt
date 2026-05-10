@@ -45,6 +45,7 @@ import coil3.compose.AsyncImage
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -74,7 +75,8 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.StatusPending
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
+
 
 private data class MessageItem(val senderName: String, val preview: String, val timestamp: String)
 
@@ -91,7 +93,7 @@ fun HomeScreen(
     val allAppointments by bookingsViewModel.appointments.collectAsState()
     val schedule by scheduleViewModel.schedule.collectAsState()
 
-    val today = remember { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
+    val today: LocalDate = remember { Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds()).toLocalDateTime(TimeZone.currentSystemDefault()).date }
     val upcomingAppointments = remember(allAppointments, today) {
         allAppointments
             .filter { appt ->

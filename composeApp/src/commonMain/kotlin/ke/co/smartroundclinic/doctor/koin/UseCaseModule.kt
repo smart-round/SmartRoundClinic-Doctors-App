@@ -114,7 +114,7 @@ val useCaseModule = module {
     viewModel { PersonalInfoViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { PaymentDetailsViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { SpecializationViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { ScheduleViewModel(get(), get(), get(), get(), get()) }
+    viewModel { ScheduleViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }

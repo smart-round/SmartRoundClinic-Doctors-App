@@ -77,6 +77,7 @@ kotlin {
             implementation(libs.filekit.coil)
             implementation(libs.napier)
             implementation(libs.kotlinx.datetime)
+            implementation("com.mohamedrejeb.richeditor:richeditor-compose:1.0.0-rc14")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

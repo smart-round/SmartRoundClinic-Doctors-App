@@ -58,7 +58,8 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Secondary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Secondary90
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

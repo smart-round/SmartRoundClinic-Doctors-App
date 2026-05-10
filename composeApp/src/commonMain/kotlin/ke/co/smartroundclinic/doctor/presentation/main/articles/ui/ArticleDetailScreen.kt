@@ -144,7 +144,7 @@ internal fun ArticleDetailScreen(
                 }
             }
 
-            Text(text = article.content, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            HtmlText(html = article.content, modifier = Modifier.fillMaxWidth())
 
             if (isOwn && article.state != ArticleState.SUSPENDED) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

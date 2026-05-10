@@ -21,15 +21,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
+import com.mohamedrejeb.richeditor.model.rememberRichTextState
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -78,7 +79,7 @@ internal fun WriteArticleScreen(
 ) {
     var title by remember { mutableStateOf(article?.title ?: "") }
     var summary by remember { mutableStateOf(article?.summary ?: "") }
-    var content by remember { mutableStateOf(article?.content ?: "") }
+    val contentState = rememberRichTextState()
     var selectedCategoryId by remember { mutableStateOf(article?.categoryId ?: "") }
     var categoryExpanded by remember { mutableStateOf(false) }
     var showPhotoPicker by remember { mutableStateOf(false) }
@@ -88,7 +89,7 @@ internal fun WriteArticleScreen(
 
     val selectedCategoryName = categories.find { it.id == selectedCategoryId }?.name ?: ""
     val isEditing = article != null
-    val isFormValid = title.isNotBlank() && summary.isNotBlank() && content.isNotBlank() && selectedCategoryId.isNotBlank()
+    val isFormValid = title.isNotBlank() && summary.isNotBlank() && contentState.annotatedString.text.isNotBlank() && selectedCategoryId.isNotBlank()
 
     val galleryLauncher = rememberFilePickerLauncher(type = FileKitType.Image) { file ->
         scope.launch {
@@ -106,7 +107,7 @@ internal fun WriteArticleScreen(
         if (article != null) {
             title = article.title
             summary = article.summary
-            content = article.content
+            contentState.setHtml(article.content)
             selectedCategoryId = article.categoryId
         }
     }
@@ -216,7 +217,7 @@ internal fun WriteArticleScreen(
                         label = { Text("Category *") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
                         shape = ShapeInput,
-                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                     )
                     ExposedDropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
                         categories.forEach { cat ->
@@ -231,13 +232,9 @@ internal fun WriteArticleScreen(
                     }
                 }
 
-                OutlinedTextField(
-                    value = content,
-                    onValueChange = { content = it },
-                    label = { Text("Article body *") },
-                    shape = ShapeInput,
-                    modifier = Modifier.fillMaxWidth().height(260.dp),
-                    maxLines = Int.MAX_VALUE,
+                RichTextEditor(
+                    state = contentState,
+                    modifier = Modifier.fillMaxWidth().height(320.dp),
                 )
 
                 Spacer(Modifier.height(4.dp))
@@ -249,7 +246,7 @@ internal fun WriteArticleScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 PrimaryButton(
-                    onClick = { onPublish(title, content, summary, selectedCategoryId) },
+                    onClick = { onPublish(title, contentState.toHtml(), summary, selectedCategoryId) },
                     enabled = isFormValid && !isSaving,
                 ) {
                     Text(
@@ -269,7 +266,7 @@ internal fun WriteArticleScreen(
                                 enabled = isFormValid && !isSaving,
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() },
-                                onClick = { onSaveDraft(title, content, summary, selectedCategoryId) },
+                                onClick = { onSaveDraft(title, contentState.toHtml(), summary, selectedCategoryId) },
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
