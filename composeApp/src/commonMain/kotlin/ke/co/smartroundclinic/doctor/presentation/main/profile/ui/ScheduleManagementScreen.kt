@@ -20,13 +20,15 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,6 +37,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +55,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import ke.co.smartroundclinic.doctor.domain.model.ScheduleBreakBlock
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ScheduleViewModel
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
@@ -59,15 +66,14 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import org.koin.compose.viewmodel.koinViewModel
 
 private val dayLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+private val slotDurations = listOf(25, 30)
 
-private val timeOptions: List<String> = buildList {
-    for (h in 0..23) {
-        add("%02d:00".format(h))
-        add("%02d:30".format(h))
-    }
+private fun parseHhmm(value: String): Pair<Int, Int> {
+    val parts = value.split(":")
+    return Pair(parts[0].toIntOrNull() ?: 0, parts[1].toIntOrNull() ?: 0)
 }
 
-private val slotDurations = listOf(25, 30)
+private fun formatHhmm(hour: Int, minute: Int) = "%02d:%02d".format(hour, minute)
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +90,7 @@ internal fun ScheduleManagementScreen(
     var windowStart by remember { mutableStateOf("08:00") }
     var windowEnd by remember { mutableStateOf("17:00") }
     var slotDuration by remember { mutableStateOf(30) }
+    var breakBlocks by remember { mutableStateOf(listOf<ScheduleBreakBlock>()) }
 
     // Pre-fill once when the schedule first arrives from the DB
     var initialized by remember { mutableStateOf(false) }
@@ -91,11 +98,12 @@ internal fun ScheduleManagementScreen(
         if (!initialized && schedule.isNotEmpty()) {
             initialized = true
             val active = schedule.filter { it.isActive }
-            enabledDays = schedule.filter { it.isActive }.map { it.dayOfWeek }.toSet()
+            enabledDays = active.map { it.dayOfWeek }.toSet()
             active.firstOrNull()?.let {
                 windowStart = it.windowStart
                 windowEnd = it.windowEnd
                 slotDuration = it.slotDuration
+                breakBlocks = it.breakBlocks
             }
         }
     }
@@ -167,13 +175,13 @@ internal fun ScheduleManagementScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    TimeDropdown(
+                    TimePickerField(
                         label = "Start time",
                         value = windowStart,
                         onValueChange = { windowStart = it },
                         modifier = Modifier.weight(1f),
                     )
-                    TimeDropdown(
+                    TimePickerField(
                         label = "End time",
                         value = windowEnd,
                         onValueChange = { windowEnd = it },
@@ -202,6 +210,47 @@ internal fun ScheduleManagementScreen(
                     }
                 }
 
+                Spacer(Modifier.height(20.dp))
+                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        SectionLabel("Break Blocks")
+                        Text(
+                            text = "e.g. lunch break — applies to all working days.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { breakBlocks = breakBlocks + ScheduleBreakBlock("12:00", "13:00") }) {
+                        Icon(imageVector = Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Add", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+
+                if (breakBlocks.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    breakBlocks.forEachIndexed { index, block ->
+                        BreakBlockRow(
+                            block = block,
+                            onStartChange = { newStart ->
+                                breakBlocks = breakBlocks.toMutableList().also { it[index] = block.copy(start = newStart) }
+                            },
+                            onEndChange = { newEnd ->
+                                breakBlocks = breakBlocks.toMutableList().also { it[index] = block.copy(end = newEnd) }
+                            },
+                            onRemove = { breakBlocks = breakBlocks.filterIndexed { i, _ -> i != index } },
+                        )
+                        if (index < breakBlocks.lastIndex) Spacer(Modifier.height(8.dp))
+                    }
+                }
+
                 Spacer(Modifier.height(24.dp))
 
                 PrimaryButton(
@@ -211,6 +260,7 @@ internal fun ScheduleManagementScreen(
                             windowStart = windowStart,
                             windowEnd = windowEnd,
                             slotDuration = slotDuration,
+                            breakBlocks = breakBlocks,
                             onSuccess = {},
                         )
                     },
@@ -234,39 +284,110 @@ internal fun ScheduleManagementScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimeDropdown(
+private fun TimePickerField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Box(modifier = modifier) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label, style = MaterialTheme.typography.bodySmall) },
-            trailingIcon = {
-                Icon(imageVector = Icons.Outlined.AccessTime, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    var showPicker by remember { mutableStateOf(false) }
+    val (initHour, initMinute) = remember(value) { parseHhmm(value) }
+    val pickerState = rememberTimePickerState(
+        initialHour = initHour,
+        initialMinute = initMinute,
+        is24Hour = true,
+    )
+
+    if (showPicker) {
+        AlertDialog(
+            onDismissRequest = { showPicker = false },
+            title = { Text(label, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)) },
+            text = {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    TimePicker(
+                        state = pickerState,
+                        colors = TimePickerDefaults.colors(
+                            clockDialColor = MaterialTheme.colorScheme.surfaceVariant,
+                            clockDialSelectedContentColor = Color.White,
+                            clockDialUnselectedContentColor = MaterialTheme.colorScheme.onSurface,
+                            selectorColor = Primary40,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            periodSelectorBorderColor = Primary40,
+                            timeSelectorSelectedContainerColor = Primary40,
+                            timeSelectorUnselectedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            timeSelectorSelectedContentColor = Color.White,
+                            timeSelectorUnselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                    )
+                }
             },
-            shape = ShapeInput,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { expanded = true },
-            enabled = false,
+            confirmButton = {
+                TextButton(onClick = {
+                    onValueChange(formatHhmm(pickerState.hour, pickerState.minute))
+                    showPicker = false
+                }) {
+                    Text("OK", color = Primary40)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
         )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            timeOptions.forEach { time ->
-                DropdownMenuItem(
-                    text = { Text(time, style = MaterialTheme.typography.bodyMedium) },
-                    onClick = {
-                        onValueChange(time)
-                        expanded = false
-                    },
-                )
-            }
+    }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        readOnly = true,
+        label = { Text(label, style = MaterialTheme.typography.bodySmall) },
+        trailingIcon = {
+            Icon(imageVector = Icons.Outlined.AccessTime, contentDescription = null, tint = Primary40)
+        },
+        shape = ShapeInput,
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { showPicker = true },
+        enabled = false,
+    )
+}
+
+@Composable
+private fun BreakBlockRow(
+    block: ScheduleBreakBlock,
+    onStartChange: (String) -> Unit,
+    onEndChange: (String) -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TimePickerField(
+            label = "From",
+            value = block.start,
+            onValueChange = onStartChange,
+            modifier = Modifier.weight(1f),
+        )
+        TimePickerField(
+            label = "To",
+            value = block.end,
+            onValueChange = onEndChange,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onRemove, modifier = Modifier.size(40.dp)) {
+            Icon(
+                imageVector = Icons.Outlined.Close,
+                contentDescription = "Remove break",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

@@ -7,8 +7,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
+import ke.co.smartroundclinic.doctor.data.remote.dto.request.BreakBlockReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpsertAvailabilityReq
 import ke.co.smartroundclinic.doctor.domain.model.DoctorAvailability
+import ke.co.smartroundclinic.doctor.domain.model.ScheduleBreakBlock
 import ke.co.smartroundclinic.doctor.domain.repository.ScheduleLocalRepository
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetScheduleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpdateAvailabilityUseCase
@@ -52,6 +54,7 @@ class ScheduleViewModel(
         windowStart: String,
         windowEnd: String,
         slotDuration: Int,
+        breakBlocks: List<ScheduleBreakBlock> = emptyList(),
         onSuccess: () -> Unit,
     ) {
         viewModelScope.launch {
@@ -80,6 +83,7 @@ class ScheduleViewModel(
                             windowStart = windowStart,
                             windowEnd = windowEnd,
                             slotDuration = slotDuration,
+                            breakBlocks = breakBlocks.map { BreakBlockReq(it.start, it.end) },
                             isActive = true,
                         )
                     )
