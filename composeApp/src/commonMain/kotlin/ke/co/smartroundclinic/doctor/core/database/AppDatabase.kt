@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import ke.co.smartroundclinic.doctor.core.database.dao.AppointmentDao
+import ke.co.smartroundclinic.doctor.core.database.dao.ArticleCategoryDao
+import ke.co.smartroundclinic.doctor.core.database.dao.ArticleDao
 import ke.co.smartroundclinic.doctor.core.database.dao.BankDao
 import ke.co.smartroundclinic.doctor.core.database.dao.DoctorAvailabilityDao
 import ke.co.smartroundclinic.doctor.core.database.dao.DoctorSpecializationDao
@@ -12,6 +14,8 @@ import ke.co.smartroundclinic.doctor.core.database.dao.PaymentDetailsDao
 import ke.co.smartroundclinic.doctor.core.database.dao.SpecialityDao
 import ke.co.smartroundclinic.doctor.core.database.dao.UserDao
 import ke.co.smartroundclinic.doctor.core.database.entity.AppointmentEntity
+import ke.co.smartroundclinic.doctor.core.database.entity.ArticleCategoryEntity
+import ke.co.smartroundclinic.doctor.core.database.entity.ArticleEntity
 import ke.co.smartroundclinic.doctor.core.database.entity.BankEntity
 import ke.co.smartroundclinic.doctor.core.database.entity.DoctorAvailabilityEntity
 import ke.co.smartroundclinic.doctor.core.database.entity.DoctorSpecializationEntity
@@ -28,8 +32,10 @@ import ke.co.smartroundclinic.doctor.core.database.entity.UserEntity
         DoctorSpecializationEntity::class,
         DoctorAvailabilityEntity::class,
         AppointmentEntity::class,
+        ArticleEntity::class,
+        ArticleCategoryEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -41,6 +47,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract val doctorSpecializationDao: DoctorSpecializationDao
     abstract val doctorAvailabilityDao: DoctorAvailabilityDao
     abstract val appointmentDao: AppointmentDao
+    abstract val articleDao: ArticleDao
+    abstract val articleCategoryDao: ArticleCategoryDao
 }
 
 // Room KSP generates the actual implementations per platform.

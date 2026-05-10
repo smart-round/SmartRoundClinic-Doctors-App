@@ -1,5 +1,13 @@
 package ke.co.smartroundclinic.doctor.koin
 
+import ke.co.smartroundclinic.doctor.domain.usecase.articles.CreateArticleUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.articles.DeleteArticleUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.articles.GetCategoriesUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.articles.GetLiveArticlesUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.articles.GetMyArticlesUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.articles.PublishArticleUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.articles.UnpublishArticleUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.articles.UpdateArticleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.DeleteProfilePictureUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.SignOutUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.GetUserUseCase
@@ -34,6 +42,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetDoctorSpeciali
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetSpecialitiesUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.UpdateDoctorSpecializationUseCase
 import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.articles.ArticlesViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingsViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ScheduleViewModel
 import ke.co.smartroundclinic.doctor.presentation.auth.SignInViewModel
@@ -83,6 +92,14 @@ val useCaseModule = module {
     single { CompleteAppointmentUseCase(get(), get()) }
     single { NoShowAppointmentUseCase(get(), get()) }
     single { CancelAppointmentUseCase(get(), get()) }
+    single { GetCategoriesUseCase(get(), get()) }
+    single { GetMyArticlesUseCase(get(), get()) }
+    single { GetLiveArticlesUseCase(get(), get()) }
+    single { CreateArticleUseCase(get(), get()) }
+    single { UpdateArticleUseCase(get(), get()) }
+    single { PublishArticleUseCase(get(), get()) }
+    single { UnpublishArticleUseCase(get(), get()) }
+    single { DeleteArticleUseCase(get(), get()) }
 
     viewModel { SplashViewModel(get(), get()) }
     viewModel { OnboardingScreenViewModel(get(), get()) }
@@ -97,4 +114,5 @@ val useCaseModule = module {
     viewModel { SpecializationViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { ScheduleViewModel(get(), get(), get(), get(), get()) }
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }

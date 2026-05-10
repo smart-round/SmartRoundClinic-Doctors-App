@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 data object ArticleList : NavKey
 
 @Serializable
-data object WriteArticle : NavKey
+data class WriteArticle(val articleId: String? = null) : NavKey
 
 @Serializable
-data class ArticleDetail(val articleId: Int) : NavKey
+data class ArticleDetail(val articleId: String) : NavKey

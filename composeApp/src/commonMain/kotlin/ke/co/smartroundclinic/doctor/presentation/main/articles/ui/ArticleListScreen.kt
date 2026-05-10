@@ -21,9 +21,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -40,12 +42,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ke.co.smartroundclinic.doctor.presentation.main.articles.ArticleStatus
-import ke.co.smartroundclinic.doctor.presentation.main.articles.ArticleUi
+import coil3.compose.AsyncImage
+import ke.co.smartroundclinic.doctor.domain.model.Article
+import ke.co.smartroundclinic.doctor.domain.model.ArticleState
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
@@ -66,14 +70,19 @@ private enum class ArticlesTab(val label: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ArticleListScreen(
-    myArticles: List<ArticleUi>,
-    otherArticles: List<ArticleUi>,
+    myArticles: List<Article>,
+    liveArticles: List<Article>,
+    isLoading: Boolean,
     onWriteArticle: () -> Unit,
-    onArticleClick: (ArticleUi) -> Unit,
+    onEditArticle: (Article) -> Unit,
+    onArticleClick: (Article) -> Unit,
+    onPublish: (Article) -> Unit,
+    onUnpublish: (Article) -> Unit,
+    onDelete: (Article) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by remember { mutableStateOf(ArticlesTab.MY_ARTICLES) }
-    val articles = if (selectedTab == ArticlesTab.MY_ARTICLES) myArticles else otherArticles
+    val articles = if (selectedTab == ArticlesTab.MY_ARTICLES) myArticles else liveArticles
 
     Scaffold(
         modifier = modifier,
@@ -85,8 +94,16 @@ internal fun ArticleListScreen(
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             ArticleTabRow(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
 
-            if (articles.isEmpty()) {
-                EmptyArticlesView(onWriteArticle = onWriteArticle, modifier = Modifier.weight(1f))
+            if (isLoading && articles.isEmpty()) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Primary40)
+                }
+            } else if (articles.isEmpty()) {
+                EmptyArticlesView(
+                    isMyTab = selectedTab == ArticlesTab.MY_ARTICLES,
+                    onWriteArticle = onWriteArticle,
+                    modifier = Modifier.weight(1f),
+                )
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f),
@@ -96,9 +113,12 @@ internal fun ArticleListScreen(
                     items(articles, key = { it.id }) { article ->
                         ArticleCard(
                             article = article,
-                            showDelete = selectedTab == ArticlesTab.MY_ARTICLES,
+                            isOwn = selectedTab == ArticlesTab.MY_ARTICLES,
                             onClick = { onArticleClick(article) },
-                            onDelete = {},
+                            onEdit = { onEditArticle(article) },
+                            onPublish = { onPublish(article) },
+                            onUnpublish = { onUnpublish(article) },
+                            onDelete = { onDelete(article) },
                         )
                     }
                 }
@@ -140,7 +160,7 @@ private fun ArticleTabRow(selectedTab: ArticlesTab, onTabSelected: (ArticlesTab)
 }
 
 @Composable
-private fun EmptyArticlesView(onWriteArticle: () -> Unit, modifier: Modifier = Modifier) {
+private fun EmptyArticlesView(isMyTab: Boolean, onWriteArticle: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -150,54 +170,105 @@ private fun EmptyArticlesView(onWriteArticle: () -> Unit, modifier: Modifier = M
             Icon(imageVector = Icons.AutoMirrored.Outlined.Article, contentDescription = null, tint = Primary40, modifier = Modifier.size(40.dp))
         }
         Spacer(Modifier.height(16.dp))
-        Text(text = "No Articles Yet", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        Text(text = if (isMyTab) "No Articles Yet" else "No Published Articles", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(8.dp))
-        Text(text = "Create your first article to get started", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(24.dp))
-        PrimaryButton(onClick = onWriteArticle) {
-            Text(text = "Write Article", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(vertical = 12.dp))
+        Text(
+            text = if (isMyTab) "Create your first article to get started" else "No articles from other doctors yet",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        if (isMyTab) {
+            Spacer(Modifier.height(24.dp))
+            PrimaryButton(onClick = onWriteArticle) {
+                Text(text = "Write Article", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(vertical = 12.dp))
+            }
         }
     }
 }
 
 @Composable
-private fun ArticleCard(article: ArticleUi, showDelete: Boolean, onClick: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
-    Card(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = ShapeCard, colors = CardDefaults.cardColors(containerColor = CardBackground), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
-        Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(modifier = Modifier.weight(1f)) {
-                ArticleStatusBadge(status = article.status)
-                Spacer(Modifier.height(6.dp))
-                Text(text = article.title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.height(4.dp))
-                Text(text = article.snippet, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.height(88.dp)) {
-                Box(modifier = Modifier.size(72.dp).clip(ShapeCard).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                    Icon(imageVector = Icons.Outlined.Image, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(28.dp))
+private fun ArticleCard(
+    article: Article,
+    isOwn: Boolean,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onPublish: () -> Unit,
+    onUnpublish: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = ShapeCard,
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    ArticleStateBadge(state = article.state)
+                    Spacer(Modifier.height(6.dp))
+                    Text(text = article.title, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(4.dp))
+                    Text(text = article.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
-                if (showDelete) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(Error40)
-                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onDelete),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(imageVector = Icons.Filled.Delete, contentDescription = "Delete article", tint = Color.White, modifier = Modifier.size(14.dp))
+                Box(
+                    modifier = Modifier.size(72.dp).clip(ShapeCard).background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (article.thumbnailUrl != null) {
+                        AsyncImage(
+                            model = article.thumbnailUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Icon(imageVector = Icons.Outlined.Image, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(28.dp))
                     }
                 }
             }
+
+            if (isOwn && article.state != ArticleState.SUSPENDED) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (article.state == ArticleState.DRAFT) {
+                        ActionChip(label = "Publish", color = Primary40, onClick = onPublish)
+                    } else if (article.state == ArticleState.LIVE) {
+                        ActionChip(label = "Unpublish", color = MaterialTheme.colorScheme.onSurfaceVariant, onClick = onUnpublish)
+                    }
+                    ActionChip(label = "Edit", color = Primary40, icon = { Icon(imageVector = Icons.Filled.Edit, contentDescription = null, tint = Primary40, modifier = Modifier.size(12.dp)) }, onClick = onEdit)
+                    ActionChip(label = "Delete", color = Error40, icon = { Icon(imageVector = Icons.Filled.Delete, contentDescription = null, tint = Error40, modifier = Modifier.size(12.dp)) }, onClick = onDelete)
+                }
+            }
         }
     }
 }
 
 @Composable
-internal fun ArticleStatusBadge(status: ArticleStatus, modifier: Modifier = Modifier) {
-    val (label, bgColor, textColor) = when (status) {
-        ArticleStatus.PENDING -> Triple("Pending", Primary90, Primary40)
-        ArticleStatus.PUBLISHED -> Triple("Published", Color(0xFFE6F4E5), StatusPublished)
-        ArticleStatus.SUSPENDED -> Triple("Suspended", Error90, StatusSuspended)
+private fun ActionChip(label: String, color: Color, icon: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(ShapePill)
+            .background(color.copy(alpha = 0.1f))
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        icon?.invoke()
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = color)
+    }
+}
+
+@Composable
+internal fun ArticleStateBadge(state: ArticleState, modifier: Modifier = Modifier) {
+    val (label, bgColor, textColor) = when (state) {
+        ArticleState.DRAFT -> Triple("Draft", MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+        ArticleState.LIVE -> Triple("Published", Color(0xFFE6F4E5), StatusPublished)
+        ArticleState.SUSPENDED -> Triple("Suspended", Error90, StatusSuspended)
+        ArticleState.DELETED -> Triple("Deleted", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.error)
     }
     Box(modifier = modifier.clip(ShapeBadge).background(bgColor).padding(horizontal = 8.dp, vertical = 2.dp)) {
         Text(text = label, style = MaterialTheme.typography.labelSmall, color = textColor)
