@@ -79,10 +79,13 @@ internal fun BookingListScreen(
     var selectedTab by remember { mutableStateOf(BookingTab.UPCOMING) }
     val today = remember { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
 
+    val pendingStatuses = setOf(AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED)
     val filtered = appointments.filter { appt ->
         val apptDate = runCatching { LocalDate.parse(appt.date) }.getOrNull()
         when (selectedTab) {
-            BookingTab.UPCOMING -> apptDate != null && apptDate > today
+            BookingTab.UPCOMING -> apptDate != null && (
+                apptDate > today || (apptDate == today && appt.status in pendingStatuses)
+            )
             BookingTab.TODAY -> apptDate != null && apptDate == today
             BookingTab.PAST -> apptDate != null && apptDate < today
         }
