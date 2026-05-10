@@ -101,7 +101,6 @@ internal fun ArticleListScreen(
             } else if (articles.isEmpty()) {
                 EmptyArticlesView(
                     isMyTab = selectedTab == ArticlesTab.MY_ARTICLES,
-                    onWriteArticle = onWriteArticle,
                     modifier = Modifier.weight(1f),
                 )
             } else {
@@ -160,7 +159,7 @@ private fun ArticleTabRow(selectedTab: ArticlesTab, onTabSelected: (ArticlesTab)
 }
 
 @Composable
-private fun EmptyArticlesView(isMyTab: Boolean, onWriteArticle: () -> Unit, modifier: Modifier = Modifier) {
+private fun EmptyArticlesView(isMyTab: Boolean, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -173,17 +172,11 @@ private fun EmptyArticlesView(isMyTab: Boolean, onWriteArticle: () -> Unit, modi
         Text(text = if (isMyTab) "No Articles Yet" else "No Published Articles", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
         Spacer(Modifier.height(8.dp))
         Text(
-            text = if (isMyTab) "Create your first article to get started" else "No articles from other doctors yet",
+            text = if (isMyTab) "Tap \"Write Article\" below to get started" else "No articles from other doctors yet",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        if (isMyTab) {
-            Spacer(Modifier.height(24.dp))
-            PrimaryButton(onClick = onWriteArticle) {
-                Text(text = "Write Article", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(vertical = 12.dp))
-            }
-        }
     }
 }
 

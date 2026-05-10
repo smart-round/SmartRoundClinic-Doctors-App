@@ -64,7 +64,7 @@ fun ArticlesRoot(
                     thumbnailBytes = viewModel.thumbnailBytes,
                     isSaving = viewModel.isSaving,
                     onBack = { backStack.removeLastOrNull() },
-                    onPickThumbnail = { /* FileKit integration — thumbnail picked via PhotoPickerBottomSheet */ },
+                    onThumbnailPicked = { bytes, filename -> viewModel.setThumbnail(bytes, filename) },
                     onSaveDraft = { title, content, summary, categoryId ->
                         viewModel.createArticle(title, content, summary, categoryId) {
                             backStack.removeLastOrNull()

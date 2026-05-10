@@ -34,11 +34,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,12 +49,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.rememberCameraPickerLauncher
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.readBytes
+import ke.co.smartroundclinic.doctor.core.media.PhotoPickerBottomSheet
 import ke.co.smartroundclinic.doctor.domain.model.Article
 import ke.co.smartroundclinic.doctor.domain.model.ArticleCategory
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
+import ke.co.smartroundclinic.doctor.presentation.theme.ShapeButton
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeInput
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +71,7 @@ internal fun WriteArticleScreen(
     thumbnailBytes: ByteArray?,
     isSaving: Boolean,
     onBack: () -> Unit,
-    onPickThumbnail: () -> Unit,
+    onThumbnailPicked: (bytes: ByteArray, filename: String) -> Unit,
     onSaveDraft: (title: String, content: String, summary: String, categoryId: String) -> Unit,
     onPublish: (title: String, content: String, summary: String, categoryId: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -72,10 +81,26 @@ internal fun WriteArticleScreen(
     var content by remember { mutableStateOf(article?.content ?: "") }
     var selectedCategoryId by remember { mutableStateOf(article?.categoryId ?: "") }
     var categoryExpanded by remember { mutableStateOf(false) }
+    var showPhotoPicker by remember { mutableStateOf(false) }
+
+    val photoPickerSheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
 
     val selectedCategoryName = categories.find { it.id == selectedCategoryId }?.name ?: ""
     val isEditing = article != null
     val isFormValid = title.isNotBlank() && summary.isNotBlank() && content.isNotBlank() && selectedCategoryId.isNotBlank()
+
+    val galleryLauncher = rememberFilePickerLauncher(type = FileKitType.Image) { file ->
+        scope.launch {
+            file?.readBytes()?.let { bytes -> onThumbnailPicked(bytes, "thumbnail.jpg") }
+        }
+    }
+
+    val cameraLauncher = rememberCameraPickerLauncher { file ->
+        scope.launch {
+            file?.readBytes()?.let { bytes -> onThumbnailPicked(bytes, "thumbnail.jpg") }
+        }
+    }
 
     LaunchedEffect(article) {
         if (article != null) {
@@ -84,6 +109,27 @@ internal fun WriteArticleScreen(
             content = article.content
             selectedCategoryId = article.categoryId
         }
+    }
+
+    if (showPhotoPicker) {
+        PhotoPickerBottomSheet(
+            sheetState = photoPickerSheetState,
+            onDismiss = { showPhotoPicker = false },
+            onTakePhoto = {
+                scope.launch {
+                    photoPickerSheetState.hide()
+                    showPhotoPicker = false
+                    cameraLauncher.launch()
+                }
+            },
+            onChooseFromGallery = {
+                scope.launch {
+                    photoPickerSheetState.hide()
+                    showPhotoPicker = false
+                    galleryLauncher.launch()
+                }
+            },
+        )
     }
 
     Scaffold(
@@ -115,7 +161,9 @@ internal fun WriteArticleScreen(
                         .clip(ShapeCard)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                         .border(1.dp, MaterialTheme.colorScheme.outline, ShapeCard)
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onPickThumbnail),
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                            showPhotoPicker = true
+                        },
                     contentAlignment = Alignment.Center,
                 ) {
                     when {
@@ -215,8 +263,8 @@ internal fun WriteArticleScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(ke.co.smartroundclinic.doctor.presentation.theme.ShapeButton)
-                            .background(if (isFormValid && !isSaving) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .clip(ShapeButton)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .clickable(
                                 enabled = isFormValid && !isSaving,
                                 indication = null,
@@ -228,7 +276,7 @@ internal fun WriteArticleScreen(
                         Text(
                             text = "Save as Draft",
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = if (isFormValid && !isSaving) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                             modifier = Modifier.padding(vertical = 14.dp),
                         )
                     }
