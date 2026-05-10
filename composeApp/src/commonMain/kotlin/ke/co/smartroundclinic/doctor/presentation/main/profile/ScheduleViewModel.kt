@@ -11,6 +11,7 @@ import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpsertAvailabilityR
 import ke.co.smartroundclinic.doctor.domain.model.DoctorAvailability
 import ke.co.smartroundclinic.doctor.domain.repository.ScheduleLocalRepository
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetScheduleUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpdateAvailabilityUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpsertAvailabilityUseCase
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 class ScheduleViewModel(
     private val getScheduleUseCase: GetScheduleUseCase,
     private val upsertAvailabilityUseCase: UpsertAvailabilityUseCase,
+    private val updateAvailabilityUseCase: UpdateAvailabilityUseCase,
     private val scheduleLocalRepository: ScheduleLocalRepository,
     private val snackbarController: SnackbarController,
 ) : ViewModel() {
@@ -55,22 +57,40 @@ class ScheduleViewModel(
         viewModelScope.launch {
             isSaving = true
             var allOk = true
-            for (day in enabledDays) {
-                val result = upsertAvailabilityUseCase(
-                    UpsertAvailabilityReq(
-                        dayOfWeek = day,
-                        windowStart = windowStart,
-                        windowEnd = windowEnd,
-                        slotDuration = slotDuration,
-                        isActive = true,
-                    )
-                )
+
+            // Deactivate days that were previously configured but are now unchecked
+            val daysToDeactivate = schedule.value
+                .filter { it.isActive && it.dayOfWeek !in enabledDays }
+                .map { it.dayOfWeek }
+            for (day in daysToDeactivate) {
+                val result = updateAvailabilityUseCase(day, false)
                 if (result is Resource.Error) {
-                    snackbarController.show(result.message ?: "Failed to save schedule")
+                    snackbarController.show(result.message ?: "Failed to update schedule")
                     allOk = false
                     break
                 }
             }
+
+            // Upsert all enabled days
+            if (allOk) {
+                for (day in enabledDays) {
+                    val result = upsertAvailabilityUseCase(
+                        UpsertAvailabilityReq(
+                            dayOfWeek = day,
+                            windowStart = windowStart,
+                            windowEnd = windowEnd,
+                            slotDuration = slotDuration,
+                            isActive = true,
+                        )
+                    )
+                    if (result is Resource.Error) {
+                        snackbarController.show(result.message ?: "Failed to save schedule")
+                        allOk = false
+                        break
+                    }
+                }
+            }
+
             isSaving = false
             if (allOk) {
                 snackbarController.show("Schedule saved")

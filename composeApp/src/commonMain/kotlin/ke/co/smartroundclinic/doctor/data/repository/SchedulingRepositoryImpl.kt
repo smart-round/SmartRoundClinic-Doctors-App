@@ -6,9 +6,11 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.CancelAppointmentReq
+import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpdateAvailabilityDayReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpsertAvailabilityReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.AppointmentActionRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetAppointmentsRes
@@ -41,6 +43,18 @@ class SchedulingRepositoryImpl(private val client: HttpClient) : SchedulingRepos
             Resource.Success(response.data.toDomain())
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to save availability")
+        }
+    }
+
+    override suspend fun updateAvailabilityDay(day: Int, isActive: Boolean): Resource<DoctorAvailability> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.put("scheduling/availability") {
+                parameter("day", day)
+                setBody(UpdateAvailabilityDayReq(isActive))
+            }.body<UpsertAvailabilityRes>()
+            Resource.Success(response.data.toDomain())
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to update day availability")
         }
     }
 

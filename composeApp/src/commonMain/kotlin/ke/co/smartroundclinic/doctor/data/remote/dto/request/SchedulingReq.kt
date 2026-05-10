@@ -17,4 +17,7 @@ data class UpsertAvailabilityReq(
 data class BreakBlockReq(val start: String, val end: String)
 
 @Serializable
+data class UpdateAvailabilityDayReq(val isActive: Boolean)
+
+@Serializable
 data class CancelAppointmentReq(val reason: String? = null)

@@ -27,6 +27,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.ConfirmAppointmen
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetAppointmentsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetScheduleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.NoShowAppointmentUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpdateAvailabilityUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpsertAvailabilityUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.AddDoctorSpecializationUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetDoctorSpecializationUseCase
@@ -76,6 +77,7 @@ val useCaseModule = module {
     single { SignOutUseCase(get(), get(), get(), get(), get(), get()) }
     single { GetScheduleUseCase(get(), get()) }
     single { UpsertAvailabilityUseCase(get(), get()) }
+    single { UpdateAvailabilityUseCase(get(), get()) }
     single { GetAppointmentsUseCase(get(), get()) }
     single { ConfirmAppointmentUseCase(get(), get()) }
     single { CompleteAppointmentUseCase(get(), get()) }
@@ -93,6 +95,6 @@ val useCaseModule = module {
     viewModel { PersonalInfoViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { PaymentDetailsViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { SpecializationViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { ScheduleViewModel(get(), get(), get(), get()) }
+    viewModel { ScheduleViewModel(get(), get(), get(), get(), get()) }
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
 }

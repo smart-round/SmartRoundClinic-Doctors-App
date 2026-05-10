@@ -67,7 +67,7 @@ private val timeOptions: List<String> = buildList {
     }
 }
 
-private val slotDurations = listOf(15, 30, 45, 60)
+private val slotDurations = listOf(25, 30)
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -85,11 +85,13 @@ internal fun ScheduleManagementScreen(
     var windowEnd by remember { mutableStateOf("17:00") }
     var slotDuration by remember { mutableStateOf(30) }
 
-    // Pre-fill from loaded schedule (use the first active entry's times as defaults)
+    // Pre-fill once when the schedule first arrives from the DB
+    var initialized by remember { mutableStateOf(false) }
     LaunchedEffect(schedule) {
-        if (schedule.isNotEmpty()) {
+        if (!initialized && schedule.isNotEmpty()) {
+            initialized = true
             val active = schedule.filter { it.isActive }
-            enabledDays = active.map { it.dayOfWeek }.toSet()
+            enabledDays = schedule.filter { it.isActive }.map { it.dayOfWeek }.toSet()
             active.firstOrNull()?.let {
                 windowStart = it.windowStart
                 windowEnd = it.windowEnd
