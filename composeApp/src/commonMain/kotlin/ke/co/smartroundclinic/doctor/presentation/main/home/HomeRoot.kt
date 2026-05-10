@@ -39,6 +39,7 @@ fun HomeRoot(
     modifier: Modifier = Modifier,
     onAtRootChanged: (Boolean) -> Unit = {},
     onSignOut: () -> Unit = {},
+    onSeeAllAppointments: () -> Unit = {},
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(HomeList) }
     val isAtRoot = backStack.size == 1
@@ -53,7 +54,10 @@ fun HomeRoot(
         onBack = { backStack.removeLastOrNull() },
         entryProvider = entryProvider {
             entry<HomeList> {
-                HomeScreen(onProfileClick = { backStack.add(ProfileList) })
+                HomeScreen(
+                    onProfileClick = { backStack.add(ProfileList) },
+                    onSeeAllAppointments = onSeeAllAppointments,
+                )
             }
             entry<ProfileList> {
                 ProfileListScreen(

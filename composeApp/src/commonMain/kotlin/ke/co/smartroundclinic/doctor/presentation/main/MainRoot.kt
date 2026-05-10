@@ -102,7 +102,13 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                 }
             },
             entryProvider = entryProvider {
-                entry<Home> { HomeRoot(onAtRootChanged = { isAtRoot = it }, onSignOut = onSignOut) }
+                entry<Home> {
+                    HomeRoot(
+                        onAtRootChanged = { isAtRoot = it },
+                        onSignOut = onSignOut,
+                        onSeeAllAppointments = { selectTab(Bookings) },
+                    )
+                }
                 entry<Bookings> { BookingsRoot(onAtRootChanged = { isAtRoot = it }) }
                 entry<Articles> { ArticlesRoot(onAtRootChanged = { isAtRoot = it }) }
                 entry<Chat> { ChatRoot(onAtRootChanged = { isAtRoot = it }) }
