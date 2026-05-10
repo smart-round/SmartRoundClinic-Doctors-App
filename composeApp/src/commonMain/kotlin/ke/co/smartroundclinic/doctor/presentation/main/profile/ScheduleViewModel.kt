@@ -9,11 +9,12 @@ import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.BreakBlockReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpsertAvailabilityReq
+import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.DoctorAvailability
 import ke.co.smartroundclinic.doctor.domain.model.ScheduleBreakBlock
+import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ScheduleLocalRepository
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetScheduleUseCase
-import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpdateAvailabilityUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpsertAvailabilityUseCase
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,12 +24,15 @@ import kotlinx.coroutines.launch
 class ScheduleViewModel(
     private val getScheduleUseCase: GetScheduleUseCase,
     private val upsertAvailabilityUseCase: UpsertAvailabilityUseCase,
-    private val updateAvailabilityUseCase: UpdateAvailabilityUseCase,
     private val scheduleLocalRepository: ScheduleLocalRepository,
+    private val appointmentLocalRepository: AppointmentLocalRepository,
     private val snackbarController: SnackbarController,
 ) : ViewModel() {
 
     val schedule: StateFlow<List<DoctorAvailability>> = scheduleLocalRepository.observeSchedule()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val appointments: StateFlow<List<Appointment>> = appointmentLocalRepository.observeAppointments()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     var isLoading by mutableStateOf(false)
@@ -60,13 +64,25 @@ class ScheduleViewModel(
         viewModelScope.launch {
             isSaving = true
             var allOk = true
+            val mappedBreaks = breakBlocks.map { BreakBlockReq(it.start, it.end) }
 
-            // Deactivate days that were previously configured but are now unchecked
+            // Previously-configured days that are now unchecked → POST with isActive=false
+            // (same upsert endpoint — updates the full entry)
             val daysToDeactivate = schedule.value
-                .filter { it.isActive && it.dayOfWeek !in enabledDays }
+                .filter { it.dayOfWeek !in enabledDays }
                 .map { it.dayOfWeek }
             for (day in daysToDeactivate) {
-                val result = updateAvailabilityUseCase(day, false)
+                val existing = schedule.value.first { it.dayOfWeek == day }
+                val result = upsertAvailabilityUseCase(
+                    UpsertAvailabilityReq(
+                        dayOfWeek = day,
+                        windowStart = existing.windowStart,
+                        windowEnd = existing.windowEnd,
+                        slotDuration = existing.slotDuration,
+                        breakBlocks = existing.breakBlocks.map { BreakBlockReq(it.start, it.end) },
+                        isActive = false,
+                    )
+                )
                 if (result is Resource.Error) {
                     snackbarController.show(result.message ?: "Failed to update schedule")
                     allOk = false
@@ -74,7 +90,7 @@ class ScheduleViewModel(
                 }
             }
 
-            // Upsert all enabled days
+            // Enabled days → POST with isActive=true and current form values
             if (allOk) {
                 for (day in enabledDays) {
                     val result = upsertAvailabilityUseCase(
@@ -83,7 +99,7 @@ class ScheduleViewModel(
                             windowStart = windowStart,
                             windowEnd = windowEnd,
                             slotDuration = slotDuration,
-                            breakBlocks = breakBlocks.map { BreakBlockReq(it.start, it.end) },
+                            breakBlocks = mappedBreaks,
                             isActive = true,
                         )
                     )
