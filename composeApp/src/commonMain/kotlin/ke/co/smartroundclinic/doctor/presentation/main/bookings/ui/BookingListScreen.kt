@@ -47,6 +47,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
@@ -73,14 +77,14 @@ internal fun BookingListScreen(
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by remember { mutableStateOf(BookingTab.UPCOMING) }
+    val today = remember { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
 
     val filtered = appointments.filter { appt ->
+        val apptDate = runCatching { LocalDate.parse(appt.date) }.getOrNull()
         when (selectedTab) {
-            BookingTab.UPCOMING -> appt.status == AppointmentStatus.BOOKED || appt.status == AppointmentStatus.CONFIRMED
-            BookingTab.TODAY -> appt.status == AppointmentStatus.BOOKED || appt.status == AppointmentStatus.CONFIRMED
-            BookingTab.PAST -> appt.status == AppointmentStatus.COMPLETED ||
-                    appt.status == AppointmentStatus.CANCELLED ||
-                    appt.status == AppointmentStatus.NO_SHOW
+            BookingTab.UPCOMING -> apptDate != null && apptDate > today
+            BookingTab.TODAY -> apptDate != null && apptDate == today
+            BookingTab.PAST -> apptDate != null && apptDate < today
         }
     }
 
@@ -189,10 +193,12 @@ private fun EmptyBookingsView(tab: BookingTab, modifier: Modifier = Modifier) {
 
 @Composable
 private fun BookingCard(appointment: Appointment, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val dotColor = when (appointment.status) {
-        AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED -> Primary40
-        AppointmentStatus.COMPLETED -> Tertiary40
-        AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW -> Error40
+    val (dotColor, statusLabel, statusColor, statusBg) = when (appointment.status) {
+        AppointmentStatus.BOOKED -> Quadruple(Tertiary40, "Booked", Tertiary40, Tertiary40.copy(alpha = 0.12f))
+        AppointmentStatus.CONFIRMED -> Quadruple(Primary40, "Confirmed", Primary40, Primary40.copy(alpha = 0.12f))
+        AppointmentStatus.COMPLETED -> Quadruple(Tertiary40, "Completed", Tertiary40, Tertiary40.copy(alpha = 0.12f))
+        AppointmentStatus.CANCELLED -> Quadruple(Error40, "Cancelled", Error40, Error40.copy(alpha = 0.12f))
+        AppointmentStatus.NO_SHOW -> Quadruple(Error40, "No-Show", Error40, Error40.copy(alpha = 0.12f))
     }
     Card(
         onClick = onClick,
@@ -206,6 +212,15 @@ private fun BookingCard(appointment: Appointment, onClick: () -> Unit, modifier:
                 Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(dotColor))
                 Spacer(Modifier.width(6.dp))
                 Text(text = "Appointment Date/Time", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .clip(ShapePill)
+                        .background(statusBg)
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    Text(text = statusLabel, style = MaterialTheme.typography.labelSmall, color = statusColor)
+                }
             }
             Spacer(Modifier.height(2.dp))
             Text(
@@ -229,15 +244,8 @@ private fun BookingCard(appointment: Appointment, onClick: () -> Unit, modifier:
                     Text(text = "View", style = MaterialTheme.typography.labelMedium, color = Tertiary40)
                 }
             }
-            if (appointment.status == AppointmentStatus.CONFIRMED) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Confirmed",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Primary40,
-                    modifier = Modifier.padding(start = 14.dp),
-                )
-            }
         }
     }
 }
+
+private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)

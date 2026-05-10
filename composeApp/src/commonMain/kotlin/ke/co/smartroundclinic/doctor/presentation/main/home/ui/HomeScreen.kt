@@ -42,7 +42,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
+import ke.co.smartroundclinic.doctor.domain.model.Appointment
+import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingsViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.profile.ScheduleViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,21 +75,35 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.StatusPending
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 
-private data class AppointmentItem(val dateTime: String, val patientName: String)
 private data class MessageItem(val senderName: String, val preview: String, val timestamp: String)
 
 @Composable
 fun HomeScreen(
     onProfileClick: () -> Unit = {},
+    onSeeAllAppointments: () -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: PersonalInfoViewModel = koinViewModel(),
+    profileViewModel: PersonalInfoViewModel = koinViewModel(),
+    bookingsViewModel: BookingsViewModel = koinViewModel(),
+    scheduleViewModel: ScheduleViewModel = koinViewModel(),
 ) {
-    val user by viewModel.user.collectAsState()
-    val isCalendarBlocked = false
-    val appointments = listOf(
-        AppointmentItem("Wed, June 25 · 8:00 - 8:20 AM", "Mercy Wambui"),
-        AppointmentItem("Wed, June 25 · 8:00 - 8:20 AM", "Mercy Wambui"),
-    )
+    val user by profileViewModel.user.collectAsState()
+    val allAppointments by bookingsViewModel.appointments.collectAsState()
+    val schedule by scheduleViewModel.schedule.collectAsState()
+
+    val today = remember { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
+    val upcomingAppointments = remember(allAppointments, today) {
+        allAppointments
+            .filter { appt ->
+                val apptDate = runCatching { LocalDate.parse(appt.date) }.getOrNull()
+                apptDate != null && apptDate >= today &&
+                    (appt.status == AppointmentStatus.BOOKED || appt.status == AppointmentStatus.CONFIRMED)
+            }
+            .sortedBy { it.date + it.slotStart }
+            .take(3)
+    }
+
+    val isCalendarBlocked = schedule.none { it.isActive }
+
     val messages = listOf(
         MessageItem("Alice Wachira", "You: Thanks doctor,...", "27 Oct"),
         MessageItem("Alice Wachira", "You: Sorry, I will make an...", "15 Oct"),
@@ -106,7 +128,7 @@ fun HomeScreen(
             if (isCalendarBlocked) {
                 item { CalendarBlockedCard(onSetUpCalendar = {}) }
             } else {
-                item { AppointmentsSection(appointments = appointments, onSeeAll = {}) }
+                item { AppointmentsSection(appointments = upcomingAppointments, onSeeAll = onSeeAllAppointments) }
                 item { RecentMessagesSection(messages = messages, onSeeAll = {}) }
             }
         }
@@ -209,15 +231,20 @@ private fun CalendarBlockedCard(onSetUpCalendar: () -> Unit, modifier: Modifier 
 }
 
 @Composable
-private fun AppointmentsSection(appointments: List<AppointmentItem>, onSeeAll: () -> Unit, modifier: Modifier = Modifier) {
+private fun AppointmentsSection(appointments: List<Appointment>, onSeeAll: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         SectionHeader(title = "Upcoming Appointments", onSeeAll = onSeeAll)
         Spacer(Modifier.height(8.dp))
         if (appointments.isEmpty()) {
             EmptyPlaceholder(icon = Icons.Outlined.CalendarMonth, title = "No Appointments Yet", subtitle = "Your consultation bookings will appear here")
         } else {
-            appointments.forEach { item ->
-                AppointmentCard(dateTime = item.dateTime, patientName = item.patientName, onView = {})
+            appointments.forEach { appt ->
+                AppointmentCard(
+                    dateTime = "${appt.date}  ${appt.slotStart} – ${appt.slotEnd}",
+                    patientName = appt.patientName,
+                    isConfirmed = appt.status == AppointmentStatus.CONFIRMED,
+                    onView = onSeeAll,
+                )
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -266,7 +293,13 @@ private fun EmptyPlaceholder(icon: ImageVector, title: String, subtitle: String,
 }
 
 @Composable
-private fun AppointmentCard(dateTime: String, patientName: String, onView: () -> Unit, modifier: Modifier = Modifier) {
+private fun AppointmentCard(
+    dateTime: String,
+    patientName: String,
+    isConfirmed: Boolean,
+    onView: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = ShapeCard,
@@ -279,7 +312,7 @@ private fun AppointmentCard(dateTime: String, patientName: String, onView: () ->
             Text(text = dateTime, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(StatusPending))
+                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if (isConfirmed) Primary40 else StatusPending))
                 Spacer(Modifier.width(8.dp))
                 Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(Secondary90), contentAlignment = Alignment.Center) {
                     Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(20.dp))
@@ -289,6 +322,10 @@ private fun AppointmentCard(dateTime: String, patientName: String, onView: () ->
                 OutlinedButton(onClick = onView, shape = ShapePill, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), border = BorderStroke(1.dp, Tertiary40)) {
                     Text(text = "View", style = MaterialTheme.typography.labelMedium, color = Tertiary40)
                 }
+            }
+            if (isConfirmed) {
+                Spacer(Modifier.height(4.dp))
+                Text(text = "Confirmed", style = MaterialTheme.typography.labelSmall, color = Primary40, modifier = Modifier.padding(start = 16.dp))
             }
         }
     }
