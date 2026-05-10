@@ -4,6 +4,7 @@ import com.liftric.kvault.KVault
 import ke.co.smartroundclinic.doctor.common.Constants.KEY_ACCESS_TOKEN
 import ke.co.smartroundclinic.doctor.common.Constants.KEY_REFRESH_TOKEN
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
+import ke.co.smartroundclinic.doctor.domain.repository.ArticleLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.DoctorSpecializationLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.PaymentDetailsLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ScheduleLocalRepository
@@ -16,6 +17,7 @@ class SignOutUseCase(
     private val doctorSpecializationLocalRepository: DoctorSpecializationLocalRepository,
     private val scheduleLocalRepository: ScheduleLocalRepository,
     private val appointmentLocalRepository: AppointmentLocalRepository,
+    private val articleLocalRepository: ArticleLocalRepository,
 ) {
     suspend operator fun invoke() {
         secureStorage.deleteObject(KEY_ACCESS_TOKEN)
@@ -25,5 +27,6 @@ class SignOutUseCase(
         doctorSpecializationLocalRepository.clearSpecializations()
         scheduleLocalRepository.clearSchedule()
         appointmentLocalRepository.clearAppointments()
+        articleLocalRepository.clearAll()
     }
 }

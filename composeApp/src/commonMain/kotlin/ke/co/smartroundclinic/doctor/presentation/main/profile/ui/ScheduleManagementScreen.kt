@@ -78,11 +78,11 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeInput
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.viewmodel.koinViewModel
+import kotlinx.datetime.Clock
 
 private val dayLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 private val calDayHeaders = listOf("M", "T", "W", "T", "F", "S", "S")
@@ -99,7 +99,11 @@ private fun parseHhmm(value: String): Pair<Int, Int> {
     return Pair(parts[0].toIntOrNull() ?: 0, parts[1].toIntOrNull() ?: 0)
 }
 
-private fun formatHhmm(hour: Int, minute: Int) = "%02d:%02d".format(hour, minute)
+private fun formatHhmm(hour: Int, minute: Int): String {
+    val h = hour.toString().padStart(2, '0')
+    val m = minute.toString().padStart(2, '0')
+    return "$h:$m"
+}
 
 private fun daysInMonth(year: Int, month: Int): Int {
     val nextM = if (month == 12) 1 else month + 1

@@ -44,6 +44,9 @@ import ke.co.smartroundclinic.doctor.domain.model.ArticleState
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +60,19 @@ internal fun ArticleDetailScreen(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val formattedDate = remember(article.datePosted) {
+        try {
+            article.datePosted?.let {
+                val instant = Instant.parse(it)
+                val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+                val month = dateTime.month.name.lowercase().replaceFirstChar { char -> char.uppercase() }.take(3)
+                "$month ${dateTime.dayOfMonth}, ${dateTime.year}"
+            } ?: ""
+        } catch (_: Exception) {
+            article.datePosted?.take(10) ?: ""
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -95,9 +111,9 @@ internal fun ArticleDetailScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ArticleStateBadge(state = article.state)
-                if (article.datePosted != null) {
+                if (formattedDate.isNotEmpty()) {
                     Text(
-                        text = article.datePosted.take(10),
+                        text = formattedDate,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

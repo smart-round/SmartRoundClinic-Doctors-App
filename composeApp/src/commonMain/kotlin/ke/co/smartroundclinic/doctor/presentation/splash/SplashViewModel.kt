@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ke.co.smartroundclinic.doctor.common.Constants
 import ke.co.smartroundclinic.doctor.common.Resource
+import ke.co.smartroundclinic.doctor.domain.usecase.PreloadDashboardUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.RefreshTokenUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.datastore.ObserveKeyUseCase
 import kotlinx.coroutines.flow.first
@@ -14,6 +15,7 @@ private const val SPLASH_DELAY_MS = 1_500L
 class SplashViewModel(
     private val observeKeyUseCase: ObserveKeyUseCase,
     private val refreshTokenUseCase: RefreshTokenUseCase,
+    private val preloadDashboardUseCase: PreloadDashboardUseCase,
 ) : ViewModel() {
 
     fun start(
@@ -34,7 +36,10 @@ class SplashViewModel(
             }
 
             when (refreshTokenUseCase()) {
-                is Resource.Success -> onDashboard()
+                is Resource.Success -> {
+                    launch { preloadDashboardUseCase() }
+                    onDashboard()
+                }
                 else -> onSignIn()
             }
         }

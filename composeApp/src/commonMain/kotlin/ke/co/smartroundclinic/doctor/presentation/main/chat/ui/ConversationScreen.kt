@@ -58,8 +58,7 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Secondary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Secondary90
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
+import kotlinx.datetime.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -134,7 +133,6 @@ internal fun ConversationScreen(
                 onValueChange = { inputText = it },
                 onSend = {
                     if (inputText.isNotBlank()) {
-                        @OptIn(ExperimentalTime::class)
                         val epochMs = Clock.System.now().toEpochMilliseconds()
                         val totalMin = (epochMs / 60_000).toInt()
                         val now = "${((totalMin / 60) % 24).toString().padStart(2, '0')}:${(totalMin % 60).toString().padStart(2, '0')}"

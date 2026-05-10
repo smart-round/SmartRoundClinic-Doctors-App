@@ -29,4 +29,6 @@ class ArticleLocalRepositoryImpl(private val dao: ArticleDao) : ArticleLocalRepo
         dao.upsertArticle(article.toEntity(isOwn))
 
     override suspend fun removeArticle(id: String) = dao.deleteById(id)
+
+    override suspend fun clearAll() = dao.clearAll()
 }

@@ -1,5 +1,6 @@
 package ke.co.smartroundclinic.doctor.koin
 
+import ke.co.smartroundclinic.doctor.domain.usecase.PreloadDashboardUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.CreateArticleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.DeleteArticleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.GetCategoriesUseCase
@@ -83,7 +84,8 @@ val useCaseModule = module {
     single { UploadProfilePictureUseCase(get()) }
     single { DeleteProfilePictureUseCase(get()) }
     single { GetUserUseCase(get(), get()) }
-    single { SignOutUseCase(get(), get(), get(), get(), get(), get()) }
+    single { SignOutUseCase(get(), get(), get(), get(), get(), get(), get()) }
+    single { PreloadDashboardUseCase(get(), get(), get(), get(), get()) }
     single { GetScheduleUseCase(get(), get()) }
     single { UpsertAvailabilityUseCase(get(), get()) }
     single { UpdateAvailabilityUseCase(get(), get()) }
@@ -101,13 +103,13 @@ val useCaseModule = module {
     single { UnpublishArticleUseCase(get(), get()) }
     single { DeleteArticleUseCase(get(), get()) }
 
-    viewModel { SplashViewModel(get(), get()) }
+    viewModel { SplashViewModel(get(), get(), get()) }
     viewModel { OnboardingScreenViewModel(get(), get()) }
     viewModel { SpecializationComplianceViewModel(get()) }
     viewModel { BankDetailsViewModel(get(), get(), get()) }
     viewModel { SignUpFilesViewModel() }
     viewModel { AccountVerificationViewModel(get(), get(), get()) }
-    viewModel { SignInViewModel(get(), get()) }
+    viewModel { SignInViewModel(get(), get(), get()) }
     viewModel { ForgotPasswordViewModel(get(), get(), get(), get()) }
     viewModel { PersonalInfoViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { PaymentDetailsViewModel(get(), get(), get(), get(), get(), get()) }
