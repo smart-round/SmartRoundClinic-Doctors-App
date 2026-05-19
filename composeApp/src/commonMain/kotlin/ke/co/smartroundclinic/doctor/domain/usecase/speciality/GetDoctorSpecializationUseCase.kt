@@ -14,11 +14,7 @@ class GetDoctorSpecializationUseCase(
         return when (val result = repository.getSpecialization()) {
             is Resource.Success -> {
                 val first = result.data?.data?.firstOrNull()?.toDomain()
-                if (first != null) {
-                    localRepository.saveSpecialization(first)
-                } else {
-                    localRepository.clearSpecializations()
-                }
+                if (first != null) localRepository.saveSpecialization(first)
                 Resource.Success(first, result.message ?: "Success")
             }
             is Resource.Error -> Resource.Error(result.message ?: "Failed to fetch specialization")

@@ -10,6 +10,7 @@ data class DoctorSignUpData(
     val specializationId: String,
     val licenceName: String,
     val licenceFileName: String,
+    val licenceFileMimeType: String,
     val licenceFile: ByteArray,
     val bankName: String,
     val bankCode: String,
@@ -32,6 +33,7 @@ data class DoctorSignUpData(
             specializationId == other.specializationId &&
             licenceName == other.licenceName &&
             licenceFileName == other.licenceFileName &&
+            licenceFileMimeType == other.licenceFileMimeType &&
             licenceFile.contentEquals(other.licenceFile) &&
             bankName == other.bankName &&
             bankCode == other.bankCode &&
@@ -52,6 +54,7 @@ data class DoctorSignUpData(
         result = 31 * result + specializationId.hashCode()
         result = 31 * result + licenceName.hashCode()
         result = 31 * result + licenceFileName.hashCode()
+        result = 31 * result + licenceFileMimeType.hashCode()
         result = 31 * result + licenceFile.contentHashCode()
         result = 31 * result + bankName.hashCode()
         result = 31 * result + bankCode.hashCode()

@@ -16,13 +16,11 @@ class ArticleLocalRepositoryImpl(private val dao: ArticleDao) : ArticleLocalRepo
         dao.observeLiveArticles().map { list -> list.map { it.toDomain() } }
 
     override suspend fun upsertMyArticles(articles: List<Article>) {
-        dao.clearMyArticles()
-        dao.upsertArticles(articles.map { it.toEntity(isOwn = true) })
+        if (articles.isNotEmpty()) dao.upsertArticles(articles.map { it.toEntity(isOwn = true) })
     }
 
     override suspend fun upsertLiveArticles(articles: List<Article>) {
-        dao.clearLiveArticles()
-        dao.upsertArticles(articles.map { it.toEntity(isOwn = false) })
+        if (articles.isNotEmpty()) dao.upsertArticles(articles.map { it.toEntity(isOwn = false) })
     }
 
     override suspend fun upsertArticle(article: Article, isOwn: Boolean) =

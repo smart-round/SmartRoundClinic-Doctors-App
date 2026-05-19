@@ -46,6 +46,8 @@ fun ArticlesRoot(
                     liveArticles = liveArticles,
                     isLoadingMine = viewModel.isLoadingMine,
                     isLoadingLive = viewModel.isLoadingLive,
+                    hasLoadedMine = viewModel.hasLoadedMine,
+                    hasLoadedLive = viewModel.hasLoadedLive,
                     onWriteArticle = { viewModel.clearThumbnail(); backStack.add(WriteArticle()) },
                     onEditArticle = { article -> viewModel.clearThumbnail(); backStack.add(WriteArticle(articleId = article.id)) },
                     onArticleClick = { article -> backStack.add(ArticleDetail(article.id)) },

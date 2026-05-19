@@ -25,8 +25,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.LocalHospital
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,6 +40,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,18 +62,23 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.SpecializationVie
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientStart
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeInput
+import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
+import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary90
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SpecializationScreen(
     onBack: () -> Unit,
+    isEnabled: Boolean,
     modifier: Modifier = Modifier,
     viewModel: SpecializationViewModel = koinViewModel(),
 ) {
     val specialization by viewModel.specialization.collectAsState()
+    val isAccountVerified by viewModel.isAccountVerified.collectAsState()
     val catalog = viewModel.catalog
     val isSaving = viewModel.isSaving
+    val isRefreshing = viewModel.isRefreshing
 
     var selectedSpeciality by remember { mutableStateOf<Speciality?>(null) }
     var showPicker by remember { mutableStateOf(false) }
@@ -90,7 +98,7 @@ internal fun SpecializationScreen(
         }
     }
 
-    if (showPicker) {
+    if (showPicker && !isAccountVerified) {
         SpecialityPickerBottomSheet(
             sheetState = pickerSheetState,
             catalog = catalog,
@@ -106,119 +114,225 @@ internal fun SpecializationScreen(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.refreshSpecialization() },
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
         ) {
-            SpecializationHeader(onBack = onBack)
+            Column(modifier = Modifier.fillMaxSize()) {
+                SpecializationHeader(onBack = onBack)
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
-            ) {
-                Text(
-                    text = "Specialization",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "Select the medical specialization that best describes your expertise.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(16.dp))
-
-                // Speciality picker — read-only field, taps open picker sheet
-                OutlinedTextField(
-                    value = selectedSpeciality?.title ?: "",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Specialization", style = MaterialTheme.typography.bodySmall) },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Search,
-                            contentDescription = "Select specialization",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    shape = ShapeInput,
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showPicker = true },
-                    enabled = false,
-                )
-
-                if (selectedSpeciality != null) {
-                    Spacer(Modifier.height(12.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                shape = MaterialTheme.shapes.small,
-                            )
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                    ) {
-                        Box(
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
+                ) {
+                    // Verified banner
+                    if (isAccountVerified) {
+                        Row(
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center,
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.small)
+                                .background(Tertiary90)
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.LocalHospital,
+                                imageVector = Icons.Outlined.CheckCircle,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp),
+                                tint = Tertiary40,
+                                modifier = Modifier.size(20.dp),
                             )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Account Verified",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = Tertiary40,
+                                )
+                                Text(
+                                    text = "Your specialization is locked and cannot be changed after verification.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Tertiary40.copy(alpha = 0.8f),
+                                )
+                            }
                         }
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = selectedSpeciality!!.title,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                            )
-                            Text(
-                                text = selectedSpeciality!!.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 2,
-                            )
-                        }
+                        Spacer(Modifier.height(20.dp))
                     }
-                }
 
-                Spacer(Modifier.height(24.dp))
-                PrimaryButton(
-                    onClick = {
-                        val id = selectedSpeciality?.id ?: return@PrimaryButton
-                        viewModel.saveSpecialization(id)
-                    },
-                    enabled = selectedSpeciality != null && !isSaving,
-                ) {
-                    if (isSaving) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
+                    Text(
+                        text = "Your Specialization",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = if (isAccountVerified)
+                            "Your verified specialization is shown below."
+                        else
+                            "Select the medical specialization that best describes your expertise.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(16.dp))
+
+                    // Picker field — only tappable when not verified
+                    if (!isAccountVerified) {
+                        OutlinedTextField(
+                            value = selectedSpeciality?.title ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Specialization", style = MaterialTheme.typography.bodySmall) },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Search,
+                                    contentDescription = "Select specialization",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            shape = ShapeInput,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                ) { showPicker = true },
+                            enabled = false,
                         )
-                    } else {
-                        Text(
-                            text = "Save Changes",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color.White,
-                            modifier = Modifier.padding(vertical = 14.dp),
-                        )
+                        Spacer(Modifier.height(12.dp))
                     }
+
+                    // Speciality detail card
+                    if (selectedSpeciality != null) {
+                        SpecialityCard(
+                            speciality = selectedSpeciality!!,
+                            isLocked = isAccountVerified,
+                        )
+                    } else if (isAccountVerified) {
+                        // Verified but no specialization set
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.medium)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "No specialization on record",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    // Save button — hidden when verified
+                    if (!isAccountVerified) {
+                        Spacer(Modifier.height(24.dp))
+                        PrimaryButton(
+
+                            onClick = {
+                                val id = selectedSpeciality?.id ?: return@PrimaryButton
+                                viewModel.saveSpecialization(id)
+                            },
+                            enabled = (selectedSpeciality != null && !isSaving) && isEnabled,
+                        ) {
+                            if (isSaving) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Text(
+                                    text = "Save Changes",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(vertical = 14.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
                 }
-                Spacer(Modifier.height(16.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun SpecialityCard(
+    speciality: Speciality,
+    isLocked: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val accentColor = remember(speciality.color) {
+        runCatching {
+            val hex = speciality.color.trimStart('#')
+            val r = hex.substring(0, 2).toInt(16) / 255f
+            val g = hex.substring(2, 4).toInt(16) / 255f
+            val b = hex.substring(4, 6).toInt(16) / 255f
+            Color(r, g, b)
+        }.getOrElse { Color(0xFF6750A4) }
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(accentColor.copy(alpha = 0.07f))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        // Colored avatar with first letter
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(CircleShape)
+                .background(accentColor.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = speciality.title.first().uppercaseChar().toString(),
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                color = accentColor,
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = speciality.title,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = speciality.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+        }
+
+        if (isLocked) {
+            Icon(
+                imageVector = Icons.Outlined.Lock,
+                contentDescription = "Locked",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(18.dp),
+            )
+        } else {
+            // Color dot accent
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(accentColor),
+            )
         }
     }
 }

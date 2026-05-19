@@ -18,6 +18,7 @@ import ke.co.smartroundclinic.doctor.data.remote.dto.request.SignInReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpdatePasswordReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpdatePersonalInformationReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.DeleteProfilePictureRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetComplianceStatusRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetUserRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.SignInRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.SuccessRes
@@ -65,7 +66,7 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
                                         )
                                         append(
                                             HttpHeaders.ContentType,
-                                            mimeTypeFromFilename(data.licenceFileName)
+                                            data.licenceFileMimeType
                                         )
                                     },
                                 )
@@ -247,14 +248,15 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
             Resource.Error("An unknown error occurred")
         }
     }
-}
 
-private fun mimeTypeFromFilename(name: String): String =
-    when (name.substringAfterLast('.').lowercase()) {
-        "png" -> "image/png"
-        "jpg", "jpeg" -> "image/jpeg"
-        "webp" -> "image/webp"
-        "pdf" -> "application/pdf"
-        "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        else -> "application/octet-stream"
+    override suspend fun getComplianceStatus(): Resource<GetComplianceStatusRes>  = withContext(
+        Dispatchers.IO){
+        try {
+            val response = client.get("/doctor/compliance/status") {
+            }.body<GetComplianceStatusRes>()
+            Resource.Success(data = response, message = response.message)
+        } catch (e: Exception) {
+            Resource.Error("An unknown error occurred")
+        }
     }
+}

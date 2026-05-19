@@ -46,6 +46,9 @@ class PersonalInfoViewModel(
     private val _uploadState = MutableStateFlow<Resource<UploadProfilePictureRes>?>(null)
     val uploadState: StateFlow<Resource<UploadProfilePictureRes>?> = _uploadState
 
+    var isRefreshing by mutableStateOf(false)
+        private set
+
     var isSaving by mutableStateOf(false)
         private set
 
@@ -57,7 +60,11 @@ class PersonalInfoViewModel(
     }
 
     fun refreshUser() {
-        viewModelScope.launch { getUserUseCase() }
+        viewModelScope.launch {
+            isRefreshing = true
+            getUserUseCase()
+            isRefreshing = false
+        }
     }
 
     fun uploadProfilePicture(bytes: ByteArray) {

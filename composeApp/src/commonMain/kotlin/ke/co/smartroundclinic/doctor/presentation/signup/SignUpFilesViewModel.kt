@@ -10,5 +10,6 @@ import androidx.lifecycle.ViewModel
 class SignUpFilesViewModel : ViewModel() {
     var profilePictureBytes by mutableStateOf<ByteArray?>(null)
     var licenseFileName by mutableStateOf("")
+    var licenseFileMimeType by mutableStateOf("application/octet-stream")
     var licenseFileBytes by mutableStateOf<ByteArray?>(null)
 }

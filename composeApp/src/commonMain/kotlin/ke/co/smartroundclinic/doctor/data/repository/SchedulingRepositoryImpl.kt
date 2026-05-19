@@ -2,23 +2,18 @@ package ke.co.smartroundclinic.doctor.data.repository
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
-import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import ke.co.smartroundclinic.doctor.common.Resource
-import ke.co.smartroundclinic.doctor.data.remote.dto.request.CancelAppointmentReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpdateAvailabilityDayReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpsertAvailabilityReq
-import ke.co.smartroundclinic.doctor.data.remote.dto.response.AppointmentActionRes
-import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetAppointmentsRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.DeactivateScheduleRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetScheduleRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.UpsertAvailabilityRes
-import ke.co.smartroundclinic.doctor.data.remote.dto.response.toDomain
-import ke.co.smartroundclinic.doctor.domain.model.Appointment
-import ke.co.smartroundclinic.doctor.domain.model.DoctorAvailability
 import ke.co.smartroundclinic.doctor.domain.repository.SchedulingRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -26,91 +21,43 @@ import kotlinx.coroutines.withContext
 
 class SchedulingRepositoryImpl(private val client: HttpClient) : SchedulingRepository {
 
-    override suspend fun getSchedule(): Resource<List<DoctorAvailability>> = withContext(Dispatchers.IO) {
+    override suspend fun getSchedule(): Resource<GetScheduleRes> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get("scheduling/availability/schedule").body<GetScheduleRes>()
-            Resource.Success(response.data.map { it.toDomain() })
+            Resource.Success(client.get("scheduling/availability/schedule").body<GetScheduleRes>())
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to load schedule")
         }
     }
 
-    override suspend fun upsertAvailability(req: UpsertAvailabilityReq): Resource<DoctorAvailability> = withContext(Dispatchers.IO) {
+    override suspend fun upsertAvailability(req: UpsertAvailabilityReq): Resource<UpsertAvailabilityRes> = withContext(Dispatchers.IO) {
         try {
-            val response = client.post("scheduling/availability") {
-                setBody(req)
-            }.body<UpsertAvailabilityRes>()
-            Resource.Success(response.data.toDomain())
+            Resource.Success(client.post("scheduling/availability") { setBody(req) }.body<UpsertAvailabilityRes>())
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to save availability")
         }
     }
 
-    override suspend fun updateAvailabilityDay(day: Int, isActive: Boolean): Resource<DoctorAvailability> = withContext(Dispatchers.IO) {
+    override suspend fun updateAvailabilityDay(day: Int, isActive: Boolean): Resource<UpsertAvailabilityRes> = withContext(Dispatchers.IO) {
         try {
-            val response = client.put("scheduling/availability") {
-                parameter("day", day)
-                setBody(UpdateAvailabilityDayReq(isActive))
-            }.body<UpsertAvailabilityRes>()
-            Resource.Success(response.data.toDomain())
+            Resource.Success(
+                client.put("scheduling/availability") {
+                    parameter("day", day)
+                    setBody(UpdateAvailabilityDayReq(isActive))
+                }.body<UpsertAvailabilityRes>()
+            )
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to update day availability")
         }
     }
 
-    override suspend fun getAppointments(filter: String?): Resource<List<Appointment>> = withContext(Dispatchers.IO) {
+    override suspend fun deactivateSchedule(day: Int): Resource<DeactivateScheduleRes> = withContext(Dispatchers.IO) {
         try {
-            val response = client.get("scheduling/appointments/doctor/all") {
-                filter?.let { parameter("filter", it) }
-            }.body<GetAppointmentsRes>()
-            Resource.Success(response.data.map { it.toDomain() })
+            val response = client.delete("scheduling/availability") {
+                parameter(key = "day", value = day)
+            }.body<DeactivateScheduleRes>()
+            Resource.Success(data = response, message = response.message)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to load appointments")
-        }
-    }
-
-    override suspend fun confirmAppointment(id: String): Resource<Appointment> = withContext(Dispatchers.IO) {
-        try {
-            val response = client.patch("scheduling/appointments/confirm") {
-                parameter("id", id)
-            }.body<AppointmentActionRes>()
-            Resource.Success(response.data.toDomain())
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to confirm appointment")
-        }
-    }
-
-    override suspend fun completeAppointment(id: String): Resource<Appointment> = withContext(Dispatchers.IO) {
-        try {
-            val response = client.patch("scheduling/appointments/complete") {
-                parameter("id", id)
-            }.body<AppointmentActionRes>()
-            Resource.Success(response.data.toDomain())
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to complete appointment")
-        }
-    }
-
-    override suspend fun noShowAppointment(id: String): Resource<Appointment> = withContext(Dispatchers.IO) {
-        try {
-            val response = client.patch("scheduling/appointments/no-show") {
-                parameter("id", id)
-            }.body<AppointmentActionRes>()
-            Resource.Success(response.data.toDomain())
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to mark no-show")
-        }
-    }
-
-    override suspend fun cancelAppointment(id: String, reason: String?): Resource<Appointment> = withContext(Dispatchers.IO) {
-        try {
-            val response = client.patch("scheduling/appointments/cancel") {
-                parameter("id", id)
-                setBody(CancelAppointmentReq(reason))
-            }.body<AppointmentActionRes>()
-            Resource.Success(response.data.toDomain())
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to cancel appointment")
+            Resource.Error(e.message ?: "Failed to deactivate schedule")
         }
     }
 }

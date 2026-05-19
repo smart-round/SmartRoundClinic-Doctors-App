@@ -42,6 +42,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -96,6 +97,7 @@ internal fun PersonalInfoScreen(
     val isUploading = uploadState is Resource.Loading
     val isSaving = viewModel.isSaving
     val isDeleting = viewModel.isDeleting
+    val isRefreshing = viewModel.isRefreshing
 
     var selectedBytes by remember { mutableStateOf<ByteArray?>(null) }
 
@@ -196,11 +198,12 @@ internal fun PersonalInfoScreen(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.refreshUser() },
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
         ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             PersonalInfoHeader(
                 onBack = onBack,
                 onPhotoClick = { showProfilePictureSheet = true },
@@ -321,6 +324,7 @@ internal fun PersonalInfoScreen(
                 }
 
             }
+        }
         }
     }
 }

@@ -74,6 +74,8 @@ internal fun ArticleListScreen(
     liveArticles: List<Article>,
     isLoadingMine: Boolean,
     isLoadingLive: Boolean,
+    hasLoadedMine: Boolean,
+    hasLoadedLive: Boolean,
     onWriteArticle: () -> Unit,
     onEditArticle: (Article) -> Unit,
     onArticleClick: (Article) -> Unit,
@@ -87,6 +89,7 @@ internal fun ArticleListScreen(
     val isMyTab = selectedTab == ArticlesTab.MY_ARTICLES
     val articles = if (isMyTab) myArticles else liveArticles
     val isLoading = if (isMyTab) isLoadingMine else isLoadingLive
+    val hasLoaded = if (isMyTab) hasLoadedMine else hasLoadedLive
 
     Scaffold(
         modifier = modifier,
@@ -104,39 +107,39 @@ internal fun ArticleListScreen(
                 },
             )
 
-            if (isLoading && articles.isEmpty()) {
+            if ((isLoading || !hasLoaded) && articles.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Primary40)
                 }
-            } else if (articles.isEmpty()) {
+            } else if (hasLoaded && articles.isEmpty()) {
                 EmptyArticlesView(
                     isMyTab = selectedTab == ArticlesTab.MY_ARTICLES,
                     modifier = Modifier.weight(1f),
                 )
             } else {
                 Box(modifier = Modifier.weight(1f)) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(articles, key = { it.id }) { article ->
-                        ArticleCard(
-                            article = article,
-                            isOwn = selectedTab == ArticlesTab.MY_ARTICLES,
-                            onClick = { onArticleClick(article) },
-                            onEdit = { onEditArticle(article) },
-                            onPublish = { onPublish(article) },
-                            onUnpublish = { onUnpublish(article) },
-                            onDelete = { onDelete(article) },
-                        )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(articles, key = { it.id }) { article ->
+                            ArticleCard(
+                                article = article,
+                                isOwn = selectedTab == ArticlesTab.MY_ARTICLES,
+                                onClick = { onArticleClick(article) },
+                                onEdit = { onEditArticle(article) },
+                                onPublish = { onPublish(article) },
+                                onUnpublish = { onUnpublish(article) },
+                                onDelete = { onDelete(article) },
+                            )
+                        }
                     }
-                }
-                if (isLoading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-                        CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp), color = Primary40)
+                    if (isLoading) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                            CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp), color = Primary40)
+                        }
                     }
-                }
                 }
             }
 

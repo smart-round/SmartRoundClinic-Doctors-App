@@ -1,6 +1,7 @@
 package ke.co.smartroundclinic.doctor.presentation.main.home
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.retain.retain
@@ -19,6 +20,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Pers
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ProfileList
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ResetPassword
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ScheduleManagement
+import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.LicenceManagement
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Specialization
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Support
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.VerifyEmailSecurity
@@ -29,6 +31,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.PersonalInfoSc
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.ProfileListScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.ResetPasswordScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.ScheduleManagementScreen
+import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.LicenceScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.SpecializationScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.SupportScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.VerifyEmailSecurityScreen
@@ -40,6 +43,8 @@ fun HomeRoot(
     onAtRootChanged: (Boolean) -> Unit = {},
     onSignOut: () -> Unit = {},
     onSeeAllAppointments: () -> Unit = {},
+    pendingDestinations: List<NavKey> = emptyList(),
+    onPendingNavigated: () -> Unit = {},
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(HomeList) }
     val isAtRoot = backStack.size == 1
@@ -47,6 +52,13 @@ fun HomeRoot(
     val forgotPasswordViewModel: ForgotPasswordViewModel = koinViewModel()
 
     SideEffect { onAtRootChanged(isAtRoot) }
+
+    LaunchedEffect(pendingDestinations) {
+        if (pendingDestinations.isNotEmpty()) {
+            pendingDestinations.forEach { backStack.add(it) }
+            onPendingNavigated()
+        }
+    }
 
     NavDisplay(
         modifier = modifier,
@@ -57,6 +69,7 @@ fun HomeRoot(
                 HomeScreen(
                     onProfileClick = { backStack.add(ProfileList) },
                     onSeeAllAppointments = onSeeAllAppointments,
+                    onSetUpCalendar = { backStack.add(ScheduleManagement) },
                 )
             }
             entry<ProfileList> {
@@ -67,7 +80,8 @@ fun HomeRoot(
                     onSecuritySettings = { backStack.add(ResetPassword) },
                     onSupport = { backStack.add(Support) },
                     onScheduleManagement = { backStack.add(ScheduleManagement) },
-                    onSpecialization = { backStack.add(Specialization) },
+                    onSpecialization = { backStack.add(Specialization(it)) },
+                    onLicences = { backStack.add(LicenceManagement) },
                     onSignOut = onSignOut,
                     viewModel = viewModel,
                 )
@@ -114,7 +128,10 @@ fun HomeRoot(
                 ScheduleManagementScreen(onBack = { backStack.removeLastOrNull() })
             }
             entry<Specialization> {
-                SpecializationScreen(onBack = { backStack.removeLastOrNull() })
+                SpecializationScreen(isEnabled = it.isEnabled, onBack = { backStack.removeLastOrNull() })
+            }
+            entry<LicenceManagement> {
+                LicenceScreen(onBack = { backStack.removeLastOrNull() })
             }
         },
     )

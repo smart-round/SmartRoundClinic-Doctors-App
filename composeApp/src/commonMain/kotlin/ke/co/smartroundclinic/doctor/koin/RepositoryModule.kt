@@ -5,9 +5,11 @@ import ke.co.smartroundclinic.doctor.data.repository.AppointmentLocalRepositoryI
 import ke.co.smartroundclinic.doctor.data.repository.ArticleCategoryLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ArticleLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ArticleRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.LicenceRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.AuthRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.BankLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.BankRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.AppointmentRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ScheduleLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.SchedulingRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.DatastoreRepositoryImpl
@@ -17,9 +19,11 @@ import ke.co.smartroundclinic.doctor.data.repository.SpecialityRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.PaymentDetailsLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.UserLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
+import ke.co.smartroundclinic.doctor.domain.repository.AppointmentRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ArticleCategoryLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ArticleLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ArticleRepository
+import ke.co.smartroundclinic.doctor.domain.repository.LicenceRepository
 import ke.co.smartroundclinic.doctor.domain.repository.AuthRepository
 import ke.co.smartroundclinic.doctor.domain.repository.BankLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.BankRepository
@@ -44,9 +48,11 @@ val repositoryModule = module {
     single<PaymentDetailsLocalRepository> { PaymentDetailsLocalRepositoryImpl(get<AppDatabase>().paymentDetailsDao) }
     single<DoctorSpecializationLocalRepository> { DoctorSpecializationLocalRepositoryImpl(get<AppDatabase>().doctorSpecializationDao) }
     single<SchedulingRepository> { SchedulingRepositoryImpl(get()) }
+    single<AppointmentRepository> { AppointmentRepositoryImpl(get()) }
     single<ScheduleLocalRepository> { ScheduleLocalRepositoryImpl(get<AppDatabase>().doctorAvailabilityDao) }
     single<AppointmentLocalRepository> { AppointmentLocalRepositoryImpl(get<AppDatabase>().appointmentDao) }
     single<ArticleRepository> { ArticleRepositoryImpl(get()) }
     single<ArticleLocalRepository> { ArticleLocalRepositoryImpl(get<AppDatabase>().articleDao) }
     single<ArticleCategoryLocalRepository> { ArticleCategoryLocalRepositoryImpl(get<AppDatabase>().articleCategoryDao) }
+    single<LicenceRepository> { LicenceRepositoryImpl(get()) }
 }

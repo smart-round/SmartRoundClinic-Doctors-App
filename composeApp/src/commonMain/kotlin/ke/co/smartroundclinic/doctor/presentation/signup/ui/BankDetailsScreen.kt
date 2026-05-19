@@ -38,12 +38,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ke.co.smartroundclinic.doctor.domain.model.Bank
-import ke.co.smartroundclinic.doctor.domain.model.BankBranch
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.signup.BankDetailsViewModel
 import ke.co.smartroundclinic.doctor.presentation.signup.PersonalInfoData
 import ke.co.smartroundclinic.doctor.presentation.signup.SignUpFilesViewModel
+import ke.co.smartroundclinic.doctor.presentation.signup.SignUpFormViewModel
 import ke.co.smartroundclinic.doctor.presentation.signup.SpecializationData
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeInput
 import org.koin.compose.viewmodel.koinViewModel
@@ -52,6 +51,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun BankDetailsScreen(
     filesViewModel: SignUpFilesViewModel,
+    formViewModel: SignUpFormViewModel,
     personalInfo: PersonalInfoData,
     specializationData: SpecializationData,
     onNext: () -> Unit,
@@ -63,32 +63,26 @@ fun BankDetailsScreen(
     val banksError by viewModel.error.collectAsStateWithLifecycle()
     val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
 
-    var bankQuery by remember { mutableStateOf("") }
+    // UI-only expanded state — fine to reset on recomposition
     var bankExpanded by remember { mutableStateOf(false) }
-    var selectedBank by remember { mutableStateOf<Bank?>(null) }
-    var branchQuery by remember { mutableStateOf("") }
     var branchExpanded by remember { mutableStateOf(false) }
-    var selectedBranch by remember { mutableStateOf<BankBranch?>(null) }
-    var accountNumber by remember { mutableStateOf("") }
-    var accountName by remember { mutableStateOf("") }
-    var agreedToTerms by remember { mutableStateOf(false) }
 
-    val filteredBanks = remember(bankQuery, allBanks) {
-        if (bankQuery.isEmpty()) allBanks
-        else allBanks.filter { it.bankName.contains(bankQuery, ignoreCase = true) }
+    val filteredBanks = remember(formViewModel.bankQuery, allBanks) {
+        if (formViewModel.bankQuery.isEmpty()) allBanks
+        else allBanks.filter { it.bankName.contains(formViewModel.bankQuery, ignoreCase = true) }
     }
 
-    val filteredBranches = remember(branchQuery, selectedBank) {
-        val branches = selectedBank?.branches ?: emptyList()
-        if (branchQuery.isEmpty()) branches
-        else branches.filter { it.branchName.contains(branchQuery, ignoreCase = true) }
+    val filteredBranches = remember(formViewModel.branchQuery, formViewModel.selectedBank) {
+        val branches = formViewModel.selectedBank?.branches ?: emptyList()
+        if (formViewModel.branchQuery.isEmpty()) branches
+        else branches.filter { it.branchName.contains(formViewModel.branchQuery, ignoreCase = true) }
     }
 
-    val isFormValid = selectedBank != null &&
-        selectedBranch != null &&
-        accountNumber.isNotBlank() &&
-        accountName.isNotBlank() &&
-        agreedToTerms &&
+    val isFormValid = formViewModel.selectedBank != null &&
+        formViewModel.selectedBranch != null &&
+        formViewModel.accountNumber.isNotBlank() &&
+        formViewModel.accountName.isNotBlank() &&
+        formViewModel.agreedToTerms &&
         filesViewModel.licenseFileBytes != null
 
     Column(
@@ -104,12 +98,12 @@ fun BankDetailsScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             OutlinedTextField(
-                value = bankQuery,
+                value = formViewModel.bankQuery,
                 onValueChange = {
-                    bankQuery = it
-                    selectedBank = null
-                    selectedBranch = null
-                    branchQuery = ""
+                    formViewModel.bankQuery = it
+                    formViewModel.selectedBank = null
+                    formViewModel.selectedBranch = null
+                    formViewModel.branchQuery = ""
                     bankExpanded = true
                 },
                 label = { Text("Bank", style = MaterialTheme.typography.bodySmall) },
@@ -135,10 +129,10 @@ fun BankDetailsScreen(
                         colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onBackground),
                         text = { Text(bank.bankName, style = MaterialTheme.typography.bodyMedium) },
                         onClick = {
-                            selectedBank = bank
-                            bankQuery = bank.bankName
-                            selectedBranch = null
-                            branchQuery = ""
+                            formViewModel.selectedBank = bank
+                            formViewModel.bankQuery = bank.bankName
+                            formViewModel.selectedBranch = null
+                            formViewModel.branchQuery = ""
                             bankExpanded = false
                         },
                     )
@@ -158,17 +152,17 @@ fun BankDetailsScreen(
         Spacer(Modifier.height(12.dp))
 
         // Branch search — visible once a bank is selected
-        if (selectedBank != null) {
+        if (formViewModel.selectedBank != null) {
             ExposedDropdownMenuBox(
                 expanded = branchExpanded && filteredBranches.isNotEmpty(),
                 onExpandedChange = { branchExpanded = it },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 OutlinedTextField(
-                    value = branchQuery,
+                    value = formViewModel.branchQuery,
                     onValueChange = {
-                        branchQuery = it
-                        selectedBranch = null
+                        formViewModel.branchQuery = it
+                        formViewModel.selectedBranch = null
                         branchExpanded = true
                     },
                     label = { Text("Branch", style = MaterialTheme.typography.bodySmall) },
@@ -195,8 +189,8 @@ fun BankDetailsScreen(
                                 )
                             },
                             onClick = {
-                                selectedBranch = branch
-                                branchQuery = branch.branchName
+                                formViewModel.selectedBranch = branch
+                                formViewModel.branchQuery = branch.branchName
                                 branchExpanded = false
                             },
                         )
@@ -208,8 +202,8 @@ fun BankDetailsScreen(
         }
 
         SignUpField(
-            value = accountNumber,
-            onValueChange = { accountNumber = it },
+            value = formViewModel.accountNumber,
+            onValueChange = { formViewModel.accountNumber = it },
             label = "Account Number",
             placeholder = "Enter account number",
             keyboardType = KeyboardType.Number,
@@ -218,8 +212,8 @@ fun BankDetailsScreen(
         Spacer(Modifier.height(12.dp))
 
         SignUpField(
-            value = accountName,
-            onValueChange = { accountName = it },
+            value = formViewModel.accountName,
+            onValueChange = { formViewModel.accountName = it },
             label = "Account Holder Name",
             placeholder = "Enter account holder name",
         )
@@ -231,8 +225,8 @@ fun BankDetailsScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Checkbox(
-                checked = agreedToTerms,
-                onCheckedChange = { agreedToTerms = it },
+                checked = formViewModel.agreedToTerms,
+                onCheckedChange = { formViewModel.agreedToTerms = it },
                 colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
             )
             Text(
@@ -260,20 +254,21 @@ fun BankDetailsScreen(
 
         PrimaryButton(
             onClick = {
-                val bank = selectedBank ?: return@PrimaryButton
-                val branch = selectedBranch ?: return@PrimaryButton
+                val bank = formViewModel.selectedBank ?: return@PrimaryButton
+                val branch = formViewModel.selectedBranch ?: return@PrimaryButton
                 viewModel.signUp(
                     personalInfo = personalInfo,
                     specialization = specializationData,
                     licenseFileBytes = filesViewModel.licenseFileBytes!!,
-                    licenseFileName = specializationData.specializationName,
+                    licenseFileName = filesViewModel.licenseFileName,
+                    licenseFileMimeType = filesViewModel.licenseFileMimeType,
                     profilePictureBytes = filesViewModel.profilePictureBytes,
                     bankName = bank.bankName,
                     bankCode = bank.bankCode,
                     branchCode = branch.branchCode,
                     branchName = branch.branchName,
-                    accountName = accountName,
-                    accountNumber = accountNumber,
+                    accountName = formViewModel.accountName,
+                    accountNumber = formViewModel.accountNumber,
                     onSuccess = onNext,
                 )
             },

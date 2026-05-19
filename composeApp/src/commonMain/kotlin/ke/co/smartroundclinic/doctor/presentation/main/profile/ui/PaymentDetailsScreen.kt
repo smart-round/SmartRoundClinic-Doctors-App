@@ -41,6 +41,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,6 +76,7 @@ internal fun PaymentDetailsScreen(
     val paymentDetails by viewModel.paymentDetails.collectAsState()
     val banks = viewModel.banks
     val isSaving = viewModel.isSaving
+    val isRefreshing = viewModel.isRefreshing
 
     var accountName by remember { mutableStateOf("") }
     var accountNumber by remember { mutableStateOf("") }
@@ -122,11 +124,12 @@ internal fun PaymentDetailsScreen(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.refreshPaymentDetails() },
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
         ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             PaymentDetailsHeader(onBack = onBack)
 
             Column(
@@ -253,6 +256,7 @@ internal fun PaymentDetailsScreen(
                 }
                 Spacer(Modifier.height(16.dp))
             }
+        }
         }
     }
 }

@@ -4,6 +4,7 @@ import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpdatePasswordReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.UpdatePersonalInformationReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.DeleteProfilePictureRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetComplianceStatusRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetUserRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.SuccessRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.UpdatePersonalInformationRes
@@ -11,6 +12,7 @@ import ke.co.smartroundclinic.doctor.data.remote.dto.response.UploadProfilePictu
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.refreshToken.RefreshTokenRes
 import ke.co.smartroundclinic.doctor.domain.model.AuthTokens
 import ke.co.smartroundclinic.doctor.domain.model.DoctorSignUpData
+import smartroundclinic.composeapp.generated.resources.Res
 
 interface AuthRepository {
     suspend fun signUp(data: DoctorSignUpData): Resource<SuccessRes>
@@ -25,4 +27,5 @@ interface AuthRepository {
     suspend fun uploadProfilePicture(profilePicture: ByteArray): Resource<UploadProfilePictureRes>
     suspend fun deleteProfilePicture(): Resource<DeleteProfilePictureRes>
     suspend fun updatePersonalInfo(body: UpdatePersonalInformationReq): Resource<UpdatePersonalInformationRes>
+    suspend fun getComplianceStatus(): Resource<GetComplianceStatusRes>
 }

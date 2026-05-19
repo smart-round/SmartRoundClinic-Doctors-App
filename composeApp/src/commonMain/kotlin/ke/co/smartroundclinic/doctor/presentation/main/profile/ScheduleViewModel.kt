@@ -14,6 +14,7 @@ import ke.co.smartroundclinic.doctor.domain.model.DoctorAvailability
 import ke.co.smartroundclinic.doctor.domain.model.ScheduleBreakBlock
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ScheduleLocalRepository
+import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.DeactivateScheduleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetAppointmentsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetScheduleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpsertAvailabilityUseCase
@@ -26,6 +27,7 @@ class ScheduleViewModel(
     private val getScheduleUseCase: GetScheduleUseCase,
     private val getAppointmentsUseCase: GetAppointmentsUseCase,
     private val upsertAvailabilityUseCase: UpsertAvailabilityUseCase,
+    private val deactivateScheduleUseCase: DeactivateScheduleUseCase,
     private val scheduleLocalRepository: ScheduleLocalRepository,
     private val appointmentLocalRepository: AppointmentLocalRepository,
     private val snackbarController: SnackbarController,
@@ -43,6 +45,9 @@ class ScheduleViewModel(
     var isSaving by mutableStateOf(false)
         private set
 
+    var isDeactivating by mutableStateOf(false)
+        private set
+
     init {
         refresh()
     }
@@ -53,6 +58,20 @@ class ScheduleViewModel(
             getScheduleUseCase()
             getAppointmentsUseCase()
             isLoading = false
+        }
+    }
+
+    fun deactivateSchedule(day: Int, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            isDeactivating = true
+            val result = deactivateScheduleUseCase(day)
+            isDeactivating = false
+            if (result is Resource.Success) {
+                snackbarController.show("Schedule deactivated")
+                onSuccess()
+            } else if (result is Resource.Error) {
+                snackbarController.show(result.message ?: "Failed to deactivate schedule", isError = true)
+            }
         }
     }
 
@@ -87,7 +106,7 @@ class ScheduleViewModel(
                     )
                 )
                 if (result is Resource.Error) {
-                    snackbarController.show(result.message ?: "Failed to update schedule")
+                    snackbarController.show(result.message ?: "Failed to update schedule", isError = true)
                     allOk = false
                     break
                 }
@@ -107,7 +126,7 @@ class ScheduleViewModel(
                         )
                     )
                     if (result is Resource.Error) {
-                        snackbarController.show(result.message ?: "Failed to save schedule")
+                        snackbarController.show(result.message ?: "Failed to save schedule", isError = true)
                         allOk = false
                         break
                     }

@@ -12,4 +12,5 @@ import kotlinx.serialization.Serializable
 @Serializable data object PasswordChanged : NavKey
 @Serializable data object Support : NavKey
 @Serializable data object ScheduleManagement : NavKey
-@Serializable data object Specialization : NavKey
+@Serializable data class Specialization(val isEnabled: Boolean) : NavKey
+@Serializable data object LicenceManagement : NavKey

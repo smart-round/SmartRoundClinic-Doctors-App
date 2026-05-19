@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
+import ke.co.smartroundclinic.doctor.presentation.rememberSvgPainter
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientStart
@@ -84,6 +85,7 @@ private data class MessageItem(val senderName: String, val preview: String, val 
 fun HomeScreen(
     onProfileClick: () -> Unit = {},
     onSeeAllAppointments: () -> Unit = {},
+    onSetUpCalendar: () -> Unit = {},
     modifier: Modifier = Modifier,
     profileViewModel: PersonalInfoViewModel = koinViewModel(),
     bookingsViewModel: BookingsViewModel = koinViewModel(),
@@ -93,13 +95,16 @@ fun HomeScreen(
     val allAppointments by bookingsViewModel.appointments.collectAsState()
     val schedule by scheduleViewModel.schedule.collectAsState()
 
-    val today: LocalDate = remember { Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds()).toLocalDateTime(TimeZone.currentSystemDefault()).date }
+    val today: LocalDate = remember {
+        Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds())
+            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+    }
     val upcomingAppointments = remember(allAppointments, today) {
         allAppointments
             .filter { appt ->
                 val apptDate = runCatching { LocalDate.parse(appt.date) }.getOrNull()
                 apptDate != null && apptDate >= today &&
-                    (appt.status == AppointmentStatus.BOOKED || appt.status == AppointmentStatus.CONFIRMED)
+                        (appt.status == AppointmentStatus.BOOKED || appt.status == AppointmentStatus.CONFIRMED)
             }
             .sortedBy { it.date + it.slotStart }
             .take(3)
@@ -129,9 +134,14 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (isCalendarBlocked) {
-                item { CalendarBlockedCard(onSetUpCalendar = {}) }
+                item { CalendarBlockedCard(onSetUpCalendar = onSetUpCalendar) }
             } else {
-                item { AppointmentsSection(appointments = upcomingAppointments, onSeeAll = onSeeAllAppointments) }
+                item {
+                    AppointmentsSection(
+                        appointments = upcomingAppointments,
+                        onSeeAll = onSeeAllAppointments
+                    )
+                }
                 item { RecentMessagesSection(messages = messages, onSeeAll = {}) }
             }
         }
@@ -148,7 +158,14 @@ private fun DashboardHeader(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(brush = Brush.horizontalGradient(colors = listOf(GradientStart, GradientEnd)))
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        GradientStart,
+                        GradientEnd
+                    )
+                )
+            )
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
@@ -166,7 +183,12 @@ private fun DashboardHeader(
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(imageVector = Icons.Filled.Person, contentDescription = "Profile", tint = Color.White, modifier = Modifier.size(24.dp))
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = "Profile",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
                     if (profilePicture != null) {
                         AsyncImage(
                             model = profilePicture,
@@ -177,26 +199,39 @@ private fun DashboardHeader(
                     }
                 }
                 Spacer(Modifier.width(8.dp))
-                val greeting = if (fullName.isNotBlank()) "Hello Dr. $fullName 👋" else "Hello Doctor 👋"
-                Text(text = greeting, style = MaterialTheme.typography.titleMedium, color = Color.White, modifier = Modifier.weight(1f))
+                val greeting =
+                    if (fullName.isNotBlank()) "Hello Dr. $fullName 👋" else "Hello Doctor 👋"
+                Text(
+                    text = greeting,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    modifier = Modifier.weight(1f)
+                )
                 IconButton(onClick = {}) {
-                    Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Messages", tint = Color.White)
-                }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", tint = Color.White)
+
+                    Icon(
+                        painter = rememberSvgPainter("files/icons/notification.svg"),
+                        contentDescription = "Notifications",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
+            //Spacer(Modifier.height(8.dp))
+//            Row(
+//                verticalAlignment = Alignment.CenterVertically,
+//                modifier = Modifier.fillMaxWidth().clip(ShapePill).background(SearchBarOverlay).padding(horizontal = 16.dp, vertical = 10.dp),
+//            ) {
+//                Icon(imageVector = Icons.Outlined.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
+//                Spacer(Modifier.width(8.dp))
+//                Text(text = "Search here...", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
+//            }
             Spacer(Modifier.height(8.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().clip(ShapePill).background(SearchBarOverlay).padding(horizontal = 16.dp, vertical = 10.dp),
-            ) {
-                Icon(imageVector = Icons.Outlined.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(text = "Search here...", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(text = "A smarter way to expand access to healthcare", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f))
+            Text(
+                text = "A smarter way to expand access to healthcare",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.85f)
+            )
         }
     }
 }
@@ -218,15 +253,33 @@ private fun CalendarBlockedCard(onSetUpCalendar: () -> Unit, modifier: Modifier 
                 modifier = Modifier.size(56.dp).clip(CircleShape).background(Primary90),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(imageVector = Icons.Outlined.CalendarMonth, contentDescription = null, tint = Primary40, modifier = Modifier.size(32.dp))
+                Icon(
+                    imageVector = Icons.Outlined.CalendarMonth,
+                    contentDescription = null,
+                    tint = Primary40,
+                    modifier = Modifier.size(32.dp)
+                )
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Your Calendar Is Blocked", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    text = "Your Calendar Is Blocked",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Spacer(Modifier.height(4.dp))
-                Text(text = "Patients can't book appointments until you set your availability.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = "Patients can't book appointments until you set your availability.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(12.dp))
                 PrimaryButton(onClick = onSetUpCalendar) {
-                    Text(text = "Set Up Your Calendar Now", style = MaterialTheme.typography.labelMedium, color = Color.White, modifier = Modifier.padding(vertical = 10.dp))
+                    Text(
+                        text = "Set Up Your Calendar Now",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                        modifier = Modifier.padding(vertical = 10.dp)
+                    )
                 }
             }
         }
@@ -234,12 +287,20 @@ private fun CalendarBlockedCard(onSetUpCalendar: () -> Unit, modifier: Modifier 
 }
 
 @Composable
-private fun AppointmentsSection(appointments: List<Appointment>, onSeeAll: () -> Unit, modifier: Modifier = Modifier) {
+private fun AppointmentsSection(
+    appointments: List<Appointment>,
+    onSeeAll: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier) {
         SectionHeader(title = "Upcoming Appointments", onSeeAll = onSeeAll)
         Spacer(Modifier.height(8.dp))
         if (appointments.isEmpty()) {
-            EmptyPlaceholder(icon = Icons.Outlined.CalendarMonth, title = "No Appointments Yet", subtitle = "Your consultation bookings will appear here")
+            EmptyPlaceholder(
+                icon = Icons.Outlined.CalendarMonth,
+                title = "No Appointments Yet",
+                subtitle = "Your consultation bookings will appear here"
+            )
         } else {
             appointments.forEach { appt ->
                 AppointmentCard(
@@ -255,15 +316,27 @@ private fun AppointmentsSection(appointments: List<Appointment>, onSeeAll: () ->
 }
 
 @Composable
-private fun RecentMessagesSection(messages: List<MessageItem>, onSeeAll: () -> Unit, modifier: Modifier = Modifier) {
+private fun RecentMessagesSection(
+    messages: List<MessageItem>,
+    onSeeAll: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier) {
         SectionHeader(title = "Recent Messages", onSeeAll = onSeeAll)
         Spacer(Modifier.height(8.dp))
         if (messages.isEmpty()) {
-            EmptyPlaceholder(icon = Icons.Outlined.ChatBubbleOutline, title = "No Messages Yet", subtitle = "Messages will appear as soon as patients reach out")
+            EmptyPlaceholder(
+                icon = Icons.Outlined.ChatBubbleOutline,
+                title = "No Messages Yet",
+                subtitle = "Messages will appear as soon as patients reach out"
+            )
         } else {
             messages.forEach { item ->
-                MessageRow(senderName = item.senderName, preview = item.preview, timestamp = item.timestamp, onClick = {})
+                MessageRow(
+                    senderName = item.senderName,
+                    preview = item.preview,
+                    timestamp = item.timestamp,
+                    onClick = {})
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -272,8 +345,15 @@ private fun RecentMessagesSection(messages: List<MessageItem>, onSeeAll: () -> U
 
 @Composable
 private fun SectionHeader(title: String, onSeeAll: () -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(text = title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+        )
         TextButton(onClick = onSeeAll, contentPadding = PaddingValues(horizontal = 4.dp)) {
             Text(text = "See All", color = Primary40, style = MaterialTheme.typography.labelMedium)
         }
@@ -281,17 +361,38 @@ private fun SectionHeader(title: String, onSeeAll: () -> Unit, modifier: Modifie
 }
 
 @Composable
-private fun EmptyPlaceholder(icon: ImageVector, title: String, subtitle: String, modifier: Modifier = Modifier) {
+private fun EmptyPlaceholder(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier.fillMaxWidth().padding(vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(modifier = Modifier.size(56.dp).clip(CircleShape).background(Primary90), contentAlignment = Alignment.Center) {
-            Icon(imageVector = icon, contentDescription = null, tint = Primary40, modifier = Modifier.size(28.dp))
+        Box(
+            modifier = Modifier.size(56.dp).clip(CircleShape).background(Primary90),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Primary40,
+                modifier = Modifier.size(28.dp)
+            )
         }
-        Text(text = title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-        Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+        )
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -310,42 +411,119 @@ private fun AppointmentCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = "Appointment Date/Time", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = "Appointment Date/Time",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Spacer(Modifier.height(2.dp))
-            Text(text = dateTime, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                text = dateTime,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if (isConfirmed) Primary40 else StatusPending))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier.size(8.dp).clip(CircleShape)
+                        .background(if (isConfirmed) Primary40 else StatusPending)
+                )
                 Spacer(Modifier.width(8.dp))
-                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(Secondary90), contentAlignment = Alignment.Center) {
-                    Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(20.dp))
+                Box(
+                    modifier = Modifier.size(32.dp).clip(CircleShape).background(Secondary90),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = Secondary40,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
                 Spacer(Modifier.width(8.dp))
-                Text(text = patientName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                OutlinedButton(onClick = onView, shape = ShapePill, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), border = BorderStroke(1.dp, Tertiary40)) {
-                    Text(text = "View", style = MaterialTheme.typography.labelMedium, color = Tertiary40)
+                Text(
+                    text = patientName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedButton(
+                    onClick = onView,
+                    shape = ShapePill,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    border = BorderStroke(1.dp, Tertiary40)
+                ) {
+                    Text(
+                        text = "View",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Tertiary40
+                    )
                 }
             }
             if (isConfirmed) {
                 Spacer(Modifier.height(4.dp))
-                Text(text = "Confirmed", style = MaterialTheme.typography.labelSmall, color = Primary40, modifier = Modifier.padding(start = 16.dp))
+                Text(
+                    text = "Confirmed",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Primary40,
+                    modifier = Modifier.padding(start = 16.dp)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun MessageRow(senderName: String, preview: String, timestamp: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Card(modifier = modifier.fillMaxWidth(), onClick = onClick, shape = ShapeCard, colors = CardDefaults.cardColors(containerColor = CardBackground), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Secondary90), contentAlignment = Alignment.Center) {
-                Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(24.dp))
+private fun MessageRow(
+    senderName: String,
+    preview: String,
+    timestamp: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        onClick = onClick,
+        shape = ShapeCard,
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(Secondary90),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Person,
+                    contentDescription = null,
+                    tint = Secondary40,
+                    modifier = Modifier.size(24.dp)
+                )
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = senderName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                Text(text = preview, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = senderName,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+                Text(
+                    text = preview,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-            Text(text = timestamp, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = timestamp,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

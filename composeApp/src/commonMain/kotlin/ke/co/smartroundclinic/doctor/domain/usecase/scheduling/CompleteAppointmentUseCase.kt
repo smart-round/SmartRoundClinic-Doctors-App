@@ -1,17 +1,9 @@
 package ke.co.smartroundclinic.doctor.domain.usecase.scheduling
 
 import ke.co.smartroundclinic.doctor.common.Resource
-import ke.co.smartroundclinic.doctor.domain.model.Appointment
-import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
-import ke.co.smartroundclinic.doctor.domain.repository.SchedulingRepository
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.SuccessRes
+import ke.co.smartroundclinic.doctor.domain.repository.AppointmentRepository
 
-class CompleteAppointmentUseCase(
-    private val remote: SchedulingRepository,
-    private val local: AppointmentLocalRepository,
-) {
-    suspend operator fun invoke(id: String): Resource<Appointment> {
-        val result = remote.completeAppointment(id)
-        if (result is Resource.Success) result.data?.let { local.upsertAppointment(it) }
-        return result
-    }
+class CompleteAppointmentUseCase(private val remote: AppointmentRepository) {
+    suspend operator fun invoke(id: String): Resource<SuccessRes> = remote.completeAppointment(id)
 }

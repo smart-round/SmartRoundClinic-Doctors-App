@@ -2,6 +2,9 @@ package ke.co.smartroundclinic.doctor.koin
 
 import ke.co.smartroundclinic.doctor.domain.usecase.PreloadDashboardUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.CreateArticleUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.licence.DeleteLicenceUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.licence.GetAllLicencesUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.licence.UploadLicenceUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.DeleteArticleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.GetCategoriesUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.GetLiveArticlesUseCase
@@ -10,6 +13,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.articles.PublishArticleUseCa
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.UnpublishArticleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.UpdateArticleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.DeleteProfilePictureUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.auth.GetComplianceStatusUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.SignOutUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.GetUserUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.RefreshTokenUseCase
@@ -31,6 +35,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.datastore.GetKeyUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.datastore.ObserveKeyUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.datastore.SetKeyUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.CancelAppointmentUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.DeactivateScheduleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.CompleteAppointmentUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.ConfirmAppointmentUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetAppointmentsUseCase
@@ -43,8 +48,10 @@ import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetDoctorSpeciali
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetSpecialitiesUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.UpdateDoctorSpecializationUseCase
 import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.ComplianceViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.articles.ArticlesViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingsViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.profile.LicenceViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ScheduleViewModel
 import ke.co.smartroundclinic.doctor.presentation.auth.SignInViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PaymentDetailsViewModel
@@ -55,6 +62,7 @@ import ke.co.smartroundclinic.doctor.presentation.onboarding.OnboardingScreenVie
 import ke.co.smartroundclinic.doctor.presentation.signup.AccountVerificationViewModel
 import ke.co.smartroundclinic.doctor.presentation.signup.BankDetailsViewModel
 import ke.co.smartroundclinic.doctor.presentation.signup.SignUpFilesViewModel
+import ke.co.smartroundclinic.doctor.presentation.signup.SignUpFormViewModel
 import ke.co.smartroundclinic.doctor.presentation.signup.SpecializationComplianceViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -84,16 +92,18 @@ val useCaseModule = module {
     single { UploadProfilePictureUseCase(get()) }
     single { DeleteProfilePictureUseCase(get()) }
     single { GetUserUseCase(get(), get()) }
+    single { GetComplianceStatusUseCase(get()) }
     single { SignOutUseCase(get(), get(), get(), get(), get(), get(), get()) }
     single { PreloadDashboardUseCase(get(), get(), get(), get(), get()) }
     single { GetScheduleUseCase(get(), get()) }
     single { UpsertAvailabilityUseCase(get(), get()) }
     single { UpdateAvailabilityUseCase(get(), get()) }
     single { GetAppointmentsUseCase(get(), get()) }
-    single { ConfirmAppointmentUseCase(get(), get()) }
-    single { CompleteAppointmentUseCase(get(), get()) }
-    single { NoShowAppointmentUseCase(get(), get()) }
-    single { CancelAppointmentUseCase(get(), get()) }
+    single { ConfirmAppointmentUseCase(get()) }
+    single { CompleteAppointmentUseCase(get()) }
+    single { NoShowAppointmentUseCase(get()) }
+    single { CancelAppointmentUseCase(get()) }
+    single { DeactivateScheduleUseCase(get(), get()) }
     single { GetCategoriesUseCase(get(), get()) }
     single { GetMyArticlesUseCase(get(), get()) }
     single { GetLiveArticlesUseCase(get(), get()) }
@@ -102,19 +112,25 @@ val useCaseModule = module {
     single { PublishArticleUseCase(get(), get()) }
     single { UnpublishArticleUseCase(get(), get()) }
     single { DeleteArticleUseCase(get(), get()) }
+    single { GetAllLicencesUseCase(get()) }
+    single { UploadLicenceUseCase(get()) }
+    single { DeleteLicenceUseCase(get()) }
 
     viewModel { SplashViewModel(get(), get(), get()) }
     viewModel { OnboardingScreenViewModel(get(), get()) }
     viewModel { SpecializationComplianceViewModel(get()) }
     viewModel { BankDetailsViewModel(get(), get(), get()) }
     viewModel { SignUpFilesViewModel() }
+    viewModel { SignUpFormViewModel() }
     viewModel { AccountVerificationViewModel(get(), get(), get()) }
     viewModel { SignInViewModel(get(), get(), get()) }
     viewModel { ForgotPasswordViewModel(get(), get(), get(), get()) }
     viewModel { PersonalInfoViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { PaymentDetailsViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { SpecializationViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { ScheduleViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { SpecializationViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ScheduleViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ComplianceViewModel(get(), get()) }
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { LicenceViewModel(get(), get(), get(), get()) }
 }

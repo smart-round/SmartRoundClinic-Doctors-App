@@ -70,6 +70,7 @@ fun SignUpRoot(
     modifier: Modifier = Modifier,
 ) {
     val filesViewModel: SignUpFilesViewModel = koinViewModel()
+    val formViewModel: SignUpFormViewModel = koinViewModel()
     val backStack = retain { mutableStateListOf<NavKey>(SignUp) }
     val steps = listOf(
         StepItem("1", "Personal Info"),
@@ -103,6 +104,7 @@ fun SignUpRoot(
             SignUpNavHost(
                 backStack = backStack,
                 filesViewModel = filesViewModel,
+                formViewModel = formViewModel,
                 onNavigateTo = ::navigateTo,
                 onBack = ::navigateBack,
                 onSignIn = onSignIn,
@@ -174,6 +176,7 @@ private fun SignUpHeader() {
 private fun SignUpNavHost(
     backStack: MutableList<NavKey>,
     filesViewModel: SignUpFilesViewModel,
+    formViewModel: SignUpFormViewModel,
     onNavigateTo: (NavKey) -> Unit,
     onBack: () -> Unit,
     onSignIn: () -> Unit,
@@ -188,6 +191,7 @@ private fun SignUpNavHost(
             entry<SignUp> {
                 SignUpScreen(
                     filesViewModel = filesViewModel,
+                    formViewModel = formViewModel,
                     onNext = { personalInfo -> onNavigateTo(SpecializationAndCompliance(personalInfo)) },
                     onSignIn = onSignIn,
                 )
@@ -195,6 +199,7 @@ private fun SignUpNavHost(
             entry<SpecializationAndCompliance> { dest ->
                 SpecializationAndComplianceScreen(
                     filesViewModel = filesViewModel,
+                    formViewModel = formViewModel,
                     onNext = { specialization -> onNavigateTo(BankDetails(dest.personalInfo, specialization)) },
                     onBack = onBack,
                 )
@@ -202,6 +207,7 @@ private fun SignUpNavHost(
             entry<BankDetails> { dest ->
                 BankDetailsScreen(
                     filesViewModel = filesViewModel,
+                    formViewModel = formViewModel,
                     personalInfo = dest.personalInfo,
                     specializationData = dest.specialization,
                     onNext = { onNavigateTo(AccountVerification(dest.personalInfo.email)) },

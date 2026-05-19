@@ -91,6 +91,7 @@ import smartroundclinic.composeapp.generated.resources.Res
 @Composable
 fun SignUpScreen(
     filesViewModel: SignUpFilesViewModel,
+    formViewModel: ke.co.smartroundclinic.doctor.presentation.signup.SignUpFormViewModel,
     onNext: (PersonalInfoData) -> Unit,
     onSignIn: () -> Unit,
 ) {
@@ -100,19 +101,13 @@ fun SignUpScreen(
     val kraPinFocus = remember { FocusRequester() }
     val passwordFocus = remember { FocusRequester() }
 
-    var fullName by remember { mutableStateOf("") }
-    var gender by remember { mutableStateOf("") }
-    var dob by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
-    var selectedCountry by remember { mutableStateOf(defaultCountry) }
-    var showCountryPicker by remember { mutableStateOf(false) }
-    var countryQuery by remember { mutableStateOf("") }
-    var kraPin by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    // UI-only transient state — fine to reset on back-nav
     var passwordVisible by remember { mutableStateOf(false) }
     var genderExpanded by remember { mutableStateOf(false) }
     var showPhotoPicker by remember { mutableStateOf(false) }
+    var showCountryPicker by remember { mutableStateOf(false) }
+    var countryQuery by remember { mutableStateOf("") }
+
     val photoSheetState = rememberModalBottomSheetState()
     val countrySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -129,21 +124,21 @@ fun SignUpScreen(
     }
 
     val dobError = when {
-        dob.isEmpty() -> null
-        dob.length < 8 -> "Enter a complete date (DD/MM/YYYY)"
-        !dob.isValidDate() -> "Invalid date"
-        !dob.isOldEnough() -> "Must be at least 18 years old"
+        formViewModel.dob.isEmpty() -> null
+        formViewModel.dob.length < 8 -> "Enter a complete date (DD/MM/YYYY)"
+        !formViewModel.dob.isValidDate() -> "Invalid date"
+        !formViewModel.dob.isOldEnough() -> "Must be at least 18 years old"
         else -> null
     }
-    val emailError = if (email.isNotBlank() && !email.isValidEmail()) "Enter a valid email" else null
+    val emailError = if (formViewModel.email.isNotBlank() && !formViewModel.email.isValidEmail()) "Enter a valid email" else null
 
-    val isFormValid = fullName.isNotBlank() &&
-        gender.isNotBlank() &&
-        dob.length == 8 && dob.isValidDate() && dob.isOldEnough() &&
-        email.isValidEmail() &&
-        phoneNumber.isNotBlank() &&
-        kraPin.isNotBlank() &&
-        password.length >= 8
+    val isFormValid = formViewModel.fullName.isNotBlank() &&
+        formViewModel.gender.isNotBlank() &&
+        formViewModel.dob.length == 8 && formViewModel.dob.isValidDate() && formViewModel.dob.isOldEnough() &&
+        formViewModel.email.isValidEmail() &&
+        formViewModel.phoneNumber.isNotBlank() &&
+        formViewModel.kraPin.isNotBlank() &&
+        formViewModel.password.length >= 8
 
     val galleryLauncher = rememberFilePickerLauncher(type = FileKitType.Image) { file ->
         scope.launch { filesViewModel.profilePictureBytes = file?.readBytes() }
@@ -174,15 +169,22 @@ fun SignUpScreen(
     }
 
     if (showCountryPicker) {
+        val currentCountry = remember(allCountries, formViewModel.countryDialCode, formViewModel.countryName) {
+            allCountries.firstOrNull { it.dialCode == formViewModel.countryDialCode && it.name == formViewModel.countryName }
+                ?: allCountries.firstOrNull { it.dialCode == formViewModel.countryDialCode }
+                ?: defaultCountry
+        }
         CountryCodeBottomSheet(
             sheetState = countrySheetState,
             query = countryQuery,
             onQueryChange = { countryQuery = it },
             countries = filteredCountries,
-            selectedCountry = selectedCountry,
-            initialScrollIndex = allCountries.indexOf(selectedCountry).coerceAtLeast(0),
+            selectedCountry = currentCountry,
+            initialScrollIndex = allCountries.indexOf(currentCountry).coerceAtLeast(0),
             onSelect = { country ->
-                selectedCountry = country
+                formViewModel.countryDialCode = country.dialCode
+                formViewModel.countryFlag = country.flag
+                formViewModel.countryName = country.name
                 countryQuery = ""
                 scope.launch {
                     countrySheetState.hide()
@@ -239,8 +241,8 @@ fun SignUpScreen(
         Spacer(Modifier.height(16.dp))
 
         SignUpField(
-            value = fullName,
-            onValueChange = { fullName = it },
+            value = formViewModel.fullName,
+            onValueChange = { formViewModel.fullName = it },
             label = "Full Name",
             placeholder = "Enter your full name",
             imeAction = ImeAction.Next,
@@ -260,7 +262,7 @@ fun SignUpScreen(
                 modifier = Modifier.weight(1f),
             ) {
                 OutlinedTextField(
-                    value = gender,
+                    value = formViewModel.gender,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Gender", style = MaterialTheme.typography.bodySmall) },
@@ -279,15 +281,15 @@ fun SignUpScreen(
                         DropdownMenuItem(
                             colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onBackground),
                             text = { Text(option, style = MaterialTheme.typography.bodySmall) },
-                            onClick = { gender = option; genderExpanded = false },
+                            onClick = { formViewModel.gender = option; genderExpanded = false },
                         )
                     }
                 }
             }
 
             SignUpField(
-                value = dob,
-                onValueChange = { dob = it.filter { c -> c.isDigit() }.take(8) },
+                value = formViewModel.dob,
+                onValueChange = { formViewModel.dob = it.filter { c -> c.isDigit() }.take(8) },
                 label = "DOB",
                 placeholder = "DD/MM/YYYY",
                 keyboardType = KeyboardType.Number,
@@ -302,8 +304,8 @@ fun SignUpScreen(
         Spacer(Modifier.height(12.dp))
 
         SignUpField(
-            value = email,
-            onValueChange = { email = it },
+            value = formViewModel.email,
+            onValueChange = { formViewModel.email = it },
             label = "Email",
             placeholder = "Enter your email",
             keyboardType = KeyboardType.Email,
@@ -324,7 +326,7 @@ fun SignUpScreen(
             // Country code button — transparent overlay over OutlinedTextField to open bottom sheet
             Box(modifier = Modifier.width(110.dp)) {
                 OutlinedTextField(
-                    value = "${selectedCountry.flag} ${selectedCountry.dialCode}",
+                    value = "${formViewModel.countryFlag} ${formViewModel.countryDialCode}",
                     onValueChange = {},
                     readOnly = true,
                     singleLine = true,
@@ -353,8 +355,8 @@ fun SignUpScreen(
             }
 
             SignUpField(
-                value = phoneNumber,
-                onValueChange = { phoneNumber = it },
+                value = formViewModel.phoneNumber,
+                onValueChange = { formViewModel.phoneNumber = it },
                 label = "Phone Number",
                 placeholder = "7XX XXX XXX",
                 keyboardType = KeyboardType.Phone,
@@ -369,8 +371,8 @@ fun SignUpScreen(
         Spacer(Modifier.height(12.dp))
 
         SignUpField(
-            value = kraPin,
-            onValueChange = { kraPin = it },
+            value = formViewModel.kraPin,
+            onValueChange = { formViewModel.kraPin = it },
             label = "KRA PIN",
             placeholder = "Enter your KRA PIN",
             imeAction = ImeAction.Next,
@@ -382,11 +384,11 @@ fun SignUpScreen(
 
         Column(modifier = Modifier.focusRequester(passwordFocus)) {
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
+                value = formViewModel.password,
+                onValueChange = { formViewModel.password = it },
                 label = { Text("Password", style = MaterialTheme.typography.bodySmall) },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                isError = password.isNotBlank() && password.length < 8,
+                isError = formViewModel.password.isNotBlank() && formViewModel.password.length < 8,
                 trailingIcon = {
                     TextButton(onClick = { passwordVisible = !passwordVisible }) {
                         Text(
@@ -404,7 +406,7 @@ fun SignUpScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (password.isNotBlank() && password.length < 8) {
+            if (formViewModel.password.isNotBlank() && formViewModel.password.length < 8) {
                 Text(
                     text = "Minimum 8 characters",
                     style = MaterialTheme.typography.bodySmall,
@@ -420,12 +422,12 @@ fun SignUpScreen(
             onClick = {
                 onNext(
                     PersonalInfoData(
-                        fullName = fullName,
-                        gender = gender,
-                        email = email,
-                        phoneNumber = "${selectedCountry.dialCode}$phoneNumber",
-                        kraPin = kraPin,
-                        password = password,
+                        fullName = formViewModel.fullName,
+                        gender = formViewModel.gender,
+                        email = formViewModel.email,
+                        phoneNumber = "${formViewModel.countryDialCode}${formViewModel.phoneNumber}",
+                        kraPin = formViewModel.kraPin,
+                        password = formViewModel.password,
                     )
                 )
             },

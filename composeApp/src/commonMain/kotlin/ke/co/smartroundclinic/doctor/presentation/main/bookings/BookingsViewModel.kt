@@ -48,7 +48,7 @@ class BookingsViewModel(
             val result = getAppointmentsUseCase()
             isLoading = false
             if (result is Resource.Error) {
-                snackbarController.show(result.message ?: "Failed to load appointments")
+                snackbarController.show(result.message ?: "Failed to load appointments", isError = true)
             }
         }
     }
@@ -59,8 +59,8 @@ class BookingsViewModel(
             val result = confirmAppointmentUseCase(id)
             isActioning = false
             when (result) {
-                is Resource.Success -> snackbarController.show("Appointment confirmed")
-                is Resource.Error -> snackbarController.show(result.message ?: "Failed to confirm")
+                is Resource.Success -> { snackbarController.show("Appointment confirmed"); loadAppointments() }
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to confirm", isError = true)
                 else -> Unit
             }
         }
@@ -72,8 +72,8 @@ class BookingsViewModel(
             val result = completeAppointmentUseCase(id)
             isActioning = false
             when (result) {
-                is Resource.Success -> snackbarController.show("Appointment marked complete")
-                is Resource.Error -> snackbarController.show(result.message ?: "Failed to complete")
+                is Resource.Success -> { snackbarController.show("Appointment marked complete"); loadAppointments() }
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to complete", isError = true)
                 else -> Unit
             }
         }
@@ -85,8 +85,8 @@ class BookingsViewModel(
             val result = noShowAppointmentUseCase(id)
             isActioning = false
             when (result) {
-                is Resource.Success -> snackbarController.show("Marked as no-show")
-                is Resource.Error -> snackbarController.show(result.message ?: "Failed to mark no-show")
+                is Resource.Success -> { snackbarController.show("Marked as no-show"); loadAppointments() }
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to mark no-show", isError = true)
                 else -> Unit
             }
         }
@@ -98,8 +98,8 @@ class BookingsViewModel(
             val result = cancelAppointmentUseCase(id, reason)
             isActioning = false
             when (result) {
-                is Resource.Success -> snackbarController.show("Appointment cancelled")
-                is Resource.Error -> snackbarController.show(result.message ?: "Failed to cancel")
+                is Resource.Success -> { snackbarController.show("Appointment cancelled"); loadAppointments() }
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to cancel", isError = true)
                 else -> Unit
             }
         }

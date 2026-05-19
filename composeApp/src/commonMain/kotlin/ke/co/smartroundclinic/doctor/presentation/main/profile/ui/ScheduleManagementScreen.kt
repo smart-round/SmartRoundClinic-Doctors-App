@@ -1,6 +1,7 @@
 package ke.co.smartroundclinic.doctor.presentation.main.profile.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -40,7 +41,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -135,16 +138,21 @@ internal fun ScheduleManagementScreen(
     val schedule by viewModel.schedule.collectAsState()
     val appointments by viewModel.appointments.collectAsState()
     val isSaving = viewModel.isSaving
+    val isDeactivating = viewModel.isDeactivating
     val isLoading = viewModel.isLoading
 
     var selectedTab by remember { mutableStateOf(ScheduleTab.AVAILABILITY) }
 
     LaunchedEffect(selectedTab) { viewModel.refresh() }
 
+    // Days that already have an active schedule on the server
+    val scheduledDays = remember(schedule) { schedule.filter { it.isActive }.map { it.dayOfWeek }.toSet() }
+
     // Availability form state
-    var enabledDays by remember { mutableStateOf(emptySet<Int>()) }
+    var selectedDay by remember { mutableStateOf<Int?>(null) }
     var windowStart by remember { mutableStateOf("08:00") }
     var windowEnd by remember { mutableStateOf("17:00") }
+    var slotDuration by remember { mutableStateOf(30) }
     var breakBlocks by remember { mutableStateOf(listOf<ScheduleBreakBlock>()) }
 
     // Calendar state
@@ -159,10 +167,11 @@ internal fun ScheduleManagementScreen(
         if (!initialized && schedule.isNotEmpty()) {
             initialized = true
             val active = schedule.filter { it.isActive }
-            enabledDays = active.map { it.dayOfWeek }.toSet()
+            selectedDay = active.firstOrNull()?.dayOfWeek
             active.firstOrNull()?.let {
                 windowStart = it.windowStart
                 windowEnd = it.windowEnd
+                slotDuration = it.slotDuration
                 breakBlocks = it.breakBlocks
             }
         }
@@ -212,10 +221,9 @@ internal fun ScheduleManagementScreen(
 
             when (selectedTab) {
                 ScheduleTab.AVAILABILITY -> AvailabilityContent(
-                    enabledDays = enabledDays,
-                    onDayToggle = { index ->
-                        enabledDays = if (index in enabledDays) enabledDays - index else enabledDays + index
-                    },
+                    selectedDay = selectedDay,
+                    scheduledDays = scheduledDays,
+                    onDaySelect = { index -> selectedDay = if (selectedDay == index) null else index },
                     windowStart = windowStart,
                     onWindowStartChange = { windowStart = it },
                     windowEnd = windowEnd,
@@ -225,16 +233,22 @@ internal fun ScheduleManagementScreen(
                     onBreakStartChange = { i, v -> breakBlocks = breakBlocks.toMutableList().also { it[i] = it[i].copy(start = v) } },
                     onBreakEndChange = { i, v -> breakBlocks = breakBlocks.toMutableList().also { it[i] = it[i].copy(end = v) } },
                     onRemoveBreak = { i -> breakBlocks = breakBlocks.filterIndexed { idx, _ -> idx != i } },
+                    slotDuration = slotDuration,
+                    onSlotDurationChange = { slotDuration = it },
                     isSaving = isSaving,
+                    isDeactivating = isDeactivating,
                     onSave = {
                         viewModel.saveSchedule(
-                            enabledDays = enabledDays,
+                            enabledDays = scheduledDays + setOfNotNull(selectedDay),
                             windowStart = windowStart,
                             windowEnd = windowEnd,
-                            slotDuration = 30,
+                            slotDuration = slotDuration,
                             breakBlocks = breakBlocks,
                             onSuccess = {},
                         )
+                    },
+                    onDeactivate = {
+                        selectedDay?.let { viewModel.deactivateSchedule(it) }
                     },
                 )
                 ScheduleTab.CALENDAR -> CalendarContent(
@@ -264,20 +278,37 @@ internal fun ScheduleManagementScreen(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AvailabilityContent(
-    enabledDays: Set<Int>,
-    onDayToggle: (Int) -> Unit,
+    selectedDay: Int?,
+    scheduledDays: Set<Int>,
+    onDaySelect: (Int) -> Unit,
     windowStart: String,
     onWindowStartChange: (String) -> Unit,
     windowEnd: String,
     onWindowEndChange: (String) -> Unit,
+    slotDuration: Int,
+    onSlotDurationChange: (Int) -> Unit,
     breakBlocks: List<ScheduleBreakBlock>,
     onAddBreak: () -> Unit,
     onBreakStartChange: (Int, String) -> Unit,
     onBreakEndChange: (Int, String) -> Unit,
     onRemoveBreak: (Int) -> Unit,
     isSaving: Boolean,
+    isDeactivating: Boolean,
     onSave: () -> Unit,
+    onDeactivate: () -> Unit,
 ) {
+    val slotPresets = remember { listOf(10, 20, 30) }
+    var useCustomSlot by remember { mutableStateOf(slotDuration !in listOf(10, 20, 30)) }
+    var customSlotText by remember { mutableStateOf(if (slotDuration !in listOf(10, 20, 30)) slotDuration.toString() else "") }
+    val customSlotValid = customSlotText.toIntOrNull()?.let { it in 5..60 } ?: false
+
+    // Sync when slotDuration is set externally (pre-fill from server)
+    LaunchedEffect(slotDuration) {
+        if (slotDuration !in slotPresets && !useCustomSlot) {
+            useCustomSlot = true
+            customSlotText = slotDuration.toString()
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -300,7 +331,12 @@ private fun AvailabilityContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             dayLabels.forEachIndexed { index, label ->
-                DayChip(label = label, isSelected = index in enabledDays, onClick = { onDayToggle(index) })
+                DayChip(
+                    label = label,
+                    isSelected = index == selectedDay,
+                    isScheduled = index in scheduledDays,
+                    onClick = { onDaySelect(index) },
+                )
             }
         }
 
@@ -327,12 +363,58 @@ private fun AvailabilityContent(
         SectionLabel("Slot Duration")
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Each appointment slot is 30 minutes.",
+            text = "How long is each appointment slot?",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(10.dp))
-        DayChip(label = "30 min", isSelected = true, onClick = {})
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            slotPresets.forEach { preset ->
+                DayChip(
+                    label = "$preset min",
+                    isSelected = !useCustomSlot && slotDuration == preset,
+                    onClick = {
+                        useCustomSlot = false
+                        onSlotDurationChange(preset)
+                    },
+                )
+            }
+            DayChip(
+                label = "Custom",
+                isSelected = useCustomSlot,
+                onClick = {
+                    useCustomSlot = true
+                    if (customSlotText.isEmpty()) customSlotText = slotDuration.toString()
+                },
+            )
+        }
+        if (useCustomSlot) {
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = customSlotText,
+                onValueChange = { input ->
+                    customSlotText = input.filter { it.isDigit() }.take(2)
+                    val v = customSlotText.toIntOrNull()
+                    if (v != null && v in 5..60) onSlotDurationChange(v)
+                },
+                label = { Text("Duration (5–60 min)", style = MaterialTheme.typography.bodySmall) },
+                isError = customSlotText.isNotEmpty() && !customSlotValid,
+                supportingText = {
+                    if (customSlotText.isNotEmpty() && !customSlotValid)
+                        Text("Enter a value between 5 and 60")
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                trailingIcon = {
+                    Text("min", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(end = 12.dp))
+                },
+                shape = ShapeInput,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         Spacer(Modifier.height(20.dp))
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
@@ -371,7 +453,7 @@ private fun AvailabilityContent(
 
         PrimaryButton(
             onClick = onSave,
-            enabled = enabledDays.isNotEmpty() && !isSaving,
+            enabled = selectedDay != null && !isSaving && !isDeactivating && (!useCustomSlot || customSlotValid),
         ) {
             if (isSaving) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -385,7 +467,25 @@ private fun AvailabilityContent(
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(8.dp))
+
+        TextButton(
+            onClick = onDeactivate,
+            enabled = selectedDay != null && !isSaving && !isDeactivating,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (isDeactivating) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Error40)
+            } else {
+                Text(
+                    text = "Deactivate Schedule",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selectedDay != null) Error40 else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -785,19 +885,37 @@ private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DayChip(label: String, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun DayChip(
+    label: String,
+    isSelected: Boolean,
+    isScheduled: Boolean = false,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bgColor = when {
+        isSelected  -> Primary40.copy(alpha = 0.10f)
+        isScheduled -> Primary40
+        else        -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val textColor = when {
+        isSelected  -> Primary40
+        isScheduled -> Color.White
+        else        -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .clip(ShapePill)
-            .background(if (isSelected) Primary40 else MaterialTheme.colorScheme.surfaceVariant)
+            .background(bgColor)
+            .border(width = if (isSelected) 1.5.dp else 0.dp, color = if (isSelected) Primary40 else Color.Transparent, shape = ShapePill)
             .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (isSelected || isScheduled) FontWeight.SemiBold else FontWeight.Normal),
+            color = textColor,
         )
     }
 }

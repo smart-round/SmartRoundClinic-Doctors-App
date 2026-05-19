@@ -37,6 +37,9 @@ class PaymentDetailsViewModel(
     var banks by mutableStateOf<List<Bank>>(emptyList())
         private set
 
+    var isRefreshing by mutableStateOf(false)
+        private set
+
     var isSaving by mutableStateOf(false)
         private set
 
@@ -46,7 +49,11 @@ class PaymentDetailsViewModel(
     }
 
     fun refreshPaymentDetails() {
-        viewModelScope.launch { getPaymentDetailsUseCase() }
+        viewModelScope.launch {
+            isRefreshing = true
+            getPaymentDetailsUseCase()
+            isRefreshing = false
+        }
     }
 
     private fun loadBanks() {

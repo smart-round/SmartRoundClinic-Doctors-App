@@ -112,6 +112,12 @@ val TopAppBarGradientEnd = Color(0XFF91291C)
 // Appointment card left accent bar
 val CardAccent = Primary40
 
+// ── Green tonal ramp (verified / success) ────────────────────────────────────
+
+val Green40 = Color(0xFF16A34A)   // verified / approved text
+val Green90 = Color(0xFFDCFCE7)   // verified / approved chip background
+
+
 // ── Custom semantic tokens ────────────────────────────────────────────────────
 
 val StatusPublished = Color(0xFF0E9800)   // article published badge

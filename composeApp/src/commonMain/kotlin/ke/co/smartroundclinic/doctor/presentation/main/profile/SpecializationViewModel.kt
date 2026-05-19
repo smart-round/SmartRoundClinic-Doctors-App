@@ -10,12 +10,14 @@ import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.domain.model.DoctorSpecialization
 import ke.co.smartroundclinic.doctor.domain.model.Speciality
 import ke.co.smartroundclinic.doctor.domain.repository.DoctorSpecializationLocalRepository
+import ke.co.smartroundclinic.doctor.domain.repository.UserLocalRepository
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.AddDoctorSpecializationUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetDoctorSpecializationUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetSpecialitiesUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.UpdateDoctorSpecializationUseCase
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -26,12 +28,20 @@ class SpecializationViewModel(
     private val getSpecialitiesUseCase: GetSpecialitiesUseCase,
     private val localRepository: DoctorSpecializationLocalRepository,
     private val snackbarController: SnackbarController,
+    private val userLocalRepository: UserLocalRepository,
 ) : ViewModel() {
 
     val specialization: StateFlow<DoctorSpecialization?> = localRepository.observeSpecialization()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    val isAccountVerified: StateFlow<Boolean> = userLocalRepository.observeUser()
+        .map { it?.verificationStatus?.contains("APPROVED", ignoreCase = true) == true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     var catalog by mutableStateOf<List<Speciality>>(emptyList())
+        private set
+
+    var isRefreshing by mutableStateOf(false)
         private set
 
     var isSaving by mutableStateOf(false)
@@ -43,7 +53,11 @@ class SpecializationViewModel(
     }
 
     fun refreshSpecialization() {
-        viewModelScope.launch { getDoctorSpecializationUseCase() }
+        viewModelScope.launch {
+            isRefreshing = true
+            getDoctorSpecializationUseCase()
+            isRefreshing = false
+        }
     }
 
     private fun loadCatalog() {

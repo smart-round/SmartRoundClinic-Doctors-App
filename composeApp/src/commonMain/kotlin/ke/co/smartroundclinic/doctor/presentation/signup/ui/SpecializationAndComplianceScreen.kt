@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.mimeType
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.readBytes
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
@@ -66,6 +67,7 @@ import smartroundclinic.composeapp.generated.resources.file_icon
 @Composable
 fun SpecializationAndComplianceScreen(
     filesViewModel: SignUpFilesViewModel,
+    formViewModel: ke.co.smartroundclinic.doctor.presentation.signup.SignUpFormViewModel,
     onNext: (SpecializationData) -> Unit,
     onBack: () -> Unit,
     viewModel: SpecializationComplianceViewModel = koinViewModel(),
@@ -74,10 +76,10 @@ fun SpecializationAndComplianceScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
 
-    var specialityQuery by remember { mutableStateOf("") }
+    // UI-only state — fine to reset; pre-fill query from persisted selection so the
+    // dropdown shows the chosen name when navigating back
+    var specialityQuery by remember { mutableStateOf(formViewModel.selectedSpecialityName) }
     var specialityExpanded by remember { mutableStateOf(false) }
-    var selectedSpecialityId by remember { mutableStateOf("") }
-    var selectedSpecialityName by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     val filteredSpecialities = remember(specialityQuery, allSpecialities) {
@@ -85,12 +87,13 @@ fun SpecializationAndComplianceScreen(
         else allSpecialities.filter { it.title.contains(specialityQuery, ignoreCase = true) }
     }
 
-    val isFormValid = selectedSpecialityId.isNotBlank() &&
+    val isFormValid = formViewModel.selectedSpecialityId.isNotBlank() &&
         filesViewModel.licenseFileBytes != null
 
     val filePickerLauncher = rememberFilePickerLauncher(type = FileKitType.File()) { file ->
         scope.launch {
             filesViewModel.licenseFileName = file?.name ?: ""
+            filesViewModel.licenseFileMimeType = file?.mimeType()?.toString() ?: "application/octet-stream"
             filesViewModel.licenseFileBytes = file?.readBytes()
         }
     }
@@ -110,8 +113,8 @@ fun SpecializationAndComplianceScreen(
                 value = specialityQuery,
                 onValueChange = {
                     specialityQuery = it
-                    selectedSpecialityId = ""
-                    selectedSpecialityName = ""
+                    formViewModel.selectedSpecialityId = ""
+                    formViewModel.selectedSpecialityName = ""
                     specialityExpanded = true
                 },
                 label = { Text("Specialization", style = MaterialTheme.typography.bodySmall) },
@@ -139,8 +142,8 @@ fun SpecializationAndComplianceScreen(
                             textColor = MaterialTheme.colorScheme.onBackground
                         ),
                         onClick = {
-                            selectedSpecialityId = speciality.id
-                            selectedSpecialityName = speciality.title
+                            formViewModel.selectedSpecialityId = speciality.id
+                            formViewModel.selectedSpecialityName = speciality.title
                             specialityQuery = speciality.title
                             specialityExpanded = false
                         },
@@ -267,8 +270,8 @@ fun SpecializationAndComplianceScreen(
             onClick = {
                 onNext(
                     SpecializationData(
-                        specializationId = selectedSpecialityId,
-                        specializationName = selectedSpecialityName,
+                        specializationId = formViewModel.selectedSpecialityId,
+                        specializationName = formViewModel.selectedSpecialityName,
                     )
                 )
             },
