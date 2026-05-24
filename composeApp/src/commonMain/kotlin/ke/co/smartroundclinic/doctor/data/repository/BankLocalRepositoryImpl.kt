@@ -15,4 +15,6 @@ class BankLocalRepositoryImpl(private val dao: BankDao) : BankLocalRepository {
     override suspend fun saveBanks(banks: List<Bank>) = dao.upsertAll(banks.map { it.toEntity() })
 
     override suspend fun hasBanks(): Boolean = dao.getAll().isNotEmpty()
+
+    override suspend fun clearAll() = dao.deleteAll()
 }

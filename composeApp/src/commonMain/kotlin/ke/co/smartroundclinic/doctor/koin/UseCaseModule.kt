@@ -1,6 +1,9 @@
 package ke.co.smartroundclinic.doctor.koin
 
 import ke.co.smartroundclinic.doctor.domain.usecase.PreloadDashboardUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetConsultationMessagesUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ConsultationViewModel
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.CreateArticleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.licence.DeleteLicenceUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.licence.GetAllLicencesUseCase
@@ -93,7 +96,7 @@ val useCaseModule = module {
     single { DeleteProfilePictureUseCase(get()) }
     single { GetUserUseCase(get(), get()) }
     single { GetComplianceStatusUseCase(get()) }
-    single { SignOutUseCase(get(), get(), get(), get(), get(), get(), get()) }
+    single { SignOutUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { PreloadDashboardUseCase(get(), get(), get(), get(), get()) }
     single { GetScheduleUseCase(get(), get()) }
     single { UpsertAvailabilityUseCase(get(), get()) }
@@ -116,6 +119,10 @@ val useCaseModule = module {
     single { UploadLicenceUseCase(get()) }
     single { DeleteLicenceUseCase(get()) }
 
+    // Consultation use cases
+    single { StartConsultationUseCase(get()) }
+    single { GetConsultationMessagesUseCase(get()) }
+
     viewModel { SplashViewModel(get(), get(), get()) }
     viewModel { OnboardingScreenViewModel(get(), get()) }
     viewModel { SpecializationComplianceViewModel(get()) }
@@ -123,14 +130,15 @@ val useCaseModule = module {
     viewModel { SignUpFilesViewModel() }
     viewModel { SignUpFormViewModel() }
     viewModel { AccountVerificationViewModel(get(), get(), get()) }
-    viewModel { SignInViewModel(get(), get(), get()) }
+    viewModel { SignInViewModel(get(), get(), get(), get(), get()) }
     viewModel { ForgotPasswordViewModel(get(), get(), get(), get()) }
     viewModel { PersonalInfoViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { PaymentDetailsViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { SpecializationViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ScheduleViewModel(get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { ComplianceViewModel(get(), get()) }
+    viewModel { ComplianceViewModel(get(), get(), get()) }
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }
+    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get()) }
 }

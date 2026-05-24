@@ -21,14 +21,14 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -49,7 +49,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import ke.co.smartroundclinic.doctor.presentation.main.chat.ChatUi
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientStart
@@ -57,7 +56,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun CallScreen(
-    chat: ChatUi,
+    participantName: String,
     isVideo: Boolean,
     onEnd: () -> Unit,
     modifier: Modifier = Modifier,
@@ -103,7 +102,7 @@ internal fun CallScreen(
                     Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(56.dp))
                 }
             }
-            Text(text = chat.participantName, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
+            Text(text = participantName, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
             Text(text = callTime, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.75f))
         }
 
@@ -113,7 +112,7 @@ internal fun CallScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CallControlButton(icon = if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic, label = if (isMuted) "Unmute" else "Mute", onClick = { isMuted = !isMuted }, active = isMuted)
-            CallControlButton(icon = if (isSpeakerOn) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, label = "Speaker", onClick = { isSpeakerOn = !isSpeakerOn }, active = isSpeakerOn)
+            CallControlButton(icon = if (isSpeakerOn) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp, label = "Speaker", onClick = { isSpeakerOn = !isSpeakerOn }, active = isSpeakerOn)
             CallControlButton(icon = Icons.Filled.CallEnd, label = "End", onClick = onEnd, backgroundColor = Error40, size = 64.dp)
             CallControlButton(icon = if (isVideoOn) Icons.Filled.Videocam else Icons.Filled.VideocamOff, label = if (isVideoOn) "Camera" else "Cam Off", onClick = { isVideoOn = !isVideoOn }, active = !isVideoOn)
         }

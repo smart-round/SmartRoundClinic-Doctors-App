@@ -21,6 +21,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Prof
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ResetPassword
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ScheduleManagement
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.LicenceManagement
+import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.LicenceViewer
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Specialization
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Support
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.VerifyEmailSecurity
@@ -32,6 +33,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.ProfileListScr
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.ResetPasswordScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.ScheduleManagementScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.LicenceScreen
+import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.LicenceViewerScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.SpecializationScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.SupportScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.VerifyEmailSecurityScreen
@@ -131,7 +133,17 @@ fun HomeRoot(
                 SpecializationScreen(isEnabled = it.isEnabled, onBack = { backStack.removeLastOrNull() })
             }
             entry<LicenceManagement> {
-                LicenceScreen(onBack = { backStack.removeLastOrNull() })
+                LicenceScreen(
+                    onBack = { backStack.removeLastOrNull() },
+                    onViewLicence = { url, name -> backStack.add(LicenceViewer(url, name)) },
+                )
+            }
+            entry<LicenceViewer> {
+                LicenceViewerScreen(
+                    url = it.url,
+                    name = it.name,
+                    onBack = { backStack.removeLastOrNull() },
+                )
             }
         },
     )

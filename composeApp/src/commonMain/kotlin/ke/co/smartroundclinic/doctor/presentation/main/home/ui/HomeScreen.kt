@@ -45,7 +45,6 @@ import coil3.compose.AsyncImage
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -76,10 +75,35 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.StatusPending
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.Month
 
 
 private data class MessageItem(val senderName: String, val preview: String, val timestamp: String)
+
+private fun formatAppointmentDateTime(date: String, slotStart: String, slotEnd: String): String {
+    val localDate = runCatching { LocalDate.parse(date) }.getOrNull()
+    val dayAbbrev = when (localDate?.dayOfWeek) {
+        DayOfWeek.MONDAY -> "Mon"
+        DayOfWeek.TUESDAY -> "Tue"
+        DayOfWeek.WEDNESDAY -> "Wed"
+        DayOfWeek.THURSDAY -> "Thu"
+        DayOfWeek.FRIDAY -> "Fri"
+        DayOfWeek.SATURDAY -> "Sat"
+        DayOfWeek.SUNDAY -> "Sun"
+        null -> ""
+    }
+    val monthAbbrev = when (localDate?.month) {
+        Month.JANUARY -> "Jan"; Month.FEBRUARY -> "Feb"; Month.MARCH -> "Mar"
+        Month.APRIL -> "Apr"; Month.MAY -> "May"; Month.JUNE -> "Jun"
+        Month.JULY -> "Jul"; Month.AUGUST -> "Aug"; Month.SEPTEMBER -> "Sep"
+        Month.OCTOBER -> "Oct"; Month.NOVEMBER -> "Nov"; Month.DECEMBER -> "Dec"
+        null -> ""
+    }
+    val day = localDate?.dayOfMonth ?: return "$date  $slotStart – $slotEnd"
+    return "$dayAbbrev, $monthAbbrev $day  •  $slotStart – $slotEnd"
+}
 
 @Composable
 fun HomeScreen(
@@ -96,8 +120,7 @@ fun HomeScreen(
     val schedule by scheduleViewModel.schedule.collectAsState()
 
     val today: LocalDate = remember {
-        Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds())
-            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     }
     val upcomingAppointments = remember(allAppointments, today) {
         allAppointments
@@ -208,7 +231,14 @@ private fun DashboardHeader(
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = {}) {
-
+                    Icon(
+                        painter = rememberSvgPainter("files/icons/chat.svg"),
+                        contentDescription = "Messages",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                IconButton(onClick = {}) {
                     Icon(
                         painter = rememberSvgPainter("files/icons/notification.svg"),
                         contentDescription = "Notifications",
@@ -217,15 +247,15 @@ private fun DashboardHeader(
                     )
                 }
             }
-            //Spacer(Modifier.height(8.dp))
-//            Row(
-//                verticalAlignment = Alignment.CenterVertically,
-//                modifier = Modifier.fillMaxWidth().clip(ShapePill).background(SearchBarOverlay).padding(horizontal = 16.dp, vertical = 10.dp),
-//            ) {
-//                Icon(imageVector = Icons.Outlined.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
-//                Spacer(Modifier.width(8.dp))
-//                Text(text = "Search here...", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
-//            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().clip(ShapePill).background(SearchBarOverlay).padding(horizontal = 16.dp, vertical = 10.dp),
+            ) {
+                Icon(imageVector = Icons.Outlined.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(text = "Search here...", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
+            }
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "A smarter way to expand access to healthcare",
@@ -304,7 +334,7 @@ private fun AppointmentsSection(
         } else {
             appointments.forEach { appt ->
                 AppointmentCard(
-                    dateTime = "${appt.date}  ${appt.slotStart} – ${appt.slotEnd}",
+                    dateTime = formatAppointmentDateTime(appt.date, appt.slotStart, appt.slotEnd),
                     patientName = appt.patientName,
                     isConfirmed = appt.status == AppointmentStatus.CONFIRMED,
                     onView = onSeeAll,
@@ -419,8 +449,8 @@ private fun AppointmentCard(
             Spacer(Modifier.height(2.dp))
             Text(
                 text = dateTime,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = Primary40
             )
             Spacer(Modifier.height(8.dp))
             Row(

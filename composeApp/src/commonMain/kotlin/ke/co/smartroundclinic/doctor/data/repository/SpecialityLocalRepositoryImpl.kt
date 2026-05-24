@@ -14,4 +14,6 @@ class SpecialityLocalRepositoryImpl(private val dao: SpecialityDao) : Speciality
         dao.upsertAll(specialities.map { it.toEntity() })
 
     override suspend fun hasSpecialities(): Boolean = dao.getAll().isNotEmpty()
+
+    override suspend fun clearAll() = dao.deleteAll()
 }

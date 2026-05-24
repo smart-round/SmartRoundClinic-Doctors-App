@@ -9,9 +9,11 @@ class GetLocalBanksUseCase(
     private val remote: BankRepository,
     private val local: BankLocalRepository
 ) {
-    suspend operator fun invoke(): Resource<List<Bank>> {
-        val cached = local.getBanks()
-        if (cached.isNotEmpty()) return Resource.Success(cached)
+    suspend operator fun invoke(forceRefresh: Boolean = false): Resource<List<Bank>> {
+        if (!forceRefresh) {
+            val cached = local.getBanks()
+            if (cached.isNotEmpty()) return Resource.Success(cached)
+        }
         val result = remote.getLocalBanks()
         result.data?.let { local.saveBanks(it) }
         return result

@@ -10,7 +10,8 @@ data class AppointmentEntity(
     @PrimaryKey val id: String,
     val patientId: String,
     val patientName: String,
-    val doctorSpecialitiesJson: String, // comma-separated
+    val patientProfilePicture: String?,
+    val doctorSpecialitiesJson: String,
     val date: String,
     val slotStart: String,
     val slotEnd: String,
@@ -23,6 +24,7 @@ fun AppointmentEntity.toDomain() = Appointment(
     id = id,
     patientId = patientId,
     patientName = patientName,
+    patientProfilePicture = patientProfilePicture,
     doctorSpecialities = if (doctorSpecialitiesJson.isBlank()) emptyList()
                          else doctorSpecialitiesJson.split(","),
     date = date,
@@ -43,6 +45,7 @@ fun Appointment.toEntity() = AppointmentEntity(
     id = id,
     patientId = patientId,
     patientName = patientName,
+    patientProfilePicture = patientProfilePicture,
     doctorSpecialitiesJson = doctorSpecialities.joinToString(","),
     date = date,
     slotStart = slotStart,

@@ -63,6 +63,7 @@ kotlin {
             implementation(libs.ktor.content.negotiation)
             implementation(libs.ktor.serialization.json)
             implementation(libs.ktor.logging)
+            implementation(libs.ktor.client.websockets)
             implementation(libs.androidx.navigation3.ui)
             implementation(libs.androidx.datastore)
             implementation(libs.androidx.datastore.preferences)
@@ -78,6 +79,7 @@ kotlin {
             implementation(libs.napier)
             implementation(libs.kotlinx.datetime)
             implementation(libs.richeditor.compose)
+            implementation(libs.compose.webview)
             implementation(libs.coil.svg)
         }
         commonTest.dependencies {

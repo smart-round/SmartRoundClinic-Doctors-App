@@ -14,3 +14,4 @@ import kotlinx.serialization.Serializable
 @Serializable data object ScheduleManagement : NavKey
 @Serializable data class Specialization(val isEnabled: Boolean) : NavKey
 @Serializable data object LicenceManagement : NavKey
+@Serializable data class LicenceViewer(val url: String, val name: String) : NavKey

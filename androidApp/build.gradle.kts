@@ -12,7 +12,7 @@ android {
         applicationId = "ke.co.smartroundclinic.doctor"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
+        versionCode = 4
         versionName = "1.0"
     }
     packaging {
@@ -35,5 +35,6 @@ dependencies {
     implementation(project(":composeApp"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.koin.android)
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
     debugImplementation(libs.compose.uiTooling)
 }

@@ -54,7 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -77,6 +76,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 internal fun LicenceScreen(
     onBack: () -> Unit,
+    onViewLicence: (url: String, name: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: LicenceViewModel = koinViewModel(),
 ) {
@@ -132,6 +132,7 @@ internal fun LicenceScreen(
                             LicenceItem(
                                 licence = licence,
                                 isDeleting = deletingId == licence.id,
+                                onView = { onViewLicence(licence.licenceUrl, licence.licenceName) },
                                 onDelete = { viewModel.deleteLicence(licence.id) },
                             )
                         }
@@ -202,11 +203,10 @@ private fun EmptyLicenceState(modifier: Modifier = Modifier) {
 private fun LicenceItem(
     licence: Licence,
     isDeleting: Boolean,
+    onView: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val uriHandler = LocalUriHandler.current
-
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -215,7 +215,7 @@ private fun LicenceItem(
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
-            ) { uriHandler.openUri(licence.licenceUrl) }
+            ) { onView() }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -250,7 +250,7 @@ private fun LicenceItem(
             )
         }
         Spacer(Modifier.width(4.dp))
-        IconButton(onClick = { uriHandler.openUri(licence.licenceUrl) }) {
+        IconButton(onClick = onView) {
             Icon(
                 imageVector = Icons.Outlined.OpenInBrowser,
                 contentDescription = "View licence",

@@ -17,4 +17,6 @@ class ArticleCategoryLocalRepositoryImpl(private val dao: ArticleCategoryDao) : 
 
     override suspend fun upsertCategories(categories: List<ArticleCategory>) =
         dao.upsertCategories(categories.map { it.toEntity() })
+
+    override suspend fun clearAll() = dao.deleteAll()
 }

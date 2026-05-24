@@ -18,6 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -59,7 +61,26 @@ fun SignInScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val isSigningIn by viewModel.isSigningIn.collectAsStateWithLifecycle()
+    val isWrongApp by viewModel.isWrongApp.collectAsStateWithLifecycle()
     val isFormValid = email.isNotBlank() && password.isNotBlank()
+
+    if (isWrongApp) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissWrongApp() },
+            title = { Text("Wrong App") },
+            text = {
+                Text(
+                    "This account is registered as a patient. Please use the SmartRound Clinic Patient app to sign in.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.dismissWrongApp() }) {
+                    Text("OK")
+                }
+            },
+        )
+    }
 
     Column(
         modifier = modifier

@@ -7,4 +7,5 @@ interface ArticleCategoryLocalRepository {
     fun observeActiveCategories(): Flow<List<ArticleCategory>>
     suspend fun getActiveCategories(): List<ArticleCategory>
     suspend fun upsertCategories(categories: List<ArticleCategory>)
+    suspend fun clearAll()
 }

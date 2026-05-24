@@ -7,4 +7,5 @@ interface BankLocalRepository {
     suspend fun searchBanks(query: String): List<Bank>
     suspend fun saveBanks(banks: List<Bank>)
     suspend fun hasBanks(): Boolean
+    suspend fun clearAll()
 }

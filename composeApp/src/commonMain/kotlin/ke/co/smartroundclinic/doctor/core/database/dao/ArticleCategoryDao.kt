@@ -16,4 +16,7 @@ interface ArticleCategoryDao {
 
     @Upsert
     suspend fun upsertCategories(categories: List<ArticleCategoryEntity>)
+
+    @Query("DELETE FROM article_categories")
+    suspend fun deleteAll()
 }

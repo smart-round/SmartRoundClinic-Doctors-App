@@ -4,6 +4,7 @@ data class Appointment(
     val id: String,
     val patientId: String,
     val patientName: String,
+    val patientProfilePicture: String?,
     val doctorSpecialities: List<String>,
     val date: String,
     val slotStart: String,

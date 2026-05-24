@@ -112,7 +112,7 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = { if (isAtRoot) BottomNavBar(currentTab = currentTab, onTabSelected = ::selectTab) },
-        contentWindowInsets = WindowInsets(0),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
         NavDisplay(
             modifier = Modifier

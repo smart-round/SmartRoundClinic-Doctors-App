@@ -52,13 +52,14 @@ class PaymentDetailsViewModel(
         viewModelScope.launch {
             isRefreshing = true
             getPaymentDetailsUseCase()
+            loadBanks(forceRefresh = true)
             isRefreshing = false
         }
     }
 
-    private fun loadBanks() {
+    private fun loadBanks(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            val result = getLocalBanksUseCase()
+            val result = getLocalBanksUseCase(forceRefresh)
             if (result is Resource.Success) banks = result.data ?: emptyList()
         }
     }
@@ -107,7 +108,10 @@ class PaymentDetailsViewModel(
             }
             isSaving = false
             when (result) {
-                is Resource.Success -> snackbarController.show(result.message ?: "Banking details saved")
+                is Resource.Success -> {
+                    snackbarController.show(result.message ?: "Banking details saved")
+                    refreshPaymentDetails()
+                }
                 is Resource.Error -> snackbarController.show(result.message ?: "Failed to save banking details")
                 else -> Unit
             }

@@ -64,8 +64,8 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
 private enum class BookingTab(val label: String, val filter: String?) {
-    UPCOMING("Upcoming", "upcoming"),
     TODAY("Today", "today"),
+    UPCOMING("Upcoming", "upcoming"),
     PAST("Past", "past"),
 }
 
@@ -78,7 +78,7 @@ internal fun BookingListScreen(
     onBookingClick: (Appointment) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var selectedTab by remember { mutableStateOf(BookingTab.UPCOMING) }
+    var selectedTab by remember { mutableStateOf(BookingTab.TODAY) }
     val today: LocalDate = remember { Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds()).toLocalDateTime(TimeZone.currentSystemDefault()).date }
 
     val pendingStatuses = setOf(AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED)

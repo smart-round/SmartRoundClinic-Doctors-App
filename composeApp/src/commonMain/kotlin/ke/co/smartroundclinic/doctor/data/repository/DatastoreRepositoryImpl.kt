@@ -29,4 +29,8 @@ class DatastoreRepositoryImpl(
     override suspend fun getKey(key: String): String? {
         return datastore.data.firstOrNull()?.get(stringPreferencesKey(key))
     }
+
+    override suspend fun clearAll() {
+        runCatching { datastore.edit { it.clear() } }
+    }
 }
