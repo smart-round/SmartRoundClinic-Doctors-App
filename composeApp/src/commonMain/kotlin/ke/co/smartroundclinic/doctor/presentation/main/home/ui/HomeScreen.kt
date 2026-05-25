@@ -46,8 +46,9 @@ import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
+import ke.co.smartroundclinic.doctor.core.platform.todayDay
+import ke.co.smartroundclinic.doctor.core.platform.todayMonth
+import ke.co.smartroundclinic.doctor.core.platform.todayYear
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingsViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ScheduleViewModel
@@ -75,7 +76,6 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.StatusPending
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
-import kotlinx.datetime.Clock
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Month
 
@@ -120,7 +120,7 @@ fun HomeScreen(
     val schedule by scheduleViewModel.schedule.collectAsState()
 
     val today: LocalDate = remember {
-        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        LocalDate(todayYear(), todayMonth(), todayDay())
     }
     val upcomingAppointments = remember(allAppointments, today) {
         allAppointments
@@ -232,29 +232,12 @@ private fun DashboardHeader(
                 )
                 IconButton(onClick = {}) {
                     Icon(
-                        painter = rememberSvgPainter("files/icons/chat.svg"),
-                        contentDescription = "Messages",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                IconButton(onClick = {}) {
-                    Icon(
                         painter = rememberSvgPainter("files/icons/notification.svg"),
                         contentDescription = "Notifications",
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
                 }
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().clip(ShapePill).background(SearchBarOverlay).padding(horizontal = 16.dp, vertical = 10.dp),
-            ) {
-                Icon(imageVector = Icons.Outlined.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(text = "Search here...", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
             }
             Spacer(Modifier.height(8.dp))
             Text(

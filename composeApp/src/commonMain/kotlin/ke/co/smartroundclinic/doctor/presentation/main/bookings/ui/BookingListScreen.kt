@@ -49,7 +49,9 @@ import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
+import ke.co.smartroundclinic.doctor.core.platform.todayDay
+import ke.co.smartroundclinic.doctor.core.platform.todayMonth
+import ke.co.smartroundclinic.doctor.core.platform.todayYear
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
@@ -59,9 +61,6 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Secondary90
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
-import kotlinx.datetime.Instant
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 private enum class BookingTab(val label: String, val filter: String?) {
     TODAY("Today", "today"),
@@ -79,7 +78,7 @@ internal fun BookingListScreen(
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by remember { mutableStateOf(BookingTab.TODAY) }
-    val today: LocalDate = remember { Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds()).toLocalDateTime(TimeZone.currentSystemDefault()).date }
+    val today: LocalDate = remember { LocalDate(todayYear(), todayMonth(), todayDay()) }
 
     val pendingStatuses = setOf(AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED)
     val filtered = appointments.filter { appt ->

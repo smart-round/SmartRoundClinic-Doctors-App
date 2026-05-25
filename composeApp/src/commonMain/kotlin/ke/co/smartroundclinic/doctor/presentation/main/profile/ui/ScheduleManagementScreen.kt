@@ -81,12 +81,11 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeInput
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.viewmodel.koinViewModel
-import kotlin.time.Clock
+import ke.co.smartroundclinic.doctor.core.platform.todayDay
+import ke.co.smartroundclinic.doctor.core.platform.todayMonth
+import ke.co.smartroundclinic.doctor.core.platform.todayYear
 
 
 private val dayLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -156,7 +155,7 @@ internal fun ScheduleManagementScreen(
     var breakBlocks by remember { mutableStateOf(listOf<ScheduleBreakBlock>()) }
 
     // Calendar state
-    val today: LocalDate = remember { Instant.fromEpochMilliseconds(Clock.System.now().toEpochMilliseconds()).toLocalDateTime(TimeZone.currentSystemDefault()).date }
+    val today: LocalDate = remember { LocalDate(todayYear(), todayMonth(), todayDay()) }
     var calYear by remember { mutableStateOf(today.year) }
     var calMonth by remember { mutableStateOf(today.monthNumber) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(today) }

@@ -25,7 +25,9 @@ import ke.co.smartroundclinic.doctor.domain.model.ConsultationSession
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.UserLocalRepository
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetConsultationMessagesUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
+import ke.co.smartroundclinic.doctor.domain.model.CallJoinInfo
 import ke.co.smartroundclinic.doctor.domain.repository.ConsultationRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -54,6 +56,7 @@ class ConsultationViewModel(
     private val consultationRepository: ConsultationRepository,
     private val startConsultationUseCase: StartConsultationUseCase,
     private val getMessagesUseCase: GetConsultationMessagesUseCase,
+    private val joinCallUseCase: JoinConsultationCallUseCase,
     private val appointmentLocalRepository: AppointmentLocalRepository,
     private val userLocalRepository: UserLocalRepository,
     private val httpClient: HttpClient,
@@ -78,6 +81,10 @@ class ConsultationViewModel(
 
     // Derived from pendingFiles — true when any non-failed upload is in progress
     val isUploadingFile: Boolean get() = pendingFiles.any { !it.failed }
+
+    // Call join state — set when the user enters CallScreen and clears when they leave
+    var callJoinState by mutableStateOf<Resource<CallJoinInfo>?>(null)
+        private set
 
     private var wsJob: Job? = null
     private var wsSession: DefaultWebSocketSession? = null
@@ -243,6 +250,26 @@ class ConsultationViewModel(
                 else -> {}
             }
         }
+    }
+
+    fun joinCall(sessionId: String) {
+        if (callJoinState is Resource.Success) return
+        viewModelScope.launch {
+            callJoinState = Resource.Loading()
+            callJoinState = joinCallUseCase(sessionId)
+        }
+    }
+
+    fun endCall() {
+        val sessionId = activeSession?.id ?: run { clearCallState(); return }
+        viewModelScope.launch {
+            consultationRepository.endCall(sessionId)
+            clearCallState()
+        }
+    }
+
+    fun clearCallState() {
+        callJoinState = null
     }
 
     private fun markFailed(pending: PendingFile) {

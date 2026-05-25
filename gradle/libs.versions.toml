@@ -31,8 +31,6 @@ filekit = "0.14.0"
 napier = "2.7.1"
 kotlinx-datetime = "0.6.2"
 
-
-
 [libraries]
 coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

@@ -16,7 +16,9 @@ import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationFileUp
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationMessageData
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationMessagesResponse
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationSessionResponse
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.JoinCallResponse
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.toDomain
+import ke.co.smartroundclinic.doctor.domain.model.CallJoinInfo
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationMessage
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationSession
 import ke.co.smartroundclinic.doctor.domain.repository.ConsultationRepository
@@ -68,6 +70,25 @@ class ConsultationRepositoryImpl(private val client: HttpClient) : ConsultationR
                 Resource.Error(e.message ?: "Failed to end consultation")
             }
         }
+
+    override suspend fun endCall(sessionId: String): Resource<Unit> = withContext(Dispatchers.IO) {
+        try {
+            client.post("consultation/$sessionId/call/end")
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to end call")
+        }
+    }
+
+    override suspend fun joinCall(sessionId: String): Resource<CallJoinInfo> = withContext(Dispatchers.IO) {
+        try {
+            val res = client.post("consultation/$sessionId/call/join").body<JoinCallResponse>()
+            if (res.status && res.data != null) Resource.Success(res.data.toDomain(), res.message)
+            else Resource.Error(res.message)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to join call")
+        }
+    }
 
     override suspend fun uploadFile(
         sessionId: String,

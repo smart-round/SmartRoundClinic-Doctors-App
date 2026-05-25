@@ -109,3 +109,26 @@ data class ConsultationFileUploadResponse(
     val message: String,
     val status: Boolean,
 )
+
+@Serializable
+data class JoinCallData(
+    val meetingId: String,
+    val participantId: String,
+    val authToken: String,
+    val presetName: String,
+)
+
+@Serializable
+data class JoinCallResponse(
+    val data: JoinCallData? = null,
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+)
+
+fun JoinCallData.toDomain() = ke.co.smartroundclinic.doctor.domain.model.CallJoinInfo(
+    meetingId = meetingId,
+    participantId = participantId,
+    authToken = authToken,
+    presetName = presetName,
+)

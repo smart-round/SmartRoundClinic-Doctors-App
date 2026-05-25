@@ -51,7 +51,7 @@ composeApp/
 | Navigation3 (`org.jetbrains.androidx.navigation3`) | 1.1.0 | Navigation — JetBrains KMP port, NOT `androidx.navigation3` |
 | Room | 2.8.4 | Local database — KMP via `BundledSQLiteDriver` |
 | SQLite Bundled | 2.6.2 | Cross-platform SQLite driver for Room |
-| Ktor | 3.4.3 | HTTP client |
+| Ktor | 3.0.3 | HTTP client |
 | kotlinx.serialization | 1.11.0 | JSON serialization |
 | kotlinx.coroutines | 1.10.2 | Async |
 | Coil 3 | 3.4.0 | Image loading — uses `coil-network-ktor3` (NOT `coil-network-okhttp`) |

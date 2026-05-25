@@ -74,7 +74,12 @@ fun ChatRoot(
                 CallScreen(
                     participantName = patientName,
                     isVideo = dest.isVideo,
-                    onEnd = { backStack.removeLastOrNull() },
+                    joinState = vm.callJoinState,
+                    onJoin = { vm.joinCall(dest.sessionId) },
+                    onEnd = {
+                        vm.endCall()
+                        backStack.removeLastOrNull()
+                    },
                 )
             }
         },

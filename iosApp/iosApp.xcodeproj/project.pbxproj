@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AA1122334455667788990033 /* RealtimeKit in Frameworks */ = {isa = PBXBuildFile; productRef = AA1122334455667788990022 /* RealtimeKit */; };
+		F4A5B6C7D8E9F0A1B2C3D4E7 /* RealtimeKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = F4A5B6C7D8E9F0A1B2C3D4E6 /* RealtimeKitUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		7F12873E73E082BA875ACB9A /* SmartRoundClinic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmartRoundClinic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -41,6 +46,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA1122334455667788990033 /* RealtimeKit in Frameworks */,
+				F4A5B6C7D8E9F0A1B2C3D4E7 /* RealtimeKitUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,6 +92,8 @@
 			);
 			name = iosApp;
 			packageProductDependencies = (
+				AA1122334455667788990022 /* RealtimeKit */,
+				F4A5B6C7D8E9F0A1B2C3D4E6 /* RealtimeKitUI */,
 			);
 			productName = iosApp;
 			productReference = 7F12873E73E082BA875ACB9A /* SmartRoundClinic.app */;
@@ -114,6 +123,10 @@
 			);
 			mainGroup = 57FF37A4CD18BBFA53B9427E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AA1122334455667788990011 /* XCRemoteSwiftPackageReference "realtimekit-ios-core" */,
+				F4A5B6C7D8E9F0A1B2C3D4E5 /* XCLocalSwiftPackageReference "LocalPackages/RealtimeKitUI" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 95DDF0C6DBA4425C46DD9E90 /* Products */;
 			projectDirPath = "";
@@ -368,6 +381,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		F4A5B6C7D8E9F0A1B2C3D4E5 /* XCLocalSwiftPackageReference "LocalPackages/RealtimeKitUI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = LocalPackages/RealtimeKitUI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AA1122334455667788990011 /* XCRemoteSwiftPackageReference "realtimekit-ios-core" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/cloudflare/realtimekit-ios-core.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA1122334455667788990022 /* RealtimeKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA1122334455667788990011 /* XCRemoteSwiftPackageReference "realtimekit-ios-core" */;
+			productName = RealtimeKit;
+		};
+		F4A5B6C7D8E9F0A1B2C3D4E6 /* RealtimeKitUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F4A5B6C7D8E9F0A1B2C3D4E5 /* XCLocalSwiftPackageReference "LocalPackages/RealtimeKitUI" */;
+			productName = RealtimeKitUI;
+		};
+/* End XCSwiftPackageProductDependency section */
+
 	};
 	rootObject = C5D1BD43B35DF90005987CC2 /* Project object */;
 }

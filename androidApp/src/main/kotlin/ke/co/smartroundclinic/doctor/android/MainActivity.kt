@@ -1,12 +1,12 @@
 package ke.co.smartroundclinic.doctor.android
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.fragment.app.FragmentActivity
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.model.AppUpdateType
@@ -17,7 +17,9 @@ import com.google.android.play.core.ktx.isFlexibleUpdateAllowed
 import com.google.android.play.core.ktx.isImmediateUpdateAllowed
 import ke.co.smartroundclinic.doctor.App
 
-class MainActivity : ComponentActivity() {
+// Extends FragmentActivity (not ComponentActivity) so the Cloudflare RealtimeKit
+// UI Kit can attach its meeting fragment.
+class MainActivity : FragmentActivity() {
 
     private val appUpdateManager by lazy { AppUpdateManagerFactory.create(this) }
 

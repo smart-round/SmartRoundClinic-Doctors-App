@@ -2,6 +2,7 @@ package ke.co.smartroundclinic.doctor.koin
 
 import ke.co.smartroundclinic.doctor.domain.usecase.PreloadDashboardUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetConsultationMessagesUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ConsultationViewModel
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.CreateArticleUseCase
@@ -122,6 +123,7 @@ val useCaseModule = module {
     // Consultation use cases
     single { StartConsultationUseCase(get()) }
     single { GetConsultationMessagesUseCase(get()) }
+    single { JoinConsultationCallUseCase(get()) }
 
     viewModel { SplashViewModel(get(), get(), get()) }
     viewModel { OnboardingScreenViewModel(get(), get()) }
@@ -140,5 +142,5 @@ val useCaseModule = module {
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }
-    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
 }
