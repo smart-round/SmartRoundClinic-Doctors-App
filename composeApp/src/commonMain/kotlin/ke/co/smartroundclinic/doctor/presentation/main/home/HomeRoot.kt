@@ -45,6 +45,8 @@ fun HomeRoot(
     onAtRootChanged: (Boolean) -> Unit = {},
     onSignOut: () -> Unit = {},
     onSeeAllAppointments: () -> Unit = {},
+    onSeeAllConsultations: () -> Unit = {},
+    onOpenConsultation: (appointmentId: String, patientName: String) -> Unit = { _, _ -> },
     pendingDestinations: List<NavKey> = emptyList(),
     onPendingNavigated: () -> Unit = {},
 ) {
@@ -71,6 +73,8 @@ fun HomeRoot(
                 HomeScreen(
                     onProfileClick = { backStack.add(ProfileList) },
                     onSeeAllAppointments = onSeeAllAppointments,
+                    onSeeAllConsultations = onSeeAllConsultations,
+                    onOpenConsultation = onOpenConsultation,
                     onSetUpCalendar = { backStack.add(ScheduleManagement) },
                 )
             }

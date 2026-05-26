@@ -1,6 +1,7 @@
 package ke.co.smartroundclinic.doctor.koin
 
 import ke.co.smartroundclinic.doctor.domain.usecase.PreloadDashboardUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.notification.RegisterDeviceTokenUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetConsultationMessagesUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
@@ -120,6 +121,8 @@ val useCaseModule = module {
     single { UploadLicenceUseCase(get()) }
     single { DeleteLicenceUseCase(get()) }
 
+    single { RegisterDeviceTokenUseCase(get()) }
+
     // Consultation use cases
     single { StartConsultationUseCase(get()) }
     single { GetConsultationMessagesUseCase(get()) }
@@ -132,7 +135,7 @@ val useCaseModule = module {
     viewModel { SignUpFilesViewModel() }
     viewModel { SignUpFormViewModel() }
     viewModel { AccountVerificationViewModel(get(), get(), get()) }
-    viewModel { SignInViewModel(get(), get(), get(), get(), get()) }
+    viewModel { SignInViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { ForgotPasswordViewModel(get(), get(), get(), get()) }
     viewModel { PersonalInfoViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { PaymentDetailsViewModel(get(), get(), get(), get(), get(), get()) }

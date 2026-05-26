@@ -78,9 +78,10 @@ import ke.co.smartroundclinic.doctor.presentation.theme.StatusPending
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.Month
+import org.jetbrains.compose.resources.painterResource
+import smartroundclinic.composeapp.generated.resources.Res
+import smartroundclinic.composeapp.generated.resources.notification
 
-
-private data class MessageItem(val senderName: String, val preview: String, val timestamp: String)
 
 private fun formatAppointmentDateTime(date: String, slotStart: String, slotEnd: String): String {
     val localDate = runCatching { LocalDate.parse(date) }.getOrNull()
@@ -109,6 +110,8 @@ private fun formatAppointmentDateTime(date: String, slotStart: String, slotEnd: 
 fun HomeScreen(
     onProfileClick: () -> Unit = {},
     onSeeAllAppointments: () -> Unit = {},
+    onSeeAllConsultations: () -> Unit = {},
+    onOpenConsultation: (appointmentId: String, patientName: String) -> Unit = { _, _ -> },
     onSetUpCalendar: () -> Unit = {},
     modifier: Modifier = Modifier,
     profileViewModel: PersonalInfoViewModel = koinViewModel(),
@@ -135,10 +138,12 @@ fun HomeScreen(
 
     val isCalendarBlocked = schedule.none { it.isActive }
 
-    val messages = listOf(
-        MessageItem("Alice Wachira", "You: Thanks doctor,...", "27 Oct"),
-        MessageItem("Alice Wachira", "You: Sorry, I will make an...", "15 Oct"),
-    )
+    val recentConsultations = remember(allAppointments) {
+        allAppointments
+            .filter { it.status == AppointmentStatus.CONFIRMED || it.status == AppointmentStatus.COMPLETED }
+            .sortedByDescending { it.date + it.slotStart }
+            .take(2)
+    }
 
     Scaffold(
         modifier = modifier,
@@ -165,7 +170,13 @@ fun HomeScreen(
                         onSeeAll = onSeeAllAppointments
                     )
                 }
-                item { RecentMessagesSection(messages = messages, onSeeAll = {}) }
+                item {
+                    RecentMessagesSection(
+                        consultations = recentConsultations,
+                        onSeeAll = onSeeAllConsultations,
+                        onOpenConsultation = onOpenConsultation,
+                    )
+                }
             }
         }
     }
@@ -232,7 +243,7 @@ private fun DashboardHeader(
                 )
                 IconButton(onClick = {}) {
                     Icon(
-                        painter = rememberSvgPainter("files/icons/notification.svg"),
+                        painter = painterResource(Res.drawable.notification),
                         contentDescription = "Notifications",
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
@@ -330,26 +341,29 @@ private fun AppointmentsSection(
 
 @Composable
 private fun RecentMessagesSection(
-    messages: List<MessageItem>,
+    consultations: List<Appointment>,
     onSeeAll: () -> Unit,
+    onOpenConsultation: (appointmentId: String, patientName: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
         SectionHeader(title = "Recent Messages", onSeeAll = onSeeAll)
         Spacer(Modifier.height(8.dp))
-        if (messages.isEmpty()) {
+        if (consultations.isEmpty()) {
             EmptyPlaceholder(
                 icon = Icons.Outlined.ChatBubbleOutline,
                 title = "No Messages Yet",
                 subtitle = "Messages will appear as soon as patients reach out"
             )
         } else {
-            messages.forEach { item ->
+            consultations.forEach { appt ->
                 MessageRow(
-                    senderName = item.senderName,
-                    preview = item.preview,
-                    timestamp = item.timestamp,
-                    onClick = {})
+                    senderName = appt.patientName,
+                    preview = "Consultation  •  ${appt.slotStart} – ${appt.slotEnd}",
+                    timestamp = appt.date,
+                    profilePicture = appt.patientProfilePicture,
+                    onClick = { onOpenConsultation(appt.id, appt.patientName) }
+                )
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -493,6 +507,7 @@ private fun MessageRow(
     senderName: String,
     preview: String,
     timestamp: String,
+    profilePicture: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -518,6 +533,14 @@ private fun MessageRow(
                     tint = Secondary40,
                     modifier = Modifier.size(24.dp)
                 )
+                if (profilePicture != null) {
+                    AsyncImage(
+                        model = profilePicture,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(

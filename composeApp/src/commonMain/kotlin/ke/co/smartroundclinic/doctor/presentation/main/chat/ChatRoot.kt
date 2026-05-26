@@ -21,12 +21,22 @@ import org.koin.compose.viewmodel.koinViewModel
 fun ChatRoot(
     modifier: Modifier = Modifier,
     onAtRootChanged: (Boolean) -> Unit = {},
+    pendingConversation: Conversation? = null,
+    onPendingNavigated: () -> Unit = {},
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(ChatList) }
     val isAtRoot = backStack.size == 1
     val vm: ConsultationViewModel = koinViewModel()
 
     SideEffect { onAtRootChanged(isAtRoot) }
+
+    LaunchedEffect(pendingConversation) {
+        if (pendingConversation != null) {
+            backStack.removeAll { it is Conversation }
+            backStack.add(pendingConversation)
+            onPendingNavigated()
+        }
+    }
 
     NavDisplay(
         modifier = modifier,

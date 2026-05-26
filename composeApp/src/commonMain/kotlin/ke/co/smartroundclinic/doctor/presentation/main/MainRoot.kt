@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -55,6 +56,7 @@ import androidx.navigation3.ui.NavDisplay
 import ke.co.smartroundclinic.doctor.presentation.main.articles.ArticlesRoot
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingsRoot
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ChatRoot
+import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Conversation
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Articles
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Bookings
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Chat
@@ -66,19 +68,26 @@ import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientStart
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
+import smartroundclinic.composeapp.generated.resources.Res
+import smartroundclinic.composeapp.generated.resources.bottom_bar_bookings
+import smartroundclinic.composeapp.generated.resources.bottom_bar_chat
+import smartroundclinic.composeapp.generated.resources.bottom_bar_cost_articles
+import smartroundclinic.composeapp.generated.resources.bottom_bar_home
 
 private data class BottomTab(
     val destination: NavKey,
     val label: String,
-    val iconPath: String,
+    val painter: DrawableResource
 )
 
 private val tabs = listOf(
-    BottomTab(Home, "Home", "files/icons/home.svg"),
-    BottomTab(Bookings, "Bookings", "files/icons/bookings.svg"),
-    BottomTab(Articles, "Articles", "files/icons/articles.svg"),
-    BottomTab(Chat, "Chat", "files/icons/chat.svg"),
+    BottomTab(Home, "Home", Res.drawable.bottom_bar_home),
+    BottomTab(Bookings, "Bookings", Res.drawable.bottom_bar_bookings),
+    BottomTab(Articles, "Articles", Res.drawable.bottom_bar_cost_articles),
+    BottomTab(Chat, "Chat", Res.drawable.bottom_bar_chat),
 )
 
 @Composable
@@ -88,6 +97,7 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
 
     var isAtRoot by remember { mutableStateOf(true) }
     var pendingHomeDestinations by remember { mutableStateOf<List<NavKey>>(emptyList()) }
+    var pendingChatConversation by remember { mutableStateOf<Conversation?>(null) }
     var inComplianceFixMode by remember { mutableStateOf(false) }
 
     // When the user navigates back to root after fixing their profile, re-show the dialog
@@ -132,13 +142,24 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                         onAtRootChanged = { isAtRoot = it },
                         onSignOut = onSignOut,
                         onSeeAllAppointments = { selectTab(Bookings) },
+                        onSeeAllConsultations = { selectTab(Chat) },
+                        onOpenConsultation = { appointmentId, patientName ->
+                            selectTab(Chat)
+                            pendingChatConversation = Conversation(appointmentId, patientName)
+                        },
                         pendingDestinations = pendingHomeDestinations,
                         onPendingNavigated = { pendingHomeDestinations = emptyList() },
                     )
                 }
                 entry<Bookings> { BookingsRoot(onAtRootChanged = { isAtRoot = it }) }
                 entry<Articles> { ArticlesRoot(onAtRootChanged = { isAtRoot = it }) }
-                entry<Chat> { ChatRoot(onAtRootChanged = { isAtRoot = it }) }
+                entry<Chat> {
+                    ChatRoot(
+                        onAtRootChanged = { isAtRoot = it },
+                        pendingConversation = pendingChatConversation,
+                        onPendingNavigated = { pendingChatConversation = null },
+                    )
+                }
             },
         )
     }
@@ -422,7 +443,7 @@ private fun BottomNavItem(
         )
         Spacer(Modifier.height(6.dp))
         Icon(
-            painter = rememberSvgPainter(tab.iconPath),
+            painter = painterResource(tab.painter),
             contentDescription = tab.label,
             tint = iconColor,
             modifier = Modifier.size(24.dp),

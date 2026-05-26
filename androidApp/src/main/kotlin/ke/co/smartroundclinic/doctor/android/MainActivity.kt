@@ -1,5 +1,8 @@
 package ke.co.smartroundclinic.doctor.android
 
+import android.Manifest
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,6 +18,8 @@ import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.android.play.core.ktx.installStatus
 import com.google.android.play.core.ktx.isFlexibleUpdateAllowed
 import com.google.android.play.core.ktx.isImmediateUpdateAllowed
+import com.mmk.kmpnotifier.extensions.onCreateOrOnNewIntent
+import com.mmk.kmpnotifier.notification.NotifierManager
 import ke.co.smartroundclinic.doctor.App
 
 // Extends FragmentActivity (not ComponentActivity) so the Cloudflare RealtimeKit
@@ -26,13 +31,29 @@ class MainActivity : FragmentActivity() {
     private val updateLauncher: ActivityResultLauncher<IntentSenderRequest> =
         registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { /* user cancelled or update failed — no-op */ }
 
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* granted or denied — FCM handles delivery either way */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        NotifierManager.onCreateOrOnNewIntent(intent)
+        requestNotificationPermission()
         setContent {
             App()
         }
         checkForUpdate()
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        NotifierManager.onCreateOrOnNewIntent(intent)
     }
 
     override fun onResume() {

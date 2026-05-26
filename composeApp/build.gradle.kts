@@ -31,6 +31,7 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
+            export(libs.kmpnotifier)
         }
     }
 
@@ -85,6 +86,7 @@ kotlin {
             implementation(libs.richeditor.compose)
             implementation(libs.compose.webview)
             implementation(libs.coil.svg)
+            api(libs.kmpnotifier)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

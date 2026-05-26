@@ -3,6 +3,7 @@ package ke.co.smartroundclinic.doctor.koin
 import ke.co.smartroundclinic.doctor.core.database.AppDatabase
 import ke.co.smartroundclinic.doctor.data.repository.AppointmentLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ConsultationRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.NotificationRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ArticleCategoryLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ArticleLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ArticleRepositoryImpl
@@ -21,6 +22,7 @@ import ke.co.smartroundclinic.doctor.data.repository.PaymentDetailsLocalReposito
 import ke.co.smartroundclinic.doctor.data.repository.UserLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ConsultationRepository
+import ke.co.smartroundclinic.doctor.domain.repository.NotificationRepository
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ArticleCategoryLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ArticleLocalRepository
@@ -58,4 +60,5 @@ val repositoryModule = module {
     single<ArticleCategoryLocalRepository> { ArticleCategoryLocalRepositoryImpl(get<AppDatabase>().articleCategoryDao) }
     single<LicenceRepository> { LicenceRepositoryImpl(get()) }
     single<ConsultationRepository> { ConsultationRepositoryImpl(get()) }
+    single<NotificationRepository> { NotificationRepositoryImpl(get()) }
 }
