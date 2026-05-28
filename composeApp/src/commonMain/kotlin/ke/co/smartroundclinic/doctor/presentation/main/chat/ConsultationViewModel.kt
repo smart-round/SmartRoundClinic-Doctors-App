@@ -29,6 +29,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultatio
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
 import ke.co.smartroundclinic.doctor.domain.model.CallJoinInfo
 import ke.co.smartroundclinic.doctor.domain.repository.ConsultationRepository
+import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.CompleteAppointmentUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -57,6 +58,7 @@ class ConsultationViewModel(
     private val startConsultationUseCase: StartConsultationUseCase,
     private val getMessagesUseCase: GetConsultationMessagesUseCase,
     private val joinCallUseCase: JoinConsultationCallUseCase,
+    private val completeAppointmentUseCase: CompleteAppointmentUseCase,
     private val appointmentLocalRepository: AppointmentLocalRepository,
     private val userLocalRepository: UserLocalRepository,
     private val httpClient: HttpClient,
@@ -262,8 +264,12 @@ class ConsultationViewModel(
 
     fun endCall() {
         val sessionId = activeSession?.id ?: run { clearCallState(); return }
+        val appointmentId = activeSession?.appointmentId ?: ""
         viewModelScope.launch {
             consultationRepository.endCall(sessionId)
+            if (appointmentId.isNotEmpty()) {
+                completeAppointmentUseCase(appointmentId)
+            }
             clearCallState()
         }
     }

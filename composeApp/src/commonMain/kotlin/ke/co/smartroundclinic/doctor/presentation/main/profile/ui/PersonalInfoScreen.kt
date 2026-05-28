@@ -98,7 +98,6 @@ internal fun PersonalInfoScreen(
     val isSaving = viewModel.isSaving
     val isDeleting = viewModel.isDeleting
     val isRefreshing = viewModel.isRefreshing
-
     var selectedBytes by remember { mutableStateOf<ByteArray?>(null) }
 
     // Two-level sheet flow: profile picture sheet → photo picker sheet

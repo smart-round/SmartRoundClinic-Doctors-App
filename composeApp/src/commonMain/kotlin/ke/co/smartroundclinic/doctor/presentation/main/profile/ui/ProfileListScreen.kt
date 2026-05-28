@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.Person
@@ -94,6 +95,7 @@ import org.koin.compose.viewmodel.koinViewModel
 internal fun ProfileListScreen(
     onBack: () -> Unit  = {},
     onPersonalInfo: () -> Unit  = {},
+    onBio: () -> Unit = {},
     onBankingDetails: () -> Unit = {},
     onSecuritySettings: () -> Unit = {},
     onSupport: () -> Unit  = {},
@@ -138,6 +140,12 @@ internal fun ProfileListScreen(
                     icon = Icons.Outlined.Person,
                     label = "Personal Information",
                     onClick = onPersonalInfo,
+                )
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                ProfileMenuItem(
+                    icon = Icons.Outlined.Description,
+                    label = "Profile",
+                    onClick = onBio,
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                 ProfileMenuItem(

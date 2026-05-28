@@ -2,6 +2,7 @@ package ke.co.smartroundclinic.doctor.presentation.main.chat.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,10 +38,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
+import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
 
@@ -96,6 +99,24 @@ private fun EmptyView(modifier: Modifier = Modifier) {
 }
 
 @Composable
+private fun AppointmentStatusBadge(status: AppointmentStatus, modifier: Modifier = Modifier) {
+    val (bg, fg, label) = when (status) {
+        AppointmentStatus.CONFIRMED -> Triple(Color(0xFF2196F3).copy(alpha = 0.15f), Color(0xFF2196F3), "Confirmed")
+        AppointmentStatus.COMPLETED -> Triple(Color(0xFF4CAF50).copy(alpha = 0.15f), Color(0xFF4CAF50), "Completed")
+        AppointmentStatus.CANCELLED -> Triple(Color(0xFFF44336).copy(alpha = 0.15f), Color(0xFFF44336), "Cancelled")
+        AppointmentStatus.NO_SHOW -> Triple(Color(0xFFFF9800).copy(alpha = 0.15f), Color(0xFFFF9800), "No Show")
+        else -> Triple(Color(0xFFFFA726).copy(alpha = 0.15f), Color(0xFFFFA726), "Booked")
+    }
+    Box(
+        modifier = modifier
+            .background(bg, RoundedCornerShape(20.dp))
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    ) {
+        Text(text = label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = fg)
+    }
+}
+
+@Composable
 private fun AppointmentRow(appointment: Appointment, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
@@ -115,9 +136,14 @@ private fun AppointmentRow(appointment: Appointment, onClick: () -> Unit, modifi
                 Text(text = appointment.date, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(imageVector = Icons.Filled.VideoCall, contentDescription = null, tint = Primary40, modifier = Modifier.size(16.dp))
-            Text(text = "Join", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = Primary40)
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            AppointmentStatusBadge(status = appointment.status)
+            if (appointment.status == AppointmentStatus.CONFIRMED) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(imageVector = Icons.Filled.VideoCall, contentDescription = null, tint = Primary40, modifier = Modifier.size(16.dp))
+                    Text(text = "Join", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = Primary40)
+                }
+            }
         }
     }
 }

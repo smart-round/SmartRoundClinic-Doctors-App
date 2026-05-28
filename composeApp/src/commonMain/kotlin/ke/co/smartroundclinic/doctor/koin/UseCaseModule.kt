@@ -1,5 +1,7 @@
 package ke.co.smartroundclinic.doctor.koin
 
+import ke.co.smartroundclinic.doctor.domain.usecase.profile.GetDoctorProfileUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.profile.UpdateDoctorProfileUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.PreloadDashboardUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.notification.RegisterDeviceTokenUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetConsultationMessagesUseCase
@@ -122,6 +124,8 @@ val useCaseModule = module {
     single { DeleteLicenceUseCase(get()) }
 
     single { RegisterDeviceTokenUseCase(get()) }
+    single { GetDoctorProfileUseCase(get()) }
+    single { UpdateDoctorProfileUseCase(get()) }
 
     // Consultation use cases
     single { StartConsultationUseCase(get()) }
@@ -137,7 +141,7 @@ val useCaseModule = module {
     viewModel { AccountVerificationViewModel(get(), get(), get()) }
     viewModel { SignInViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { ForgotPasswordViewModel(get(), get(), get(), get()) }
-    viewModel { PersonalInfoViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { PersonalInfoViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { PaymentDetailsViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { SpecializationViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ScheduleViewModel(get(), get(), get(), get(), get(), get(), get()) }
@@ -145,5 +149,5 @@ val useCaseModule = module {
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }
-    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }

@@ -18,6 +18,8 @@ import ke.co.smartroundclinic.doctor.domain.usecase.auth.GetUserUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.SignOutUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.UpdatePersonalInfoUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.UploadProfilePictureUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.profile.GetDoctorProfileUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.profile.UpdateDoctorProfileUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +35,8 @@ class PersonalInfoViewModel(
     private val userLocalRepository: UserLocalRepository,
     private val doctorSpecializationLocalRepository: DoctorSpecializationLocalRepository,
     private val signOutUseCase: SignOutUseCase,
+    private val getDoctorProfileUseCase: GetDoctorProfileUseCase,
+    private val updateDoctorProfileUseCase: UpdateDoctorProfileUseCase,
     private val snackbarController: SnackbarController,
 ) : ViewModel() {
 
@@ -55,8 +59,79 @@ class PersonalInfoViewModel(
     var isDeleting by mutableStateOf(false)
         private set
 
+    // Doctor profile fields (from PUT /doctor/profile)
+    var profileTitle by mutableStateOf<String?>(null)
+        private set
+    var profileBio by mutableStateOf<String?>(null)
+        private set
+    var profileKmpdcRegNumber by mutableStateOf<String?>(null)
+        private set
+    var profileYearsOfExperience by mutableStateOf<Int?>(null)
+        private set
+    var profileLanguages by mutableStateOf<List<String>>(emptyList())
+        private set
+    var profileFacilityName by mutableStateOf<String?>(null)
+        private set
+
+    var isSavingProfile by mutableStateOf(false)
+        private set
+
     init {
         refreshUser()
+        loadProfile()
+    }
+
+    fun loadProfile() {
+        viewModelScope.launch {
+            when (val result = getDoctorProfileUseCase()) {
+                is Resource.Success -> result.data?.let { p ->
+                    profileTitle = p.title
+                    profileBio = p.bio
+                    profileKmpdcRegNumber = p.kmpdcRegNumber
+                    profileYearsOfExperience = p.yearsOfExperience
+                    profileLanguages = p.languages
+                    profileFacilityName = p.facilityName
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun updateDoctorProfile(
+        title: String,
+        bio: String,
+        kmpdcRegNumber: String,
+        yearsOfExperience: String,
+        languages: List<String>,
+        facilityName: String,
+    ) {
+        viewModelScope.launch {
+            isSavingProfile = true
+            val result = updateDoctorProfileUseCase(
+                title = title.takeIf { it.isNotBlank() },
+                bio = bio.takeIf { it.isNotBlank() },
+                kmpdcRegNumber = kmpdcRegNumber.takeIf { it.isNotBlank() },
+                yearsOfExperience = yearsOfExperience.toIntOrNull(),
+                languages = languages.ifEmpty { null },
+                facilityName = facilityName.takeIf { it.isNotBlank() },
+            )
+            isSavingProfile = false
+            when (result) {
+                is Resource.Success -> {
+                    result.data?.let { p ->
+                        profileTitle = p.title
+                        profileBio = p.bio
+                        profileKmpdcRegNumber = p.kmpdcRegNumber
+                        profileYearsOfExperience = p.yearsOfExperience
+                        profileLanguages = p.languages
+                        profileFacilityName = p.facilityName
+                    }
+                    snackbarController.show(result.message ?: "Profile updated")
+                }
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to update profile", isError = true)
+                else -> {}
+            }
+        }
     }
 
     fun refreshUser() {

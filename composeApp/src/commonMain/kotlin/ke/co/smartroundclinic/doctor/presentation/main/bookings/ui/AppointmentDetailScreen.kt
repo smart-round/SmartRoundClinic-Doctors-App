@@ -47,8 +47,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
@@ -131,7 +133,16 @@ internal fun AppointmentDetailScreen(
                                 modifier = Modifier.size(40.dp).clip(CircleShape).background(Secondary90),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(24.dp))
+                                if (appointment.patientProfilePicture != null) {
+                                    AsyncImage(
+                                        model = appointment.patientProfilePicture,
+                                        contentDescription = appointment.patientName,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    )
+                                } else {
+                                    Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(24.dp))
+                                }
                             }
                             Spacer(Modifier.width(12.dp))
                             Column {

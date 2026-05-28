@@ -14,6 +14,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.home.ui.HomeScreen
 import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.BankingDetails
+import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.DoctorProfile
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.CreateNewPasswordSecurity
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.PasswordChanged
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.PersonalInfo
@@ -25,6 +26,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Lice
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Specialization
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Support
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.VerifyEmailSecurity
+import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.ProfileScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.CreateNewPasswordSecurityScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.PasswordChangedScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.PaymentDetailsScreen
@@ -82,6 +84,7 @@ fun HomeRoot(
                 ProfileListScreen(
                     onBack = { backStack.removeLastOrNull() },
                     onPersonalInfo = { backStack.add(PersonalInfo) },
+                    onBio = { backStack.add(DoctorProfile) },
                     onBankingDetails = { backStack.add(BankingDetails) },
                     onSecuritySettings = { backStack.add(ResetPassword) },
                     onSupport = { backStack.add(Support) },
@@ -94,6 +97,9 @@ fun HomeRoot(
             }
             entry<PersonalInfo> {
                 PersonalInfoScreen(onBack = { backStack.removeLastOrNull() })
+            }
+            entry<DoctorProfile> {
+                ProfileScreen(onBack = { backStack.removeLastOrNull() }, viewModel = viewModel)
             }
             entry<BankingDetails> {
                 PaymentDetailsScreen(onBack = { backStack.removeLastOrNull() })

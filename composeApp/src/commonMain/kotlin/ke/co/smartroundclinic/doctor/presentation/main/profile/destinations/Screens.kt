@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object ProfileList : NavKey
 @Serializable data object PersonalInfo : NavKey
+@Serializable data object DoctorProfile : NavKey
 @Serializable data object BankingDetails : NavKey
 @Serializable data object ResetPassword : NavKey
 @Serializable data object VerifyEmailSecurity : NavKey
