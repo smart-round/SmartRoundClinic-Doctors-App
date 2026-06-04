@@ -16,7 +16,7 @@ data class UserEntity(
     val role: String,
     val accountStatus: String,
     val verificationStatus: String,
-    val kraPin: String,
+    val kraPin: String?,
     val createdAt: String,
 )
 

@@ -110,9 +110,9 @@ internal fun ConversationScreen(
     isStartingSession: Boolean,
     isConnected: Boolean,
     isUploadingFile: Boolean,
+    isCallEnabled: Boolean,
     currentUserId: String,
     onBack: () -> Unit,
-    onEndConsultation: () -> Unit,
     onVoiceCall: () -> Unit,
     onVideoCall: () -> Unit,
     onSendText: (String) -> Unit,
@@ -190,15 +190,12 @@ internal fun ConversationScreen(
                     }
                 },
                 actions = {
-                    if (session != null) {
+                    if (session != null && isCallEnabled) {
                         IconButton(onClick = onVoiceCall) {
                             Icon(imageVector = Icons.Filled.Phone, contentDescription = "Voice call", tint = Primary40)
                         }
                         IconButton(onClick = onVideoCall) {
                             Icon(imageVector = Icons.Filled.Videocam, contentDescription = "Video call", tint = Primary40)
-                        }
-                        IconButton(onClick = onEndConsultation) {
-                            Icon(imageVector = Icons.Filled.StopCircle, contentDescription = "End consultation", tint = Error40)
                         }
                     }
                 },

@@ -1,6 +1,7 @@
 package ke.co.smartroundclinic.doctor.presentation.main.bookings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,6 +28,8 @@ fun BookingsRoot(
     val appointments by viewModel.appointments.collectAsState()
 
     SideEffect { onAtRootChanged(isAtRoot) }
+
+    LaunchedEffect(Unit) { viewModel.loadAppointments() }
 
     NavDisplay(
         modifier = modifier,

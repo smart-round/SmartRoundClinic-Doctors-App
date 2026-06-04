@@ -20,7 +20,7 @@ data class UpdatePersonalInformationData(
     val fullName: String, // Mutuku kyalo
     val gender: String, // MALE
     val id: String, // 69f8846c319d59e154fdab3c
-    val kraPin: String, // A1234589h
+    val kraPin: String? = null,
     val phoneNumber: String? = null, // +254717722323
     val profilePicture: String? = null, // profile-pictures/69f8846c319d59e154fdab3c.jpeg
     val role: String, // DOCTOR

@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,6 +84,7 @@ internal fun ArticleListScreen(
     onUnpublish: (Article) -> Unit,
     onDelete: (Article) -> Unit,
     onTabChanged: (isMyTab: Boolean) -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by remember { mutableStateOf(ArticlesTab.MY_ARTICLES) }
@@ -107,17 +109,21 @@ internal fun ArticleListScreen(
                 },
             )
 
-            if ((isLoading || !hasLoaded) && articles.isEmpty()) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Primary40)
-                }
-            } else if (hasLoaded && articles.isEmpty()) {
-                EmptyArticlesView(
-                    isMyTab = selectedTab == ArticlesTab.MY_ARTICLES,
-                    modifier = Modifier.weight(1f),
-                )
-            } else {
-                Box(modifier = Modifier.weight(1f)) {
+            PullToRefreshBox(
+                isRefreshing = isLoading,
+                onRefresh = onRefresh,
+                modifier = Modifier.weight(1f),
+            ) {
+                if (!hasLoaded && articles.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Primary40)
+                    }
+                } else if (hasLoaded && articles.isEmpty()) {
+                    EmptyArticlesView(
+                        isMyTab = selectedTab == ArticlesTab.MY_ARTICLES,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -133,11 +139,6 @@ internal fun ArticleListScreen(
                                 onUnpublish = { onUnpublish(article) },
                                 onDelete = { onDelete(article) },
                             )
-                        }
-                    }
-                    if (isLoading) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-                            CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp), color = Primary40)
                         }
                     }
                 }

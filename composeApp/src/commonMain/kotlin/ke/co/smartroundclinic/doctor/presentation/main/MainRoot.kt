@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -61,7 +63,9 @@ import ke.co.smartroundclinic.doctor.presentation.main.destinations.Articles
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Bookings
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Chat
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Home
+import ke.co.smartroundclinic.doctor.presentation.main.destinations.Wallet
 import ke.co.smartroundclinic.doctor.presentation.main.home.HomeRoot
+import ke.co.smartroundclinic.doctor.presentation.main.wallet.WalletRoot
 import ke.co.smartroundclinic.doctor.presentation.rememberSvgPainter
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
@@ -77,17 +81,23 @@ import smartroundclinic.composeapp.generated.resources.bottom_bar_chat
 import smartroundclinic.composeapp.generated.resources.bottom_bar_cost_articles
 import smartroundclinic.composeapp.generated.resources.bottom_bar_home
 
+private sealed class TabIcon {
+    class Vector(val icon: ImageVector) : TabIcon()
+    class Drawable(val res: DrawableResource) : TabIcon()
+}
+
 private data class BottomTab(
     val destination: NavKey,
     val label: String,
-    val painter: DrawableResource
+    val icon: TabIcon,
 )
 
 private val tabs = listOf(
-    BottomTab(Home, "Home", Res.drawable.bottom_bar_home),
-    BottomTab(Bookings, "Bookings", Res.drawable.bottom_bar_bookings),
-    BottomTab(Articles, "Articles", Res.drawable.bottom_bar_cost_articles),
-    BottomTab(Chat, "Chat", Res.drawable.bottom_bar_chat),
+    BottomTab(Home, "Home", TabIcon.Drawable(Res.drawable.bottom_bar_home)),
+    BottomTab(Bookings, "Bookings", TabIcon.Drawable(Res.drawable.bottom_bar_bookings)),
+    BottomTab(Articles, "Articles", TabIcon.Drawable(Res.drawable.bottom_bar_cost_articles)),
+    BottomTab(Chat, "Chat", TabIcon.Drawable(Res.drawable.bottom_bar_chat)),
+    BottomTab(Wallet, "Wallet", TabIcon.Vector(Icons.Outlined.AccountBalanceWallet))
 )
 
 @Composable
@@ -153,6 +163,7 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                 }
                 entry<Bookings> { BookingsRoot(onAtRootChanged = { isAtRoot = it }) }
                 entry<Articles> { ArticlesRoot(onAtRootChanged = { isAtRoot = it }) }
+                entry<Wallet> { WalletRoot(onAtRootChanged = { isAtRoot = it }) }
                 entry<Chat> {
                     ChatRoot(
                         onAtRootChanged = { isAtRoot = it },
@@ -442,12 +453,20 @@ private fun BottomNavItem(
                 ),
         )
         Spacer(Modifier.height(6.dp))
-        Icon(
-            painter = painterResource(tab.painter),
-            contentDescription = tab.label,
-            tint = iconColor,
-            modifier = Modifier.size(24.dp),
-        )
+        when (val icon = tab.icon) {
+            is TabIcon.Vector -> Icon(
+                imageVector = icon.icon,
+                contentDescription = tab.label,
+                tint = iconColor,
+                modifier = Modifier.size(24.dp),
+            )
+            is TabIcon.Drawable -> Icon(
+                painter = painterResource(icon.res),
+                contentDescription = tab.label,
+                tint = iconColor,
+                modifier = Modifier.size(24.dp),
+            )
+        }
         Spacer(Modifier.height(2.dp))
         Text(
             text = tab.label,

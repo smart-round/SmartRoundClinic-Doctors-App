@@ -3,13 +3,18 @@ package ke.co.smartroundclinic.doctor.presentation.main.home
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.retain.retain
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import ke.co.smartroundclinic.doctor.core.notification.NotificationDeepLink
 import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.HomeList
+import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.Notifications
+import ke.co.smartroundclinic.doctor.presentation.main.notifications.NotificationsScreen
 import ke.co.smartroundclinic.doctor.presentation.main.home.ui.HomeScreen
 import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
@@ -39,6 +44,8 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.LicenceViewerS
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.SpecializationScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.SupportScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.VerifyEmailSecurityScreen
+import ke.co.smartroundclinic.doctor.presentation.main.support.SupportRoot
+import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ContactSupport
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -66,6 +73,14 @@ fun HomeRoot(
         }
     }
 
+    val notificationPending by NotificationDeepLink.pending.collectAsState()
+    LaunchedEffect(notificationPending) {
+        if (notificationPending) {
+            if (backStack.none { it is Notifications }) backStack.add(Notifications)
+            NotificationDeepLink.consume()
+        }
+    }
+
     NavDisplay(
         modifier = modifier,
         backStack = backStack,
@@ -74,11 +89,15 @@ fun HomeRoot(
             entry<HomeList> {
                 HomeScreen(
                     onProfileClick = { backStack.add(ProfileList) },
+                    onNotificationsClick = { backStack.add(Notifications) },
                     onSeeAllAppointments = onSeeAllAppointments,
                     onSeeAllConsultations = onSeeAllConsultations,
                     onOpenConsultation = onOpenConsultation,
                     onSetUpCalendar = { backStack.add(ScheduleManagement) },
                 )
+            }
+            entry<Notifications> {
+                NotificationsScreen(onBack = { backStack.removeLastOrNull() })
             }
             entry<ProfileList> {
                 ProfileListScreen(
@@ -134,7 +153,16 @@ fun HomeRoot(
                 )
             }
             entry<Support> {
-                SupportScreen(onBack = { backStack.removeLastOrNull() })
+                SupportScreen(
+                    onBack = { backStack.removeLastOrNull() },
+                    onContactUs = { backStack.add(ContactSupport) },
+                )
+            }
+            entry<ContactSupport> {
+                SupportRoot(
+                    user = viewModel.user.collectAsState().value,
+                    onBack = { backStack.removeLastOrNull() },
+                )
             }
             entry<ScheduleManagement> {
                 ScheduleManagementScreen(onBack = { backStack.removeLastOrNull() })

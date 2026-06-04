@@ -5,3 +5,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data object HomeList : NavKey
+
+@Serializable
+data object Notifications : NavKey

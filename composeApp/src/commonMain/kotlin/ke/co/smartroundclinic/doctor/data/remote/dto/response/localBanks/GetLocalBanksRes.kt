@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class GetLocalBanksRes(
-    val data: List<Item>,
+    val data: List<Item>? = null,
     val httpStatusCode: Int,
     val message: String,
     val status: Boolean
@@ -26,7 +26,7 @@ data class Item(
     val id: String
 )
 
-fun GetLocalBanksRes.toModel(): List<Bank> = data.map { it.toDomain() }
+fun GetLocalBanksRes.toModel(): List<Bank> = data?.map { it.toDomain() } ?: emptyList()
 
 fun Item.toDomain(): Bank = Bank(
     id = id,

@@ -3,7 +3,24 @@ package ke.co.smartroundclinic.doctor.koin
 import ke.co.smartroundclinic.doctor.domain.usecase.profile.GetDoctorProfileUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.profile.UpdateDoctorProfileUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.PreloadDashboardUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.notification.GetMyNotificationsUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetDoctorPaymentsUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetPaymentSummaryUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetWithdrawalBalanceUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.support.CreateSupportTicketUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.support.GetIssueCategoriesUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.support.GetMyTicketsUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.support.GetSupportChatHistoryUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.support.UploadChatFileUseCase
+import ke.co.smartroundclinic.doctor.presentation.main.support.SupportChatViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.support.SupportViewModel
+import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetWithdrawalByIdUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetWithdrawalHistoryUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.wallet.WithdrawUseCase
+import ke.co.smartroundclinic.doctor.presentation.main.wallet.WalletViewModel
+import ke.co.smartroundclinic.doctor.domain.usecase.notification.MarkNotificationReadUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.notification.RegisterDeviceTokenUseCase
+import ke.co.smartroundclinic.doctor.presentation.main.notifications.NotificationsViewModel
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetConsultationMessagesUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
@@ -124,6 +141,14 @@ val useCaseModule = module {
     single { DeleteLicenceUseCase(get()) }
 
     single { RegisterDeviceTokenUseCase(get()) }
+    single { GetMyNotificationsUseCase(get()) }
+    single { MarkNotificationReadUseCase(get()) }
+    single { GetDoctorPaymentsUseCase(get()) }
+    single { GetPaymentSummaryUseCase(get()) }
+    single { GetWithdrawalBalanceUseCase(get()) }
+    single { GetWithdrawalHistoryUseCase(get()) }
+    single { GetWithdrawalByIdUseCase(get()) }
+    single { WithdrawUseCase(get()) }
     single { GetDoctorProfileUseCase(get()) }
     single { UpdateDoctorProfileUseCase(get()) }
 
@@ -150,4 +175,15 @@ val useCaseModule = module {
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }
     viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { NotificationsViewModel(get(), get()) }
+    viewModel { WalletViewModel(get(), get(), get(), get(), get(), get(), get()) }
+
+    // Support
+    single { GetIssueCategoriesUseCase(get()) }
+    single { CreateSupportTicketUseCase(get()) }
+    single { GetMyTicketsUseCase(get()) }
+    single { UploadChatFileUseCase(get()) }
+    single { GetSupportChatHistoryUseCase(get()) }
+    viewModel { SupportViewModel(get(), get(), get(), get()) }
+    viewModel { (ticketId: String) -> SupportChatViewModel(ticketId, get(), get(), get(), get(), get()) }
 }

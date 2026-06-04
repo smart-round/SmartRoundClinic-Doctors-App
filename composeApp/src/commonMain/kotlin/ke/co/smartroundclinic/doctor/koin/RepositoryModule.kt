@@ -5,6 +5,8 @@ import ke.co.smartroundclinic.doctor.data.repository.AppointmentLocalRepositoryI
 import ke.co.smartroundclinic.doctor.data.repository.ConsultationRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.DoctorProfileRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.NotificationRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.SupportRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.WalletRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ArticleCategoryLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ArticleLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ArticleRepositoryImpl
@@ -25,6 +27,8 @@ import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepositor
 import ke.co.smartroundclinic.doctor.domain.repository.ConsultationRepository
 import ke.co.smartroundclinic.doctor.domain.repository.DoctorProfileRepository
 import ke.co.smartroundclinic.doctor.domain.repository.NotificationRepository
+import ke.co.smartroundclinic.doctor.domain.repository.SupportRepository
+import ke.co.smartroundclinic.doctor.domain.repository.WalletRepository
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ArticleCategoryLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ArticleLocalRepository
@@ -63,5 +67,7 @@ val repositoryModule = module {
     single<LicenceRepository> { LicenceRepositoryImpl(get()) }
     single<ConsultationRepository> { ConsultationRepositoryImpl(get()) }
     single<NotificationRepository> { NotificationRepositoryImpl(get()) }
+    single<WalletRepository> { WalletRepositoryImpl(get()) }
+    single<SupportRepository> { SupportRepositoryImpl(get()) }
     single<DoctorProfileRepository> { DoctorProfileRepositoryImpl(get()) }
 }

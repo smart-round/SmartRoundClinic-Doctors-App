@@ -59,6 +59,7 @@ private val supportItems = listOf(
 @Composable
 internal fun SupportScreen(
     onBack: () -> Unit,
+    onContactUs: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -110,7 +111,9 @@ internal fun SupportScreen(
                     .background(MaterialTheme.colorScheme.surface),
             ) {
                 supportItems.forEachIndexed { index, item ->
-                    SupportRow(item = item, onClick = {})
+                    SupportRow(item = item, onClick = {
+                        if (item.label == "Contact Us") onContactUs()
+                    })
                     if (index < supportItems.lastIndex) {
                         HorizontalDivider(
                             modifier = Modifier.padding(start = 68.dp),

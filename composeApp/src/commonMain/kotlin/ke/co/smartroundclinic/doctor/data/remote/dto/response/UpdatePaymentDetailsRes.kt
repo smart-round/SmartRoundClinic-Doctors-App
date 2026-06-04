@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class UpdatePaymentDetailsRes(
-    val data: UpdatePaymentDetailsData,
+    val data: UpdatePaymentDetailsData? = null,
     val httpStatusCode: Int, // 200
     val message: String, // Success
     val status: Boolean // true

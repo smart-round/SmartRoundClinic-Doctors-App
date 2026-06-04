@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -35,10 +36,14 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import ke.co.smartroundclinic.doctor.presentation.main.notifications.NotificationsViewModel
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
@@ -65,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.rememberSvgPainter
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
+import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientStart
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
@@ -109,6 +115,7 @@ private fun formatAppointmentDateTime(date: String, slotStart: String, slotEnd: 
 @Composable
 fun HomeScreen(
     onProfileClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
     onSeeAllAppointments: () -> Unit = {},
     onSeeAllConsultations: () -> Unit = {},
     onOpenConsultation: (appointmentId: String, patientName: String) -> Unit = { _, _ -> },
@@ -117,10 +124,22 @@ fun HomeScreen(
     profileViewModel: PersonalInfoViewModel = koinViewModel(),
     bookingsViewModel: BookingsViewModel = koinViewModel(),
     scheduleViewModel: ScheduleViewModel = koinViewModel(),
+    notificationsViewModel: NotificationsViewModel = koinViewModel(),
 ) {
     val user by profileViewModel.user.collectAsState()
     val allAppointments by bookingsViewModel.appointments.collectAsState()
     val schedule by scheduleViewModel.schedule.collectAsState()
+    val scope = rememberCoroutineScope()
+    val isRefreshing = profileViewModel.isRefreshing || bookingsViewModel.isLoading
+
+    fun refresh() {
+        scope.launch {
+            profileViewModel.refreshUser()
+            bookingsViewModel.loadAppointments()
+            scheduleViewModel.refresh()
+            notificationsViewModel.load()
+        }
+    }
 
     val today: LocalDate = remember {
         LocalDate(todayYear(), todayMonth(), todayDay())
@@ -150,32 +169,40 @@ fun HomeScreen(
         topBar = {
             DashboardHeader(
                 onProfileClick = onProfileClick,
+                onNotificationsClick = onNotificationsClick,
                 fullName = user?.fullName ?: "",
                 profilePicture = user?.profilePicture,
+                unreadNotifications = notificationsViewModel.unreadCount,
             )
         },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-        LazyColumn(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = ::refresh,
             modifier = Modifier.fillMaxSize().padding(paddingValues),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (isCalendarBlocked) {
-                item { CalendarBlockedCard(onSetUpCalendar = onSetUpCalendar) }
-            } else {
-                item {
-                    AppointmentsSection(
-                        appointments = upcomingAppointments,
-                        onSeeAll = onSeeAllAppointments
-                    )
-                }
-                item {
-                    RecentMessagesSection(
-                        consultations = recentConsultations,
-                        onSeeAll = onSeeAllConsultations,
-                        onOpenConsultation = onOpenConsultation,
-                    )
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                if (isCalendarBlocked) {
+                    item { CalendarBlockedCard(onSetUpCalendar = onSetUpCalendar) }
+                } else {
+                    item {
+                        AppointmentsSection(
+                            appointments = upcomingAppointments,
+                            onSeeAll = onSeeAllAppointments
+                        )
+                    }
+                    item {
+                        RecentMessagesSection(
+                            consultations = recentConsultations,
+                            onSeeAll = onSeeAllConsultations,
+                            onOpenConsultation = onOpenConsultation,
+                        )
+                    }
                 }
             }
         }
@@ -185,8 +212,10 @@ fun HomeScreen(
 @Composable
 private fun DashboardHeader(
     onProfileClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
     fullName: String,
     profilePicture: String?,
+    unreadNotifications: Int,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -241,13 +270,28 @@ private fun DashboardHeader(
                     color = Color.White,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = {}) {
+                Box(
+                    modifier = Modifier.clickable(
+                        enabled = true,
+                        onClick = onNotificationsClick
+                    )
+                ) {
                     Icon(
                         painter = painterResource(Res.drawable.notification),
                         contentDescription = "Notifications",
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
+                    if (unreadNotifications > 0) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(Color.Red)
+                                .align(Alignment.TopEnd)
+                                .offset(x=4.dp, y = (-14).dp)
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -330,6 +374,7 @@ private fun AppointmentsSection(
                 AppointmentCard(
                     dateTime = formatAppointmentDateTime(appt.date, appt.slotStart, appt.slotEnd),
                     patientName = appt.patientName,
+                    patientProfilePicture = appt.patientProfilePicture,
                     isConfirmed = appt.status == AppointmentStatus.CONFIRMED,
                     onView = onSeeAll,
                 )
@@ -427,6 +472,7 @@ private fun EmptyPlaceholder(
 private fun AppointmentCard(
     dateTime: String,
     patientName: String,
+    patientProfilePicture: String?,
     isConfirmed: Boolean,
     onView: () -> Unit,
     modifier: Modifier = Modifier,
@@ -469,6 +515,14 @@ private fun AppointmentCard(
                         tint = Secondary40,
                         modifier = Modifier.size(20.dp)
                     )
+                    if (patientProfilePicture != null) {
+                        AsyncImage(
+                            model = patientProfilePicture,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 }
                 Spacer(Modifier.width(8.dp))
                 Text(

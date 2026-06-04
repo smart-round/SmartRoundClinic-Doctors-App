@@ -21,18 +21,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,31 +81,30 @@ internal fun BookingListScreen(
     val today: LocalDate = remember { LocalDate(todayYear(), todayMonth(), todayDay()) }
 
     val pendingStatuses = setOf(AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED)
-    val filtered = appointments.filter { appt ->
-        val apptDate = runCatching { LocalDate.parse(appt.date) }.getOrNull()
-        when (selectedTab) {
-            BookingTab.UPCOMING -> apptDate != null && (
-                apptDate > today || (apptDate == today && appt.status in pendingStatuses)
-            )
-            BookingTab.TODAY -> apptDate != null && apptDate == today
-            BookingTab.PAST -> apptDate != null && apptDate < today
+    val terminalStatuses = setOf(AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW)
+    val filtered = appointments
+        .filter { appt ->
+            val apptDate = runCatching { LocalDate.parse(appt.date) }.getOrNull() ?: return@filter false
+            when (selectedTab) {
+                BookingTab.TODAY -> apptDate == today && appt.status in pendingStatuses
+                BookingTab.UPCOMING -> apptDate > today && appt.status in pendingStatuses
+                BookingTab.PAST -> appt.status in terminalStatuses ||
+                    (apptDate < today && appt.status in pendingStatuses)
+            }
         }
-    }
+        .sortedWith(
+            when (selectedTab) {
+                BookingTab.TODAY -> compareBy { it.slotStart }
+                BookingTab.UPCOMING -> compareBy({ it.date }, { it.slotStart })
+                BookingTab.PAST -> compareByDescending<Appointment> { it.date }.thenBy { it.slotStart }
+            }
+        )
 
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text("Bookings", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
-                actions = {
-                    if (isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp).padding(end = 8.dp), strokeWidth = 2.dp)
-                    } else {
-                        IconButton(onClick = onRefresh) {
-                            Icon(imageVector = Icons.Filled.Refresh, contentDescription = "Refresh")
-                        }
-                    }
-                }
             )
         },
         contentWindowInsets = WindowInsets(0),
@@ -115,16 +112,22 @@ internal fun BookingListScreen(
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             BookingTabRow(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
 
-            if (filtered.isEmpty() && !isLoading) {
-                EmptyBookingsView(tab = selectedTab, modifier = Modifier.weight(1f))
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(filtered, key = { it.id }) { appt ->
-                        BookingCard(appointment = appt, onClick = { onBookingClick(appt) })
+            PullToRefreshBox(
+                isRefreshing = isLoading,
+                onRefresh = onRefresh,
+                modifier = Modifier.weight(1f),
+            ) {
+                if (filtered.isEmpty() && !isLoading) {
+                    EmptyBookingsView(tab = selectedTab, modifier = Modifier.fillMaxSize())
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(filtered, key = { it.id }) { appt ->
+                            BookingCard(appointment = appt, onClick = { onBookingClick(appt) })
+                        }
                     }
                 }
             }
@@ -186,9 +189,9 @@ private fun EmptyBookingsView(tab: BookingTab, modifier: Modifier = Modifier) {
         Spacer(Modifier.height(8.dp))
         Text(
             text = when (tab) {
-                BookingTab.UPCOMING -> "Your consultation bookings will appear here"
-                BookingTab.TODAY -> "No appointments scheduled for today"
-                BookingTab.PAST -> "Completed and cancelled appointments will appear here"
+                BookingTab.UPCOMING -> "Booked and confirmed appointments for future dates will appear here"
+                BookingTab.TODAY -> "No booked or confirmed appointments scheduled for today"
+                BookingTab.PAST -> "Completed, cancelled, and no-show appointments will appear here"
             },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

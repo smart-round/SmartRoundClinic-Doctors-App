@@ -20,7 +20,7 @@ data class DeleteProfilePictureData(
     val fullName: String, // Mutuku kyalo
     val gender: String, // MALE
     val id: String, // 69f8846c319d59e154fdab3c
-    val kraPin: String, // A1234589h
+    val kraPin: String? = null,
     val role: String, // DOCTOR
     val verificationStatus: String // PENDING_APPROVAL
 )

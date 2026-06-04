@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Call
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.ChatList
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Conversation
@@ -64,13 +65,13 @@ fun ChatRoot(
                     isStartingSession = vm.isStartingSession,
                     isConnected = vm.isConnected,
                     isUploadingFile = vm.isUploadingFile,
+                    isCallEnabled = appointment?.status == AppointmentStatus.CONFIRMED,
                     pendingFiles = vm.pendingFiles,
                     currentUserId = vm.currentUserId,
                     onBack = {
                         vm.closeSession()
                         backStack.removeLastOrNull()
                     },
-                    onEndConsultation = { vm.endConsultation() },
                     onVoiceCall = { backStack.add(Call(vm.activeSession?.id ?: "", isVideo = false)) },
                     onVideoCall = { backStack.add(Call(vm.activeSession?.id ?: "", isVideo = true)) },
                     onSendText = vm::sendText,

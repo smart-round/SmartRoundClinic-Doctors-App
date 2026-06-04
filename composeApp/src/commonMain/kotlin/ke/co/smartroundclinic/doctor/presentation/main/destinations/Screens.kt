@@ -16,4 +16,7 @@ data object Bookings : NavKey
 data object Articles : NavKey
 
 @Serializable
+data object Wallet : NavKey
+
+@Serializable
 data object Chat : NavKey

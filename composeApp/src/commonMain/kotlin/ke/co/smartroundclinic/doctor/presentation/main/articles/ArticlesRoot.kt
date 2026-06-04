@@ -5,7 +5,10 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.retain.retain
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -28,6 +31,7 @@ fun ArticlesRoot(
     val viewModel = koinViewModel<ArticlesViewModel>()
     val backStack = retain { mutableStateListOf<NavKey>(ArticleList) }
     val isAtRoot = backStack.size == 1
+    var isOnMyTab by remember { mutableStateOf(true) }
 
     SideEffect { onAtRootChanged(isAtRoot) }
 
@@ -55,7 +59,11 @@ fun ArticlesRoot(
                     onUnpublish = { article -> viewModel.unpublishArticle(article.id) },
                     onDelete = { article -> viewModel.deleteArticle(article.id) },
                     onTabChanged = { isMyTab ->
+                        isOnMyTab = isMyTab
                         if (isMyTab) viewModel.refreshMyArticles() else viewModel.refreshLiveArticles()
+                    },
+                    onRefresh = {
+                        if (isOnMyTab) viewModel.refreshMyArticles() else viewModel.refreshLiveArticles()
                     },
                 )
             }
