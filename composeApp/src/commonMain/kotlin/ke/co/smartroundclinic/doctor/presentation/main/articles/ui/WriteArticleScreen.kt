@@ -74,6 +74,7 @@ internal fun WriteArticleScreen(
     isSaving: Boolean,
     onBack: () -> Unit,
     onThumbnailPicked: (bytes: ByteArray, filename: String) -> Unit,
+    onRefreshCategories: () -> Unit,
     onSaveDraft: (title: String, content: String, summary: String, categoryId: String) -> Unit,
     onPublish: (title: String, content: String, summary: String, categoryId: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -209,7 +210,10 @@ internal fun WriteArticleScreen(
 
                 ExposedDropdownMenuBox(
                     expanded = categoryExpanded,
-                    onExpandedChange = { categoryExpanded = it },
+                    onExpandedChange = { expanded ->
+                        categoryExpanded = expanded
+                        if (expanded) onRefreshCategories()
+                    },
                 ) {
                     OutlinedTextField(
                         value = selectedCategoryName,

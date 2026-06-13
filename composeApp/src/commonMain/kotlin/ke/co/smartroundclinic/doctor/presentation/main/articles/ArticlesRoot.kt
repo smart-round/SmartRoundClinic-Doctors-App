@@ -16,6 +16,7 @@ import androidx.navigation3.ui.NavDisplay
 import ke.co.smartroundclinic.doctor.domain.model.Article
 import ke.co.smartroundclinic.doctor.domain.model.ArticleState
 import ke.co.smartroundclinic.doctor.presentation.main.articles.destinations.ArticleDetail
+import ke.co.smartroundclinic.doctor.presentation.main.articles.ui.ArticlesTab
 import ke.co.smartroundclinic.doctor.presentation.main.articles.destinations.ArticleList
 import ke.co.smartroundclinic.doctor.presentation.main.articles.destinations.WriteArticle
 import ke.co.smartroundclinic.doctor.presentation.main.articles.ui.ArticleDetailScreen
@@ -31,7 +32,7 @@ fun ArticlesRoot(
     val viewModel = koinViewModel<ArticlesViewModel>()
     val backStack = retain { mutableStateListOf<NavKey>(ArticleList) }
     val isAtRoot = backStack.size == 1
-    var isOnMyTab by remember { mutableStateOf(true) }
+    var selectedTab by remember { mutableStateOf(ArticlesTab.MY_ARTICLES) }
 
     SideEffect { onAtRootChanged(isAtRoot) }
 
@@ -52,18 +53,21 @@ fun ArticlesRoot(
                     isLoadingLive = viewModel.isLoadingLive,
                     hasLoadedMine = viewModel.hasLoadedMine,
                     hasLoadedLive = viewModel.hasLoadedLive,
+                    selectedTab = selectedTab,
+                    onTabSelected = { tab ->
+                        selectedTab = tab
+                        if (tab == ArticlesTab.MY_ARTICLES) viewModel.refreshMyArticles()
+                        else viewModel.refreshLiveArticles()
+                    },
                     onWriteArticle = { viewModel.clearThumbnail(); backStack.add(WriteArticle()) },
                     onEditArticle = { article -> viewModel.clearThumbnail(); backStack.add(WriteArticle(articleId = article.id)) },
                     onArticleClick = { article -> backStack.add(ArticleDetail(article.id)) },
                     onPublish = { article -> viewModel.publishArticle(article.id) },
                     onUnpublish = { article -> viewModel.unpublishArticle(article.id) },
                     onDelete = { article -> viewModel.deleteArticle(article.id) },
-                    onTabChanged = { isMyTab ->
-                        isOnMyTab = isMyTab
-                        if (isMyTab) viewModel.refreshMyArticles() else viewModel.refreshLiveArticles()
-                    },
                     onRefresh = {
-                        if (isOnMyTab) viewModel.refreshMyArticles() else viewModel.refreshLiveArticles()
+                        if (selectedTab == ArticlesTab.MY_ARTICLES) viewModel.refreshMyArticles(forceRefresh = true)
+                        else viewModel.refreshLiveArticles(forceRefresh = true)
                     },
                 )
             }
@@ -79,6 +83,7 @@ fun ArticlesRoot(
                     isSaving = viewModel.isSaving,
                     onBack = { backStack.removeLastOrNull() },
                     onThumbnailPicked = { bytes, filename -> viewModel.setThumbnail(bytes, filename) },
+                    onRefreshCategories = { viewModel.refreshCategories() },
                     onSaveDraft = { title, content, summary, categoryId ->
                         viewModel.createArticle(title, content, summary, categoryId) {
                             backStack.removeLastOrNull()

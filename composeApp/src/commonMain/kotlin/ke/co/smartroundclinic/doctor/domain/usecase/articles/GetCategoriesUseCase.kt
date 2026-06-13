@@ -7,8 +7,8 @@ class GetCategoriesUseCase(
     private val remote: ArticleRepository,
     private val local: ArticleCategoryLocalRepository,
 ) {
-    suspend operator fun invoke() {
-        if (local.getActiveCategories().isEmpty()) {
+    suspend operator fun invoke(forceRefresh: Boolean = false) {
+        if (forceRefresh || local.getActiveCategories().isEmpty()) {
             val result = remote.getCategories()
             result.data?.let { local.upsertCategories(it) }
         }

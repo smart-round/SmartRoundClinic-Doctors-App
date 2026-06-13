@@ -32,7 +32,7 @@ class ArticleRepositoryImpl(private val client: HttpClient) : ArticleRepository 
             val res = client.get("article/categories/all") {
                 parameter("size", 100)
             }.body<CategoryListRes>()
-            Resource.Success(res.data.items.filter { it.isActive }.map { it.toDomain() })
+            Resource.Success(res.data.items.map { it.toDomain() })
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to load categories")
         }

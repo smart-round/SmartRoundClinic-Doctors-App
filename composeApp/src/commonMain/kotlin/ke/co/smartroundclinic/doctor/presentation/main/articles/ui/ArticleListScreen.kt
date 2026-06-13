@@ -36,9 +36,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,7 +61,7 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.StatusPublished
 import ke.co.smartroundclinic.doctor.presentation.theme.StatusSuspended
 
-private enum class ArticlesTab(val label: String) {
+internal enum class ArticlesTab(val label: String) {
     MY_ARTICLES("My Articles"),
     OTHER_ARTICLES("Other Articles"),
 }
@@ -77,17 +75,17 @@ internal fun ArticleListScreen(
     isLoadingLive: Boolean,
     hasLoadedMine: Boolean,
     hasLoadedLive: Boolean,
+    selectedTab: ArticlesTab,
+    onTabSelected: (ArticlesTab) -> Unit,
     onWriteArticle: () -> Unit,
     onEditArticle: (Article) -> Unit,
     onArticleClick: (Article) -> Unit,
     onPublish: (Article) -> Unit,
     onUnpublish: (Article) -> Unit,
     onDelete: (Article) -> Unit,
-    onTabChanged: (isMyTab: Boolean) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var selectedTab by remember { mutableStateOf(ArticlesTab.MY_ARTICLES) }
     val isMyTab = selectedTab == ArticlesTab.MY_ARTICLES
     val articles = if (isMyTab) myArticles else liveArticles
     val isLoading = if (isMyTab) isLoadingMine else isLoadingLive
@@ -103,10 +101,7 @@ internal fun ArticleListScreen(
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             ArticleTabRow(
                 selectedTab = selectedTab,
-                onTabSelected = { tab ->
-                    selectedTab = tab
-                    onTabChanged(tab == ArticlesTab.MY_ARTICLES)
-                },
+                onTabSelected = onTabSelected,
             )
 
             PullToRefreshBox(

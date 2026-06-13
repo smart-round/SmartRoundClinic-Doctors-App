@@ -8,7 +8,8 @@ class GetMyArticlesUseCase(
     private val remote: ArticleRepository,
     private val local: ArticleLocalRepository,
 ) {
-    suspend operator fun invoke(): Resource<Unit> {
+    suspend operator fun invoke(forceRefresh: Boolean = false): Resource<Unit> {
+        if (forceRefresh) local.clearMyArticles()
         val result = remote.getMyArticles()
         if (result is Resource.Success) {
             result.data?.let { local.upsertMyArticles(it) }

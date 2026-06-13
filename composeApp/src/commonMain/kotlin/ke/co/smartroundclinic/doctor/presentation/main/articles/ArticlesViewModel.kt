@@ -70,22 +70,26 @@ class ArticlesViewModel(
 
     init {
         refreshMyArticles()
-        viewModelScope.launch { getCategoriesUseCase() }
+        viewModelScope.launch { getCategoriesUseCase(forceRefresh = true) }
     }
 
-    fun refreshMyArticles() {
+    fun refreshCategories() {
+        viewModelScope.launch { getCategoriesUseCase(forceRefresh = true) }
+    }
+
+    fun refreshMyArticles(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             isLoadingMine = true
-            getMyArticlesUseCase()
+            getMyArticlesUseCase(forceRefresh)
             isLoadingMine = false
             hasLoadedMine = true
         }
     }
 
-    fun refreshLiveArticles() {
+    fun refreshLiveArticles(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             isLoadingLive = true
-            getLiveArticlesUseCase()
+            getLiveArticlesUseCase(forceRefresh)
             isLoadingLive = false
             hasLoadedLive = true
         }

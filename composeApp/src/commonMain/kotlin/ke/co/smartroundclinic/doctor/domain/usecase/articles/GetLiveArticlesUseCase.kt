@@ -8,7 +8,8 @@ class GetLiveArticlesUseCase(
     private val remote: ArticleRepository,
     private val local: ArticleLocalRepository,
 ) {
-    suspend operator fun invoke(): Resource<Unit> {
+    suspend operator fun invoke(forceRefresh: Boolean = false): Resource<Unit> {
+        if (forceRefresh) local.clearLiveArticles()
         val result = remote.getLiveArticles()
         if (result is Resource.Success) {
             result.data?.let { local.upsertLiveArticles(it) }

@@ -10,5 +10,7 @@ interface ArticleLocalRepository {
     suspend fun upsertLiveArticles(articles: List<Article>)
     suspend fun upsertArticle(article: Article, isOwn: Boolean)
     suspend fun removeArticle(id: String)
+    suspend fun clearMyArticles()
+    suspend fun clearLiveArticles()
     suspend fun clearAll()
 }
