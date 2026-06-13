@@ -28,6 +28,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -116,10 +117,12 @@ internal fun CreateSupportTicketScreen(
                     DropdownMenu(
                         expanded = categoryDropdownOpen,
                         onDismissRequest = { categoryDropdownOpen = false },
+                        containerColor = MaterialTheme.colorScheme.background,
                         modifier = Modifier.fillMaxWidth(0.9f),
                     ) {
                         categories.forEach { cat ->
                             DropdownMenuItem(
+                                colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onBackground),
                                 text = { Text(cat.name, style = MaterialTheme.typography.bodyMedium) },
                                 onClick = {
                                     selectedCategory = cat

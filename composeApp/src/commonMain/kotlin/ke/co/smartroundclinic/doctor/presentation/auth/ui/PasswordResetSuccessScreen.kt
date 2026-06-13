@@ -14,14 +14,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.wrapContentSize
+
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -129,7 +133,7 @@ fun PasswordResetSuccessScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(WindowInsets.safeDrawing.asPaddingValues()), // Protect content from system bars
+                    .padding(WindowInsets.safeDrawing.asPaddingValues()),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -165,8 +169,7 @@ fun PasswordResetSuccessScreen(
                         text = "Password Changed!",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .padding(top = 16.dp, bottom = 16.dp)
+                        modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
                     )
                     Text(
                         text = "You have successfully created a new password. You can now sign in with your new credentials",

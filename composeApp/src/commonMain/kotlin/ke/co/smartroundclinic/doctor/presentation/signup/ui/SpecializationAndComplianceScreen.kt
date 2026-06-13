@@ -62,6 +62,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
 import smartroundclinic.composeapp.generated.resources.Res
 import smartroundclinic.composeapp.generated.resources.file_icon
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

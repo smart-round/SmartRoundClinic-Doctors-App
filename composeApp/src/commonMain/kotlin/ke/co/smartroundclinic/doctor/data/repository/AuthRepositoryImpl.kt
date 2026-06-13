@@ -104,7 +104,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
                 parameter(key = "otpCode", otpCode)
             }.body<SuccessRes>()
 
-            Resource.Success(data = response, message = response.message)
+            if (response.status) Resource.Success(data = response, message = response.message)
+            else Resource.Error(message = response.message)
 
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
@@ -119,7 +120,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
                 parameter(key = "email", email)
             }.body<SuccessRes>()
 
-            Resource.Success(data = response, message = response.message)
+            if (response.status) Resource.Success(data = response, message = response.message)
+            else Resource.Error(message = response.message)
 
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
@@ -134,6 +136,7 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
             val response = client.post("/auth/user/sign-in") {
                 setBody(SignInReq(email = email, password = password))
             }.body<SignInRes>()
+            if (!response.status) return@withContext Resource.Error(message = response.message, data = null)
             Resource.Success(data = response.toDomain(), message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
@@ -146,7 +149,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
             val response = client.post("/auth/user/password-reset/request") {
                 parameter(key = "email", email)
             }.body<SuccessRes>()
-            Resource.Success(data = null, message = response.message)
+            if (response.status) Resource.Success(data = null, message = response.message)
+            else Resource.Error(message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
         }
@@ -158,7 +162,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
             val response = client.get("/auth/user/password-reset/resend-otp") {
                 parameter(key = "email", email)
             }.body<SuccessRes>()
-            Resource.Success(data = null, message = response.message)
+            if (response.status) Resource.Success(data = null, message = response.message)
+            else Resource.Error(message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
         }
@@ -170,7 +175,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
                 val response = client.post("/auth/user/password-reset") {
                     setBody(body)
                 }.body<SuccessRes>()
-                Resource.Success(data = null, message = response.message)
+                if (response.status) Resource.Success(data = null, message = response.message)
+                else Resource.Error(message = response.message)
             } catch (e: Exception) {
                 Resource.Error("An unknown error occurred")
             }
@@ -182,7 +188,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
             val response = client.post("/auth/user/token/refresh") {
                 setBody(RequestRefreshTokenReq(refreshToken))
             }.body<RefreshTokenRes>()
-            Resource.Success(data = response, message = response.message)
+            if (response.status) Resource.Success(data = response, message = response.message)
+            else Resource.Error(message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
         }
@@ -192,7 +199,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
         try {
             val response = client.get("/auth/user") {
             }.body<GetUserRes>()
-            Resource.Success(data = response, message = response.message)
+            if (response.status) Resource.Success(data = response, message = response.message)
+            else Resource.Error(message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
         }
@@ -220,7 +228,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
                     )
                 )
             }.body<UploadProfilePictureRes>()
-            Resource.Success(data = response, message = response.message)
+            if (response.status) Resource.Success(data = response, message = response.message)
+            else Resource.Error(message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
         }
@@ -231,7 +240,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
         try {
             val response = client.delete  ("/auth/user/profile-picture") {
             }.body<DeleteProfilePictureRes>()
-            Resource.Success(data = response, message = response.message)
+            if (response.status) Resource.Success(data = response, message = response.message)
+            else Resource.Error(message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
         }
@@ -243,7 +253,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
             val response = client.put("/auth/user") {
                 setBody(body)
             }.body<UpdatePersonalInformationRes>()
-            Resource.Success(data = response, message = response.message)
+            if (response.status) Resource.Success(data = response, message = response.message)
+            else Resource.Error(message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
         }
@@ -254,7 +265,8 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
         try {
             val response = client.get("/doctor/compliance/status") {
             }.body<GetComplianceStatusRes>()
-            Resource.Success(data = response, message = response.message)
+            if (response.status) Resource.Success(data = response, message = response.message)
+            else Resource.Error(message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")
         }

@@ -21,8 +21,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
-import kotlin.time.Clock
+import kotlinx.datetime.atStartOfDayIn
+
+
 
 class BookingsViewModel(
     private val getAppointmentsUseCase: GetAppointmentsUseCase,
@@ -61,12 +62,16 @@ class BookingsViewModel(
     }
 
     private suspend fun autoMarkOverdue(appointments: List<Appointment>) {
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        val nowMs = kotlin.time.Clock.System.now().toEpochMilliseconds()
         val pendingStatuses = setOf(AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED)
         val overdueIds = appointments
             .filter { appt ->
                 appt.status in pendingStatuses &&
-                runCatching { LocalDate.parse(appt.date) }.getOrNull()?.let { it < today } == true
+                runCatching {
+                    LocalDate.parse(appt.date)
+                        .atStartOfDayIn(TimeZone.currentSystemDefault())
+                        .toEpochMilliseconds() < nowMs
+                }.getOrDefault(false)
             }
             .map { it.id }
         if (overdueIds.isNotEmpty()) {

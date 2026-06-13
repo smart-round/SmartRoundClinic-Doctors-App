@@ -126,8 +126,8 @@ fun AuthRoot(
                     CreateNewPasswordScreen(
                         viewModel = forgotPasswordViewModel,
                         onSuccess = {
-                            forgotPasswordViewModel.resetState()
                             navigateTo(PasswordRestSuccessfully)
+                            forgotPasswordViewModel.resetState()
                         },
                         onBack = ::navigateBack,
                     )

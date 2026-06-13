@@ -27,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -219,9 +220,14 @@ internal fun WriteArticleScreen(
                         shape = ShapeInput,
                         modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
                     )
-                    ExposedDropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
+                    ExposedDropdownMenu(
+                        expanded = categoryExpanded,
+                        onDismissRequest = { categoryExpanded = false },
+                        containerColor = MaterialTheme.colorScheme.background,
+                    ) {
                         categories.forEach { cat ->
                             DropdownMenuItem(
+                                colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onBackground),
                                 text = { Text(cat.name) },
                                 onClick = { selectedCategoryId = cat.id; categoryExpanded = false },
                                 trailingIcon = if (selectedCategoryId == cat.id) {

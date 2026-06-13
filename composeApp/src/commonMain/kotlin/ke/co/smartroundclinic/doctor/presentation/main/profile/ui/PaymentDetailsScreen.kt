@@ -33,6 +33,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -192,9 +193,11 @@ internal fun PaymentDetailsScreen(
                     ExposedDropdownMenu(
                         expanded = branchExpanded,
                         onDismissRequest = { branchExpanded = false },
+                        containerColor = MaterialTheme.colorScheme.background,
                     ) {
                         selectedBank?.branches?.forEach { branch ->
                             DropdownMenuItem(
+                                colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onBackground),
                                 text = { Text(branch.branchName) },
                                 onClick = {
                                     selectedBranch = branch

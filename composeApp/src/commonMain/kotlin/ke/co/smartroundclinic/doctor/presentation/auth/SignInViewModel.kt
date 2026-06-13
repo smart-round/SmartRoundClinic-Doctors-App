@@ -67,7 +67,7 @@ class SignInViewModel(
                     }
                 }
                 is Resource.Error -> {
-                    snackbarController.show(result.message ?: "Sign in failed")
+                    snackbarController.show(isError = true,message = result.message ?: "Sign in failed")
                     _isSigningIn.value = false
                 }
                 is Resource.Loading -> Unit
