@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Policy
 import androidx.compose.material.icons.outlined.QuestionAnswer
 import androidx.compose.material.icons.outlined.Shield
@@ -49,7 +48,6 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
 private data class SupportItem(val icon: ImageVector, val label: String, val subtitle: String)
 
 private val supportItems = listOf(
-    SupportItem(Icons.AutoMirrored.Outlined.HelpOutline, "Help Center", "Browse articles and guides"),
     SupportItem(Icons.Outlined.QuestionAnswer, "FAQs", "Frequently asked questions"),
     SupportItem(Icons.AutoMirrored.Outlined.Chat, "Contact Us", "Chat with our support team"),
     SupportItem(Icons.Outlined.Policy, "Terms of Service", "Read our terms and conditions"),
@@ -60,6 +58,8 @@ private val supportItems = listOf(
 internal fun SupportScreen(
     onBack: () -> Unit,
     onContactUs: () -> Unit = {},
+    onFaqs: () -> Unit = {},
+    onTerms: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -112,7 +112,11 @@ internal fun SupportScreen(
             ) {
                 supportItems.forEachIndexed { index, item ->
                     SupportRow(item = item, onClick = {
-                        if (item.label == "Contact Us") onContactUs()
+                        when (item.label) {
+                            "Contact Us" -> onContactUs()
+                            "FAQs" -> onFaqs()
+                            "Terms of Service", "Privacy Policy" -> onTerms()
+                        }
                     })
                     if (index < supportItems.lastIndex) {
                         HorizontalDivider(

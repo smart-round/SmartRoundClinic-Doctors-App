@@ -39,7 +39,6 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.FiberNew
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
@@ -95,7 +94,6 @@ import org.koin.compose.viewmodel.koinViewModel
 internal fun ProfileListScreen(
     onBack: () -> Unit  = {},
     onPersonalInfo: () -> Unit  = {},
-    onBio: () -> Unit = {},
     onBankingDetails: () -> Unit = {},
     onSecuritySettings: () -> Unit = {},
     onSupport: () -> Unit  = {},
@@ -143,12 +141,6 @@ internal fun ProfileListScreen(
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                 ProfileMenuItem(
-                    icon = Icons.Outlined.Description,
-                    label = "Profile",
-                    onClick = onBio,
-                )
-                HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                ProfileMenuItem(
                     icon = Icons.Outlined.MedicalServices,
                     label = "Specialization",
                     onClick = {
@@ -184,19 +176,11 @@ internal fun ProfileListScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            ProfileSectionHeader(title = "Help")
-
             ProfileSection {
                 ProfileMenuItem(
                     icon = Icons.AutoMirrored.Outlined.HelpOutline,
                     label = "Support",
                     onClick = onSupport,
-                )
-                HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                ProfileMenuItem(
-                    icon = Icons.Outlined.FiberNew,
-                    label = "What's New",
-                    onClick = {},
                 )
             }
 

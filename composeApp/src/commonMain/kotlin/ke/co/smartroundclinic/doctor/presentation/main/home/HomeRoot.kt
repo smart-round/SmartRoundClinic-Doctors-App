@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import ke.co.smartroundclinic.doctor.core.notification.NotificationDeepLink
 import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.HomeList
 import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.Notifications
 import ke.co.smartroundclinic.doctor.presentation.main.notifications.NotificationsScreen
@@ -29,9 +28,13 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Sche
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.LicenceManagement
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.LicenceViewer
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Specialization
+import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Faqs
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Support
+import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.TermsAndConditions
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.VerifyEmailSecurity
+import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.FaqsScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.ProfileScreen
+import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.TermsAndConditionsScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.CreateNewPasswordSecurityScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.PasswordChangedScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.PaymentDetailsScreen
@@ -58,6 +61,8 @@ fun HomeRoot(
     onOpenConsultation: (appointmentId: String, patientName: String) -> Unit = { _, _ -> },
     pendingDestinations: List<NavKey> = emptyList(),
     onPendingNavigated: () -> Unit = {},
+    pendingSupportTicketId: String? = null,
+    onPendingSupportTicketNavigated: () -> Unit = {},
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(HomeList) }
     val isAtRoot = backStack.size == 1
@@ -73,11 +78,11 @@ fun HomeRoot(
         }
     }
 
-    val notificationPending by NotificationDeepLink.pending.collectAsState()
-    LaunchedEffect(notificationPending) {
-        if (notificationPending) {
-            if (backStack.none { it is Notifications }) backStack.add(Notifications)
-            NotificationDeepLink.consume()
+    LaunchedEffect(pendingSupportTicketId) {
+        if (!pendingSupportTicketId.isNullOrBlank()) {
+            listOf(ProfileList, Support, ContactSupport).forEach { dest ->
+                if (backStack.none { it::class == dest::class }) backStack.add(dest)
+            }
         }
     }
 
@@ -103,7 +108,6 @@ fun HomeRoot(
                 ProfileListScreen(
                     onBack = { backStack.removeLastOrNull() },
                     onPersonalInfo = { backStack.add(PersonalInfo) },
-                    onBio = { backStack.add(DoctorProfile) },
                     onBankingDetails = { backStack.add(BankingDetails) },
                     onSecuritySettings = { backStack.add(ResetPassword) },
                     onSupport = { backStack.add(Support) },
@@ -156,12 +160,22 @@ fun HomeRoot(
                 SupportScreen(
                     onBack = { backStack.removeLastOrNull() },
                     onContactUs = { backStack.add(ContactSupport) },
+                    onFaqs = { backStack.add(Faqs) },
+                    onTerms = { backStack.add(TermsAndConditions) },
                 )
+            }
+            entry<Faqs> {
+                FaqsScreen(onBack = { backStack.removeLastOrNull() })
+            }
+            entry<TermsAndConditions> {
+                TermsAndConditionsScreen(onBack = { backStack.removeLastOrNull() })
             }
             entry<ContactSupport> {
                 SupportRoot(
                     user = viewModel.user.collectAsState().value,
                     onBack = { backStack.removeLastOrNull() },
+                    pendingTicketId = pendingSupportTicketId,
+                    onPendingNavigated = onPendingSupportTicketNavigated,
                 )
             }
             entry<ScheduleManagement> {

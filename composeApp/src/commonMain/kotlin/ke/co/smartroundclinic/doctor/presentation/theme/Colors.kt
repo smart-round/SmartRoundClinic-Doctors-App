@@ -122,6 +122,9 @@ val Green90 = Color(0xFFDCFCE7)   // verified / approved chip background
 
 val StatusPublished = Color(0xFF0E9800)   // article published badge
 val StatusSuspended = Color(0xFFEA1D25)   // article suspended badge
+
+val SnackbarSuccess = Color(0xFF0E9800)
+val SnackbarError   = Color(0xFFFF0000)
 val StatusPending   = Primary40           // appointment pending
 val StatusConfirmed = Tertiary40          // appointment confirmed
 

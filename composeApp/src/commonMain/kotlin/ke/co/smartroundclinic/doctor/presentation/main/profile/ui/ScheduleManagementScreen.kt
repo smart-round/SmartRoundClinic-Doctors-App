@@ -43,6 +43,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -359,10 +360,10 @@ private fun AvailabilityContent(
 
         Spacer(Modifier.height(16.dp))
 
-        SectionLabel("Slot Duration")
+        SectionLabel("Buffer Time")
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "How long is each appointment slot?",
+            text = "This will be the time gap between consultations",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -419,8 +420,8 @@ private fun AvailabilityContent(
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(Modifier.height(16.dp))
 
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Column {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(modifier = Modifier.weight(1f)) {
                 SectionLabel("Break Blocks")
                 Text(
                     text = "e.g. lunch break — applies to all working days.",
@@ -831,6 +832,12 @@ private fun TimePickerField(
         label = { Text(label, style = MaterialTheme.typography.bodySmall) },
         trailingIcon = { Icon(imageVector = Icons.Outlined.AccessTime, contentDescription = null, tint = Primary40) },
         shape = ShapeInput,
+        colors = OutlinedTextFieldDefaults.colors(
+            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            disabledBorderColor = MaterialTheme.colorScheme.outline,
+            disabledTrailingIconColor = Primary40,
+        ),
         modifier = modifier
             .fillMaxWidth()
             .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { showPicker = true },

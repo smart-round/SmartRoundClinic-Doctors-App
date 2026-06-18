@@ -17,9 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.presentation.navigation.NavigationRoot
-import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.SmartRoundTheme
-import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
+import ke.co.smartroundclinic.doctor.presentation.theme.SnackbarError
+import ke.co.smartroundclinic.doctor.presentation.theme.SnackbarSuccess
 import org.koin.compose.koinInject
 
 @Composable
@@ -44,7 +44,7 @@ fun App() {
                 snackbar = { data ->
                     Snackbar(
                         snackbarData = data,
-                        containerColor = if (isError) Error40 else Tertiary40,
+                        containerColor = if (isError) SnackbarError else SnackbarSuccess,
                         contentColor = Color.White,
                         actionColor = Color.White,
                     )
