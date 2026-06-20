@@ -8,3 +8,10 @@ data object BookingList : NavKey
 
 @Serializable
 data class BookingDetail(val bookingId: String) : NavKey
+
+@Serializable
+data class MedicalRecordDetail(
+    val appointmentId: String,
+    val consultationId: String?,
+    val patientId: String,
+) : NavKey

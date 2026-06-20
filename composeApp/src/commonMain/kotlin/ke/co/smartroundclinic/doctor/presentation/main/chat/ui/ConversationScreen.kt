@@ -87,12 +87,15 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberCameraPickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.readBytes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.MedicalRecordData
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationFileAttachment
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationMessage
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationSession
 import ke.co.smartroundclinic.doctor.presentation.main.chat.PendingFile
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
+import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary90
+import kotlinx.serialization.json.Json
 import ke.co.smartroundclinic.doctor.presentation.theme.Secondary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Secondary90
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
@@ -555,12 +558,13 @@ private fun MessageBubble(
     modifier: Modifier = Modifier,
 ) {
     val isFile = message.messageType.uppercase() == "FILE"
+    val isPrescription = message.messageType.uppercase() == "PRESCRIPTION"
     Box(
         modifier = modifier.fillMaxWidth().padding(vertical = 2.dp),
         contentAlignment = if (fromMe) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(0.80f),
+            modifier = Modifier.fillMaxWidth(0.90f),
             horizontalAlignment = if (fromMe) Alignment.End else Alignment.Start,
         ) {
             if (!fromMe) {
@@ -572,6 +576,7 @@ private fun MessageBubble(
                 )
             }
             when {
+                isPrescription -> PrescriptionMessageCard(jsonMessage = message.message ?: "", time = formatTime(message.createdAt))
                 isFile -> FileBubble(message = message, fromMe = fromMe, onFileClick = onFileClick)
                 else -> TextBubble(text = message.message ?: "", fromMe = fromMe, time = formatTime(message.createdAt))
             }
@@ -583,6 +588,54 @@ private fun MessageBubble(
                     modifier = Modifier.padding(top = 2.dp, start = 4.dp, end = 4.dp),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PrescriptionMessageCard(jsonMessage: String, time: String, modifier: Modifier = Modifier) {
+    val record = remember(jsonMessage) {
+        runCatching {
+            Json { ignoreUnknownKeys = true }.decodeFromString<MedicalRecordData>(jsonMessage)
+        }.getOrNull()
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp))
+            .background(Tertiary90)
+            .padding(16.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Prescription", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Tertiary40)
+            }
+            if (record == null) {
+                Text("Unable to display prescription", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                if (!record.diagnosis.isNullOrBlank()) {
+                    Column {
+                        Text("Diagnosis", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(record.diagnosis, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                if (record.prescription.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Drugs", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        record.prescription.forEach { item ->
+                            Text("• ${item.drug} — ${item.dosage}, ${item.frequency} for ${item.duration}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+                if (!record.summary.isNullOrBlank()) {
+                    Column {
+                        Text("Notes", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(record.summary, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+            Text(time, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.End))
         }
     }
 }

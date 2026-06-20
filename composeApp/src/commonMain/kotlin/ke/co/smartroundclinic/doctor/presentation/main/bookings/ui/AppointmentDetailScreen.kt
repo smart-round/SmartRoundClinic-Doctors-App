@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
+import ke.co.smartroundclinic.doctor.domain.model.MedicalRecord
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
@@ -75,6 +76,8 @@ internal fun AppointmentDetailScreen(
     onComplete: () -> Unit,
     onNoShow: () -> Unit,
     onCancel: (String?) -> Unit,
+    medicalRecord: MedicalRecord? = null,
+    onAddMedicalRecord: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showCancelDialog by remember { mutableStateOf(false) }
@@ -259,7 +262,81 @@ internal fun AppointmentDetailScreen(
                     }
                 }
 
+                val canAddRecord = appointment.status == AppointmentStatus.CONFIRMED || appointment.status == AppointmentStatus.COMPLETED
+                if (canAddRecord || medicalRecord != null) {
+                    MedicalRecordSection(
+                        record = medicalRecord,
+                        canEdit = canAddRecord,
+                        onAddOrEdit = onAddMedicalRecord,
+                    )
+                }
+
                 Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MedicalRecordSection(
+    record: MedicalRecord?,
+    canEdit: Boolean,
+    onAddOrEdit: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("Medical Record", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
+            if (canEdit) {
+                TextButton(onClick = onAddOrEdit) {
+                    Text(if (record != null) "Edit" else "Add", style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+
+        if (record != null) {
+            Card(
+                shape = ShapeCard,
+                colors = CardDefaults.cardColors(containerColor = Primary40.copy(alpha = 0.06f)),
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (!record.diagnosis.isNullOrBlank()) {
+                        Column {
+                            Text("Diagnosis", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(record.diagnosis, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    if (record.prescription.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Prescription", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            record.prescription.forEach { item ->
+                                Text(
+                                    text = "• ${item.drug} — ${item.dosage}, ${item.frequency} for ${item.duration}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
+                    }
+                    if (!record.summary.isNullOrBlank()) {
+                        Column {
+                            Text("Summary", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(record.summary, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    if (!record.referralNote.isNullOrBlank()) {
+                        Column {
+                            Text("Referral", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(record.referralNote, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        } else if (canEdit) {
+            PrimaryButton(onClick = onAddOrEdit) {
+                Text("Add Medical Record", style = MaterialTheme.typography.labelLarge, color = androidx.compose.ui.graphics.Color.White, modifier = Modifier.padding(vertical = 14.dp))
             }
         }
     }

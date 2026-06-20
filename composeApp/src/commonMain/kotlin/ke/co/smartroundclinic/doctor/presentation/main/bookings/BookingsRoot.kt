@@ -13,23 +13,36 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.destinations.BookingDetail
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.destinations.BookingList
+import ke.co.smartroundclinic.doctor.presentation.main.bookings.destinations.MedicalRecordDetail
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.AppointmentDetailScreen
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingListScreen
+import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.MedicalRecordScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun BookingsRoot(
     modifier: Modifier = Modifier,
     onAtRootChanged: (Boolean) -> Unit = {},
+    pendingBookingId: String? = null,
+    onPendingNavigated: () -> Unit = {},
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(BookingList) }
     val isAtRoot = backStack.size == 1
     val viewModel: BookingsViewModel = koinViewModel()
+    val medicalRecordViewModel: MedicalRecordViewModel = koinViewModel()
     val appointments by viewModel.appointments.collectAsState()
 
     SideEffect { onAtRootChanged(isAtRoot) }
 
     LaunchedEffect(Unit) { viewModel.loadAppointments() }
+
+    LaunchedEffect(pendingBookingId) {
+        if (!pendingBookingId.isNullOrBlank()) {
+            backStack.removeAll { it is BookingDetail }
+            backStack.add(BookingDetail(pendingBookingId))
+            onPendingNavigated()
+        }
+    }
 
     NavDisplay(
         modifier = modifier,
@@ -47,16 +60,28 @@ fun BookingsRoot(
             entry<BookingDetail> { dest ->
                 val appointment = appointments.find { it.id == dest.bookingId }
                 if (appointment != null) {
+                    LaunchedEffect(appointment.id) { medicalRecordViewModel.loadRecord(appointment.id) }
                     AppointmentDetailScreen(
                         appointment = appointment,
                         isActioning = viewModel.isActioning,
+                        medicalRecord = medicalRecordViewModel.record,
                         onBack = { backStack.removeLastOrNull() },
                         onConfirm = { viewModel.confirmAppointment(appointment.id) },
                         onComplete = { viewModel.completeAppointment(appointment.id) },
                         onNoShow = { viewModel.noShowAppointment(appointment.id) },
                         onCancel = { reason -> viewModel.cancelAppointment(appointment.id, reason) },
+                        onAddMedicalRecord = { backStack.add(MedicalRecordDetail(appointment.id, null, appointment.patientId)) },
                     )
                 }
+            }
+            entry<MedicalRecordDetail> { dest ->
+                MedicalRecordScreen(
+                    viewModel = medicalRecordViewModel,
+                    appointmentId = dest.appointmentId,
+                    consultationId = dest.consultationId,
+                    patientId = dest.patientId,
+                    onBack = { backStack.removeLastOrNull() },
+                )
             }
         },
     )

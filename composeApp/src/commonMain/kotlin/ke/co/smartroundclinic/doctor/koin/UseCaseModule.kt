@@ -24,6 +24,10 @@ import ke.co.smartroundclinic.doctor.presentation.main.notifications.Notificatio
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetConsultationMessagesUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetMedicalRecordUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetPatientMedicalHistoryUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.SaveMedicalRecordUseCase
+import ke.co.smartroundclinic.doctor.presentation.main.bookings.MedicalRecordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ConsultationViewModel
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.CreateArticleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.licence.DeleteLicenceUseCase
@@ -157,6 +161,11 @@ val useCaseModule = module {
     single { GetConsultationMessagesUseCase(get()) }
     single { JoinConsultationCallUseCase(get()) }
 
+    // Medical record use cases
+    single { SaveMedicalRecordUseCase(get()) }
+    single { GetMedicalRecordUseCase(get()) }
+    single { GetPatientMedicalHistoryUseCase(get()) }
+
     viewModel { SplashViewModel(get(), get(), get()) }
     viewModel { OnboardingScreenViewModel(get(), get()) }
     viewModel { SpecializationComplianceViewModel(get()) }
@@ -175,6 +184,7 @@ val useCaseModule = module {
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }
     viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { MedicalRecordViewModel(get(), get(), get(), get()) }
     viewModel { NotificationsViewModel(get(), get()) }
     viewModel { WalletViewModel(get(), get(), get(), get(), get(), get(), get()) }
 

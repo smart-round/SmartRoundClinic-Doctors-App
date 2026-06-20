@@ -4,6 +4,7 @@ import ke.co.smartroundclinic.doctor.core.database.AppDatabase
 import ke.co.smartroundclinic.doctor.data.repository.AppointmentLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.ConsultationRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.DoctorProfileRepositoryImpl
+import ke.co.smartroundclinic.doctor.data.repository.MedicalRecordRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.NotificationRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.SupportRepositoryImpl
 import ke.co.smartroundclinic.doctor.data.repository.WalletRepositoryImpl
@@ -26,6 +27,7 @@ import ke.co.smartroundclinic.doctor.data.repository.UserLocalRepositoryImpl
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.ConsultationRepository
 import ke.co.smartroundclinic.doctor.domain.repository.DoctorProfileRepository
+import ke.co.smartroundclinic.doctor.domain.repository.MedicalRecordRepository
 import ke.co.smartroundclinic.doctor.domain.repository.NotificationRepository
 import ke.co.smartroundclinic.doctor.domain.repository.SupportRepository
 import ke.co.smartroundclinic.doctor.domain.repository.WalletRepository
@@ -70,4 +72,5 @@ val repositoryModule = module {
     single<WalletRepository> { WalletRepositoryImpl(get()) }
     single<SupportRepository> { SupportRepositoryImpl(get()) }
     single<DoctorProfileRepository> { DoctorProfileRepositoryImpl(get()) }
+    single<MedicalRecordRepository> { MedicalRecordRepositoryImpl(get()) }
 }
