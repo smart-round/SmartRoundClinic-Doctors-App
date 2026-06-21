@@ -55,6 +55,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import ke.co.smartroundclinic.doctor.core.notification.NotificationDeepLink
+import ke.co.smartroundclinic.doctor.core.notification.NotificationEvent
 import ke.co.smartroundclinic.doctor.presentation.main.articles.ArticlesRoot
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingsRoot
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ChatRoot
@@ -65,6 +67,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.destinations.Chat
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Home
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Wallet
 import ke.co.smartroundclinic.doctor.presentation.main.home.HomeRoot
+import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.Notifications
 import ke.co.smartroundclinic.doctor.presentation.main.wallet.WalletRoot
 import ke.co.smartroundclinic.doctor.presentation.rememberSvgPainter
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
@@ -108,18 +111,9 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
     var isAtRoot by remember { mutableStateOf(true) }
     var pendingHomeDestinations by remember { mutableStateOf<List<NavKey>>(emptyList()) }
     var pendingChatConversation by remember { mutableStateOf<Conversation?>(null) }
+    var pendingBookingId by remember { mutableStateOf<String?>(null) }
+    var pendingSupportTicketId by remember { mutableStateOf<String?>(null) }
     var inComplianceFixMode by remember { mutableStateOf(false) }
-
-    // When the user navigates back to root after fixing their profile, re-show the dialog
-    LaunchedEffect(isAtRoot) {
-        if (isAtRoot && inComplianceFixMode) {
-            inComplianceFixMode = false
-        }
-    }
-
-    val complianceViewModel: ComplianceViewModel = koinViewModel()
-    val complianceStatus = complianceViewModel.complianceStatus
-    val showComplianceDialog = complianceStatus != null && !complianceStatus.isApproved && !inComplianceFixMode
 
     fun selectTab(dest: NavKey) {
         if (currentTab != dest) {
@@ -128,6 +122,42 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
             isAtRoot = true
         }
     }
+
+    LaunchedEffect(isAtRoot) {
+        if (isAtRoot && inComplianceFixMode) {
+            inComplianceFixMode = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        NotificationDeepLink.pendingEvent.collect { event ->
+            if (event == null) return@collect
+            NotificationDeepLink.consume()
+            when (event) {
+                is NotificationEvent.ToNotifications -> {
+                    selectTab(Home)
+                    pendingHomeDestinations = listOf(Notifications)
+                }
+                is NotificationEvent.ToBookingDetail -> {
+                    selectTab(Bookings)
+                    pendingBookingId = event.appointmentId
+                }
+                is NotificationEvent.ToConversation -> {
+                    selectTab(Chat)
+                    pendingChatConversation = Conversation(event.appointmentId, event.patientName)
+                }
+                is NotificationEvent.ToArticles -> selectTab(Articles)
+                is NotificationEvent.ToSupportTicket -> {
+                    selectTab(Home)
+                    pendingSupportTicketId = event.ticketId
+                }
+            }
+        }
+    }
+
+    val complianceViewModel: ComplianceViewModel = koinViewModel()
+    val complianceStatus = complianceViewModel.complianceStatus
+    val showComplianceDialog = complianceStatus != null && !complianceStatus.isApproved && !inComplianceFixMode
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -153,15 +183,27 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                         onSignOut = onSignOut,
                         onSeeAllAppointments = { selectTab(Bookings) },
                         onSeeAllConsultations = { selectTab(Chat) },
+                        onViewAppointment = { appointmentId ->
+                            selectTab(Bookings)
+                            pendingBookingId = appointmentId
+                        },
                         onOpenConsultation = { appointmentId, patientName ->
                             selectTab(Chat)
                             pendingChatConversation = Conversation(appointmentId, patientName)
                         },
                         pendingDestinations = pendingHomeDestinations,
                         onPendingNavigated = { pendingHomeDestinations = emptyList() },
+                        pendingSupportTicketId = pendingSupportTicketId,
+                        onPendingSupportTicketNavigated = { pendingSupportTicketId = null },
                     )
                 }
-                entry<Bookings> { BookingsRoot(onAtRootChanged = { isAtRoot = it }) }
+                entry<Bookings> {
+                    BookingsRoot(
+                        onAtRootChanged = { isAtRoot = it },
+                        pendingBookingId = pendingBookingId,
+                        onPendingNavigated = { pendingBookingId = null },
+                    )
+                }
                 entry<Articles> { ArticlesRoot(onAtRootChanged = { isAtRoot = it }) }
                 entry<Wallet> { WalletRoot(onAtRootChanged = { isAtRoot = it }) }
                 entry<Chat> {

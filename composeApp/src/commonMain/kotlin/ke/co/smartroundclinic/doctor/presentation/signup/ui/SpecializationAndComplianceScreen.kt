@@ -118,8 +118,8 @@ fun SpecializationAndComplianceScreen(
                     formViewModel.selectedSpecialityName = ""
                     specialityExpanded = true
                 },
-                label = { Text("Specialization", style = MaterialTheme.typography.bodySmall) },
-                placeholder = { Text("Search specialization", style = MaterialTheme.typography.bodySmall) },
+                label = { Text("Field of Practice", style = MaterialTheme.typography.bodySmall) },
+                placeholder = { Text("Search field of Practice", style = MaterialTheme.typography.bodySmall) },
                 trailingIcon = {
                     if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     else ExposedDropdownMenuDefaults.TrailingIcon(specialityExpanded)

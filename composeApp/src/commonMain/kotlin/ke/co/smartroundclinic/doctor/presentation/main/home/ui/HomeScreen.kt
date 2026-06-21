@@ -119,6 +119,7 @@ fun HomeScreen(
     onSeeAllAppointments: () -> Unit = {},
     onSeeAllConsultations: () -> Unit = {},
     onOpenConsultation: (appointmentId: String, patientName: String) -> Unit = { _, _ -> },
+    onViewAppointment: (appointmentId: String) -> Unit = {},
     onSetUpCalendar: () -> Unit = {},
     modifier: Modifier = Modifier,
     profileViewModel: PersonalInfoViewModel = koinViewModel(),
@@ -193,7 +194,8 @@ fun HomeScreen(
                     item {
                         AppointmentsSection(
                             appointments = upcomingAppointments,
-                            onSeeAll = onSeeAllAppointments
+                            onSeeAll = onSeeAllAppointments,
+                            onViewAppointment = onViewAppointment,
                         )
                     }
                     item {
@@ -358,6 +360,7 @@ private fun CalendarBlockedCard(onSetUpCalendar: () -> Unit, modifier: Modifier 
 private fun AppointmentsSection(
     appointments: List<Appointment>,
     onSeeAll: () -> Unit,
+    onViewAppointment: (appointmentId: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -376,7 +379,7 @@ private fun AppointmentsSection(
                     patientName = appt.patientName,
                     patientProfilePicture = appt.patientProfilePicture,
                     isConfirmed = appt.status == AppointmentStatus.CONFIRMED,
-                    onView = onSeeAll,
+                    onView = { onViewAppointment(appt.id) },
                 )
                 Spacer(Modifier.height(8.dp))
             }

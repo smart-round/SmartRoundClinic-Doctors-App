@@ -9,6 +9,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +33,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -44,11 +48,13 @@ import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -91,9 +97,15 @@ import ke.co.smartroundclinic.doctor.data.remote.dto.response.MedicalRecordData
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationFileAttachment
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationMessage
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationSession
+import ke.co.smartroundclinic.doctor.domain.model.MedicalRecord
+import ke.co.smartroundclinic.doctor.domain.model.PatientBio
 import ke.co.smartroundclinic.doctor.presentation.main.chat.PendingFile
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
+import ke.co.smartroundclinic.doctor.presentation.theme.Neutral40
+import ke.co.smartroundclinic.doctor.presentation.theme.Neutral90
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
+import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
+import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary90
 import kotlinx.serialization.json.Json
 import ke.co.smartroundclinic.doctor.presentation.theme.Secondary40
@@ -115,6 +127,8 @@ internal fun ConversationScreen(
     isUploadingFile: Boolean,
     isCallEnabled: Boolean,
     currentUserId: String,
+    patientBio: PatientBio? = null,
+    patientHistory: List<MedicalRecord> = emptyList(),
     onBack: () -> Unit,
     onVoiceCall: () -> Unit,
     onVideoCall: () -> Unit,
@@ -127,6 +141,7 @@ internal fun ConversationScreen(
     val scope = rememberCoroutineScope()
     var viewerFile by remember { mutableStateOf<ConsultationFileAttachment?>(null) }
     var showAttachMenu by remember { mutableStateOf(false) }
+    var showPatientSheet by remember { mutableStateOf(false) }
 
     val totalItems = messages.size + pendingFiles.size
     LaunchedEffect(totalItems) {
@@ -161,7 +176,13 @@ internal fun ConversationScreen(
                     }
                 },
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                        ) { showPatientSheet = true },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         PatientAvatar(name = patientName, picture = patientPicture, size = 36)
                         Spacer(Modifier.width(10.dp))
                         Column {
@@ -194,9 +215,6 @@ internal fun ConversationScreen(
                 },
                 actions = {
                     if (session != null && isCallEnabled) {
-                        IconButton(onClick = onVoiceCall) {
-                            Icon(imageVector = Icons.Filled.Phone, contentDescription = "Voice call", tint = Primary40)
-                        }
                         IconButton(onClick = onVideoCall) {
                             Icon(imageVector = Icons.Filled.Videocam, contentDescription = "Video call", tint = Primary40)
                         }
@@ -294,6 +312,16 @@ internal fun ConversationScreen(
 
     viewerFile?.let { file ->
         FileViewerSheet(file = file, onDismiss = { viewerFile = null })
+    }
+
+    if (showPatientSheet) {
+        PatientChatSheet(
+            patientName = patientName,
+            patientPicture = patientPicture,
+            bio = patientBio,
+            history = patientHistory,
+            onDismiss = { showPatientSheet = false },
+        )
     }
 }
 
@@ -889,33 +917,46 @@ private fun MessageInput(
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                if (isUploading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Primary40, strokeWidth = 2.dp)
-                } else {
-                    IconButton(onClick = onAttach, enabled = enabled) {
-                        Icon(
-                            imageVector = Icons.Filled.AttachFile,
-                            contentDescription = "Attach",
-                            tint = if (enabled) Primary40 else MaterialTheme.colorScheme.outlineVariant,
-                        )
-                    }
+            // Attach icon button
+            if (isUploading) {
+                Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Primary40, strokeWidth = 2.5.dp)
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .clickable(
+                            enabled = enabled,
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = onAttach,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AttachFile,
+                        contentDescription = "Attach",
+                        tint = if (enabled) Primary40 else MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.size(24.dp),
+                    )
                 }
             }
 
+            // Text input pill
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(ShapePill)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                contentAlignment = Alignment.CenterStart,
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             ) {
                 if (value.isEmpty()) {
                     Text(
-                        text = if (enabled) "Type a message or send prescription…" else "Start a session to chat",
+                        text = if (enabled) "Type a message…" else "Start a session to chat",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -931,9 +972,10 @@ private fun MessageInput(
                 )
             }
 
+            // Send button
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(if (value.isNotBlank() && enabled) Primary40 else MaterialTheme.colorScheme.surfaceVariant)
                     .clickable(
@@ -948,7 +990,7 @@ private fun MessageInput(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send",
                     tint = if (value.isNotBlank() && enabled) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(22.dp),
                 )
             }
         }
@@ -984,4 +1026,204 @@ private fun formatFileSize(bytes: Long): String = when {
     bytes >= 1_048_576 -> { val t = bytes * 10L / 1_048_576L; "${t / 10}.${t % 10} MB" }
     bytes >= 1024 -> "${bytes / 1024} KB"
     else -> "$bytes B"
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun PatientChatSheet(
+    patientName: String,
+    patientPicture: String?,
+    bio: PatientBio?,
+    history: List<MedicalRecord>,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.background,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            // Patient header
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(48.dp).clip(CircleShape).background(Secondary90),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (patientPicture != null) {
+                        AsyncImage(model = patientPicture, contentDescription = patientName, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(CircleShape))
+                    } else {
+                        Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(28.dp))
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(patientName, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+                    Text("Patient Overview", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+            // Bio section
+            if (bio != null) {
+                Text("PROFILE", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ChatBioCard("Weight", if (bio.weight != null) "${bio.weight} ${bio.weightIn ?: ""}".trim() else "—", Modifier.weight(1f))
+                    ChatBioCard("Height", if (bio.height != null) "${bio.height} ${bio.heightIn ?: ""}".trim() else "—", Modifier.weight(1f))
+                    ChatBioCard("Blood", bio.bloodGroup ?: "—", Modifier.weight(1f))
+                }
+
+                if (bio.allergies.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Allergies", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            bio.allergies.forEach { allergy ->
+                                Box(
+                                    modifier = Modifier.background(MaterialTheme.colorScheme.errorContainer, ShapePill).padding(horizontal = 10.dp, vertical = 4.dp),
+                                ) { Text(allergy, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }
+                            }
+                        }
+                    }
+                }
+
+                if (bio.chronicConditions.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Chronic Conditions", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            bio.chronicConditions.forEach { condition ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(ShapeCard)
+                                        .background(Primary90)
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Primary40))
+                                    Text(condition, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (bio.currentMedications.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Current Medications", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            bio.currentMedications.forEach { med ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(ShapeCard)
+                                        .background(Neutral90)
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Tertiary40))
+                                    Text(med, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium), color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text("No patient bio on record", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            // Medical history section
+            if (history.isNotEmpty()) {
+                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                Text("MEDICAL HISTORY", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                history.forEach { record ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = ShapeCard,
+                        colors = CardDefaults.cardColors(containerColor = Neutral90),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = record.createdAt.take(10),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (!record.diagnosis.isNullOrBlank()) {
+                                Text(
+                                    text = record.diagnosis,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                )
+                            }
+                            if (record.prescription.isNotEmpty()) {
+                                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        text = "Prescription",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    record.prescription.forEach { item ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.surface)
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalAlignment = Alignment.Top,
+                                        ) {
+                                            Box(modifier = Modifier.padding(top = 5.dp).size(6.dp).clip(CircleShape).background(Primary40))
+                                            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                                Text(
+                                                    text = item.drug,
+                                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                )
+                                                Text(
+                                                    text = "${item.dosage}  ·  ${item.frequency}  ·  ${item.duration}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatBioCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = ShapeCard,
+        colors = CardDefaults.cardColors(containerColor = Neutral90),
+        elevation = CardDefaults.cardElevation(0.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }

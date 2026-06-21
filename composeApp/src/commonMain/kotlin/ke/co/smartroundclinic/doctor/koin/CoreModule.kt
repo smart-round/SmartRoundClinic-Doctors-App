@@ -6,6 +6,7 @@ import ke.co.smartroundclinic.doctor.core.datastore.createDataStore
 import com.liftric.kvault.KVault
 import ke.co.smartroundclinic.doctor.common.Constants.KEY_ACCESS_TOKEN
 import ke.co.smartroundclinic.doctor.core.network.createHttpClient
+import ke.co.smartroundclinic.doctor.core.presence.PresenceService
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.core.storage.createKVault
 import org.koin.dsl.module
@@ -18,5 +19,9 @@ val coreModule = module {
     single {
         val kvault = get<KVault>()
         createHttpClient { kvault.string(KEY_ACCESS_TOKEN) }
+    }
+    single {
+        val kvault = get<KVault>()
+        PresenceService(get()) { kvault.string(KEY_ACCESS_TOKEN) }
     }
 }

@@ -424,7 +424,7 @@ private fun AvailabilityContent(
             Column(modifier = Modifier.weight(1f)) {
                 SectionLabel("Break Blocks")
                 Text(
-                    text = "e.g. lunch break — applies to all working days.",
+                    text = "e.g. lunch break",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

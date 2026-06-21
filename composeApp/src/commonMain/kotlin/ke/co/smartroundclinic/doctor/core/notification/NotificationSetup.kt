@@ -29,13 +29,48 @@ fun setupNotificationListener() {
         }
 
         override fun onNotificationClicked(data: Map<String, Any?>) {
-            Napier.d(tag = TAG, message = "Notification tapped — signalling deep-link to notifications screen")
-            NotificationDeepLink.signal()
+            val event = data["event"]?.toString()
+            val appointmentId = data["appointmentId"]?.toString()
+            val consultationId = data["consultationId"]?.toString()
+            val ticketId = data["ticketId"]?.toString()
+            val patientName = (data["patientName"] ?: data["senderName"])?.toString() ?: "Patient"
+
+            Napier.d(tag = TAG, message = "Notification tapped — event=$event appointmentId=$appointmentId consultationId=$consultationId ticketId=$ticketId")
+
+            val notifEvent: NotificationEvent = when (event) {
+                "New Appointment Request",
+                "Appointment Confirmed",
+                "Appointment Cancelled",
+                "Appointment Completed",
+                "Missed Appointment" -> {
+                    if (!appointmentId.isNullOrBlank()) NotificationEvent.ToBookingDetail(appointmentId)
+                    else NotificationEvent.ToNotifications
+                }
+                "Patient is Ready",
+                "Patient Joined the Call",
+                "Consultation Ended",
+                "Call Ended" -> {
+                    if (!consultationId.isNullOrBlank()) NotificationEvent.ToConversation(consultationId, patientName)
+                    else NotificationEvent.ToNotifications
+                }
+                "New Chat Message" -> when {
+                    !consultationId.isNullOrBlank() -> NotificationEvent.ToConversation(consultationId, patientName)
+                    !ticketId.isNullOrBlank() -> NotificationEvent.ToSupportTicket(ticketId)
+                    else -> NotificationEvent.ToNotifications
+                }
+                "Support ticket status updated" -> {
+                    if (!ticketId.isNullOrBlank()) NotificationEvent.ToSupportTicket(ticketId)
+                    else NotificationEvent.ToNotifications
+                }
+                "Article Suspended",
+                "Article Deleted" -> NotificationEvent.ToArticles
+                else -> NotificationEvent.ToNotifications
+            }
+
+            NotificationDeepLink.signal(notifEvent)
         }
     })
 
-    // onNewToken only fires when the token changes. Fetch the current token immediately
-    // so existing installs always register with the backend on every app start.
     scope.launch {
         val token = NotifierManager.getPushNotifier().getToken()
         Napier.d(tag = TAG, message = "Current FCM token on startup: $token")

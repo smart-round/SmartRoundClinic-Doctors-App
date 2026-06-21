@@ -3,10 +3,18 @@ package ke.co.smartroundclinic.doctor.core.notification
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-object NotificationDeepLink {
-    private val _pending = MutableStateFlow(false)
-    val pending = _pending.asStateFlow()
+sealed class NotificationEvent {
+    data object ToNotifications : NotificationEvent()
+    data class ToBookingDetail(val appointmentId: String) : NotificationEvent()
+    data class ToConversation(val appointmentId: String, val patientName: String) : NotificationEvent()
+    data object ToArticles : NotificationEvent()
+    data class ToSupportTicket(val ticketId: String) : NotificationEvent()
+}
 
-    fun signal() { _pending.value = true }
-    fun consume() { _pending.value = false }
+object NotificationDeepLink {
+    private val _pendingEvent = MutableStateFlow<NotificationEvent?>(null)
+    val pendingEvent = _pendingEvent.asStateFlow()
+
+    fun signal(event: NotificationEvent) { _pendingEvent.value = event }
+    fun consume() { _pendingEvent.value = null }
 }

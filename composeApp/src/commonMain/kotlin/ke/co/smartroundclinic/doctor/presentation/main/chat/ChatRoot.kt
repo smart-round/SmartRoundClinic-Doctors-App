@@ -10,6 +10,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
+import ke.co.smartroundclinic.doctor.presentation.main.bookings.MedicalRecordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Call
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.ChatList
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Conversation
@@ -28,6 +29,7 @@ fun ChatRoot(
     val backStack = retain { mutableStateListOf<NavKey>(ChatList) }
     val isAtRoot = backStack.size == 1
     val vm: ConsultationViewModel = koinViewModel()
+    val medicalRecordVm: MedicalRecordViewModel = koinViewModel()
 
     SideEffect { onAtRootChanged(isAtRoot) }
 
@@ -57,6 +59,12 @@ fun ChatRoot(
                     vm.startConsultation(dest.appointmentId)
                 }
                 val appointment = vm.appointments.firstOrNull { it.id == dest.appointmentId }
+                LaunchedEffect(appointment?.patientId) {
+                    appointment?.patientId?.let { pid ->
+                        medicalRecordVm.loadPatientBio(pid)
+                        medicalRecordVm.loadPatientHistory(pid)
+                    }
+                }
                 ConversationScreen(
                     patientName = dest.patientName,
                     patientPicture = appointment?.patientProfilePicture,
@@ -68,6 +76,8 @@ fun ChatRoot(
                     isCallEnabled = appointment?.status == AppointmentStatus.CONFIRMED,
                     pendingFiles = vm.pendingFiles,
                     currentUserId = vm.currentUserId,
+                    patientBio = medicalRecordVm.patientBio,
+                    patientHistory = medicalRecordVm.patientHistory.toList(),
                     onBack = {
                         vm.closeSession()
                         backStack.removeLastOrNull()

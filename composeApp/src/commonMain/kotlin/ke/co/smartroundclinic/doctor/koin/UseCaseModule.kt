@@ -25,6 +25,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetConsultation
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetMedicalRecordUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetPatientBioUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetPatientMedicalHistoryUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.SaveMedicalRecordUseCase
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.MedicalRecordViewModel
@@ -165,6 +166,7 @@ val useCaseModule = module {
     single { SaveMedicalRecordUseCase(get()) }
     single { GetMedicalRecordUseCase(get()) }
     single { GetPatientMedicalHistoryUseCase(get()) }
+    single { GetPatientBioUseCase(get()) }
 
     viewModel { SplashViewModel(get(), get(), get()) }
     viewModel { OnboardingScreenViewModel(get(), get()) }
@@ -184,7 +186,7 @@ val useCaseModule = module {
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }
     viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { MedicalRecordViewModel(get(), get(), get(), get()) }
+    viewModel { MedicalRecordViewModel(get(), get(), get(), get(), get()) }
     viewModel { NotificationsViewModel(get(), get()) }
     viewModel { WalletViewModel(get(), get(), get(), get(), get(), get(), get()) }
 

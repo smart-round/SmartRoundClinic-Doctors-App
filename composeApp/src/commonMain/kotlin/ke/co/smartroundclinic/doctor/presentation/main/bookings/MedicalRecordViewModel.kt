@@ -11,7 +11,9 @@ import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.PrescriptionItemReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.SaveMedicalRecordReq
 import ke.co.smartroundclinic.doctor.domain.model.MedicalRecord
+import ke.co.smartroundclinic.doctor.domain.model.PatientBio
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetMedicalRecordUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetPatientBioUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetPatientMedicalHistoryUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.SaveMedicalRecordUseCase
 import kotlinx.coroutines.launch
@@ -20,6 +22,7 @@ class MedicalRecordViewModel(
     private val saveUseCase: SaveMedicalRecordUseCase,
     private val getUseCase: GetMedicalRecordUseCase,
     private val historyUseCase: GetPatientMedicalHistoryUseCase,
+    private val getBioUseCase: GetPatientBioUseCase,
     private val snackbarController: SnackbarController,
 ) : ViewModel() {
 
@@ -33,6 +36,8 @@ class MedicalRecordViewModel(
         private set
 
     val patientHistory = mutableStateListOf<MedicalRecord>()
+    var patientBio by mutableStateOf<PatientBio?>(null)
+        private set
 
     var diagnosis by mutableStateOf("")
     var summary by mutableStateOf("")
@@ -44,6 +49,13 @@ class MedicalRecordViewModel(
     fun loadRecord(appointmentId: String) {
         viewModelScope.launch {
             isLoading = true
+            record = null
+            diagnosis = ""
+            summary = ""
+            referralNote = ""
+            additionalNotes = ""
+            prescription.clear()
+            labRequests.clear()
             when (val result = getUseCase(appointmentId)) {
                 is Resource.Success -> {
                     result.data?.let { rec ->
@@ -52,11 +64,9 @@ class MedicalRecordViewModel(
                         summary = rec.summary ?: ""
                         referralNote = rec.referralNote ?: ""
                         additionalNotes = rec.additionalNotes ?: ""
-                        prescription.clear()
                         prescription.addAll(rec.prescription.map {
                             PrescriptionItemReq(it.drug, it.dosage, it.frequency, it.duration, it.instructions)
                         })
-                        labRequests.clear()
                         labRequests.addAll(rec.labRequests)
                     }
                 }
@@ -73,6 +83,15 @@ class MedicalRecordViewModel(
                     patientHistory.clear()
                     patientHistory.addAll(result.data ?: emptyList())
                 }
+                else -> {}
+            }
+        }
+    }
+
+    fun loadPatientBio(patientId: String) {
+        viewModelScope.launch {
+            when (val result = getBioUseCase(patientId)) {
+                is Resource.Success -> patientBio = result.data
                 else -> {}
             }
         }

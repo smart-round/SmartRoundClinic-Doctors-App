@@ -131,7 +131,7 @@ private fun AppointmentRow(appointment: Appointment, onClick: () -> Unit, modifi
             Text(text = appointment.patientName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(imageVector = Icons.Filled.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(13.dp))
+                Icon(imageVector = Icons.Filled.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
                 Spacer(Modifier.width(4.dp))
                 Text(text = appointment.date, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -140,7 +140,7 @@ private fun AppointmentRow(appointment: Appointment, onClick: () -> Unit, modifi
             AppointmentStatusBadge(status = appointment.status)
             if (appointment.status == AppointmentStatus.CONFIRMED) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(imageVector = Icons.Filled.VideoCall, contentDescription = null, tint = Primary40, modifier = Modifier.size(16.dp))
+                    Icon(imageVector = Icons.Filled.VideoCall, contentDescription = null, tint = Primary40, modifier = Modifier.size(18.dp))
                     Text(text = "Join", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = Primary40)
                 }
             }

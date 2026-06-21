@@ -6,7 +6,9 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.retain.retain
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -16,6 +18,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.bookings.destinations.Boo
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.destinations.MedicalRecordDetail
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.AppointmentDetailScreen
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingListScreen
+import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingTab
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.MedicalRecordScreen
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -27,6 +30,7 @@ fun BookingsRoot(
     onPendingNavigated: () -> Unit = {},
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(BookingList) }
+    var selectedTab by retain { mutableStateOf(BookingTab.TODAY) }
     val isAtRoot = backStack.size == 1
     val viewModel: BookingsViewModel = koinViewModel()
     val medicalRecordViewModel: MedicalRecordViewModel = koinViewModel()
@@ -55,16 +59,24 @@ fun BookingsRoot(
                     isLoading = viewModel.isLoading,
                     onRefresh = { viewModel.loadAppointments() },
                     onBookingClick = { appointment -> backStack.add(BookingDetail(appointment.id)) },
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it },
                 )
             }
             entry<BookingDetail> { dest ->
                 val appointment = appointments.find { it.id == dest.bookingId }
                 if (appointment != null) {
-                    LaunchedEffect(appointment.id) { medicalRecordViewModel.loadRecord(appointment.id) }
+                    LaunchedEffect(appointment.id) {
+                        medicalRecordViewModel.loadRecord(appointment.id)
+                        medicalRecordViewModel.loadPatientBio(appointment.patientId)
+                        medicalRecordViewModel.loadPatientHistory(appointment.patientId)
+                    }
                     AppointmentDetailScreen(
                         appointment = appointment,
                         isActioning = viewModel.isActioning,
                         medicalRecord = medicalRecordViewModel.record,
+                        patientHistory = medicalRecordViewModel.patientHistory,
+                        patientBio = medicalRecordViewModel.patientBio,
                         onBack = { backStack.removeLastOrNull() },
                         onConfirm = { viewModel.confirmAppointment(appointment.id) },
                         onComplete = { viewModel.completeAppointment(appointment.id) },

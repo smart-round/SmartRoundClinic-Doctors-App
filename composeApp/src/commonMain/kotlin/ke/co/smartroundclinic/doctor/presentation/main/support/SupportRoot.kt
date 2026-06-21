@@ -1,6 +1,7 @@
 package ke.co.smartroundclinic.doctor.presentation.main.support
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -26,9 +27,22 @@ fun SupportRoot(
     user: User?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    pendingTicketId: String? = null,
+    onPendingNavigated: () -> Unit = {},
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(SupportTicketList) }
     val vm: SupportViewModel = koinViewModel()
+
+    LaunchedEffect(pendingTicketId, vm.tickets) {
+        if (!pendingTicketId.isNullOrBlank() && vm.tickets.isNotEmpty()) {
+            val ticket = vm.tickets.find { it.id == pendingTicketId }
+            if (ticket != null) {
+                backStack.removeAll { it is SupportChat }
+                backStack.add(SupportChat(ticket.id, ticket.ticketNumber))
+                onPendingNavigated()
+            }
+        }
+    }
 
     NavDisplay(
         modifier = modifier,

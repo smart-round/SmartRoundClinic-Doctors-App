@@ -62,7 +62,7 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 
-private enum class BookingTab(val label: String, val filter: String?) {
+internal enum class BookingTab(val label: String, val filter: String?) {
     TODAY("Today", "today"),
     UPCOMING("Upcoming", "upcoming"),
     PAST("Past", "past"),
@@ -75,9 +75,10 @@ internal fun BookingListScreen(
     isLoading: Boolean,
     onRefresh: () -> Unit,
     onBookingClick: (Appointment) -> Unit,
+    selectedTab: BookingTab,
+    onTabSelected: (BookingTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var selectedTab by remember { mutableStateOf(BookingTab.TODAY) }
     val today: LocalDate = remember { LocalDate(todayYear(), todayMonth(), todayDay()) }
 
     val pendingStatuses = setOf(AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED)
@@ -110,7 +111,7 @@ internal fun BookingListScreen(
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            BookingTabRow(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+            BookingTabRow(selectedTab = selectedTab, onTabSelected = onTabSelected)
 
             PullToRefreshBox(
                 isRefreshing = isLoading,

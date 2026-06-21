@@ -59,6 +59,7 @@ fun HomeRoot(
     onSeeAllAppointments: () -> Unit = {},
     onSeeAllConsultations: () -> Unit = {},
     onOpenConsultation: (appointmentId: String, patientName: String) -> Unit = { _, _ -> },
+    onViewAppointment: (appointmentId: String) -> Unit = {},
     pendingDestinations: List<NavKey> = emptyList(),
     onPendingNavigated: () -> Unit = {},
     pendingSupportTicketId: String? = null,
@@ -98,6 +99,7 @@ fun HomeRoot(
                     onSeeAllAppointments = onSeeAllAppointments,
                     onSeeAllConsultations = onSeeAllConsultations,
                     onOpenConsultation = onOpenConsultation,
+                    onViewAppointment = onViewAppointment,
                     onSetUpCalendar = { backStack.add(ScheduleManagement) },
                 )
             }

@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
-import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.CancelAppointmentUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.CompleteAppointmentUseCase
@@ -19,9 +18,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 
 
 
@@ -55,28 +51,8 @@ class BookingsViewModel(
             isLoading = false
             when (result) {
                 is Resource.Error -> snackbarController.show(result.message ?: "Failed to load appointments", isError = true)
-                is Resource.Success -> autoMarkOverdue(result.data ?: emptyList())
                 else -> Unit
             }
-        }
-    }
-
-    private suspend fun autoMarkOverdue(appointments: List<Appointment>) {
-        val nowMs = kotlin.time.Clock.System.now().toEpochMilliseconds()
-        val pendingStatuses = setOf(AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED)
-        val overdueIds = appointments
-            .filter { appt ->
-                appt.status in pendingStatuses &&
-                runCatching {
-                    LocalDate.parse(appt.date)
-                        .atStartOfDayIn(TimeZone.currentSystemDefault())
-                        .toEpochMilliseconds() < nowMs
-                }.getOrDefault(false)
-            }
-            .map { it.id }
-        if (overdueIds.isNotEmpty()) {
-            overdueIds.forEach { id -> noShowAppointmentUseCase(id) }
-            getAppointmentsUseCase()
         }
     }
 
