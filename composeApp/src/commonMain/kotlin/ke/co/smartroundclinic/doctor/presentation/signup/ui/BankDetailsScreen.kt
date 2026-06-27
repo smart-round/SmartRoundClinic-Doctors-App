@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.signup.BankDetailsViewModel
+import ke.co.smartroundclinic.doctor.presentation.signup.BioData
 import ke.co.smartroundclinic.doctor.presentation.signup.PersonalInfoData
 import ke.co.smartroundclinic.doctor.presentation.signup.SignUpFilesViewModel
 import ke.co.smartroundclinic.doctor.presentation.signup.SignUpFormViewModel
@@ -54,6 +55,7 @@ fun BankDetailsScreen(
     formViewModel: SignUpFormViewModel,
     personalInfo: PersonalInfoData,
     specializationData: SpecializationData,
+    bioData: BioData,
     onNext: () -> Unit,
     onBack: () -> Unit,
     viewModel: BankDetailsViewModel = koinViewModel(),
@@ -259,6 +261,7 @@ fun BankDetailsScreen(
                 viewModel.signUp(
                     personalInfo = personalInfo,
                     specialization = specializationData,
+                    bioData = bioData,
                     licenseFileBytes = filesViewModel.licenseFileBytes!!,
                     licenseFileName = filesViewModel.licenseFileName,
                     licenseFileMimeType = filesViewModel.licenseFileMimeType,

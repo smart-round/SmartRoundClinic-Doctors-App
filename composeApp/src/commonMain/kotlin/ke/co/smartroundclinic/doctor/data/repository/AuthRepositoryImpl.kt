@@ -56,6 +56,12 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
                                 append("branchName", data.branchName)
                                 append("accountName", data.accountName)
                                 append("accountNumber", data.accountNumber)
+                                data.kmpdcRegNumber?.let { append("kmpdcRegNumber", it) }
+                                data.title?.let { append("title", it) }
+                                data.bio?.let { append("bio", it) }
+                                data.yearsOfExperience?.let { append("yearsOfExperience", it.toString()) }
+                                if (data.languages.isNotEmpty()) append("languages", data.languages.joinToString(","))
+                                data.facilityName?.let { append("facilityName", it) }
                                 append(
                                     key = "licenceFile",
                                     value = data.licenceFile,

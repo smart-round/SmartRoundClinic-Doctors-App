@@ -28,7 +28,15 @@ class SignUpFormViewModel : ViewModel() {
     var selectedSpecialityId by mutableStateOf("")
     var selectedSpecialityName by mutableStateOf("")
 
-    // ── Step 3 — Bank Details ───────────────────────────────────────────────────
+    // ── Step 3 — Doctor Bio ─────────────────────────────────────────────────────
+    var kmpdcRegNumber by mutableStateOf("")
+    var doctorTitle by mutableStateOf("")
+    var bio by mutableStateOf("")
+    var yearsOfExperience by mutableStateOf("")
+    var languages by mutableStateOf("")
+    var facilityName by mutableStateOf("")
+
+    // ── Step 4 — Bank Details ───────────────────────────────────────────────────
     var bankQuery by mutableStateOf("")
     var selectedBank by mutableStateOf<Bank?>(null)
     var branchQuery by mutableStateOf("")

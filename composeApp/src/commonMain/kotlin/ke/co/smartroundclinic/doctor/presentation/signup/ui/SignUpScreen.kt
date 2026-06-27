@@ -117,7 +117,6 @@ fun SignUpScreen(
     val countrySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val passwordBivr = remember { BringIntoViewRequester() }
-    val buttonBivr = remember { BringIntoViewRequester() }
     val allCountries = rememberCountryCodes()
 
     val genderOptions = listOf("Male", "Female", "Other")
@@ -213,8 +212,12 @@ fun SignUpScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding(),
+    ) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
             .verticalScroll(rememberScrollState())
-            .imePadding()
             .padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -357,7 +360,7 @@ fun SignUpScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             // Country code button — transparent overlay over OutlinedTextField to open bottom sheet
-            Box(modifier = Modifier.width(110.dp)) {
+            Box(modifier = Modifier.width(120.dp)) {
                 OutlinedTextField(
                     value = "${formViewModel.countryFlag} ${formViewModel.countryDialCode}",
                     onValueChange = {},
@@ -436,7 +439,7 @@ fun SignUpScreen(
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Done,
                 ),
-                keyboardActions = KeyboardActions(onDone = { scope.launch { buttonBivr.bringIntoView() } }),
+                keyboardActions = KeyboardActions(onDone = {}),
                 shape = ShapeInput,
                 singleLine = true,
                 modifier = Modifier
@@ -453,59 +456,61 @@ fun SignUpScreen(
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(8.dp))
+    } // end scrollable form Column
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .bringIntoViewRequester(buttonBivr),
+    // Fixed footer — always visible above the keyboard
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
+    ) {
+        PrimaryButton(
+            onClick = {
+                onNext(
+                    PersonalInfoData(
+                        fullName = formViewModel.fullName,
+                        gender = formViewModel.gender,
+                        email = formViewModel.email,
+                        phoneNumber = "${formViewModel.countryDialCode}${formViewModel.phoneNumber}",
+                        kraPin = formViewModel.kraPin,
+                        password = formViewModel.password,
+                    )
+                )
+            },
+            enabled = isFormValid,
         ) {
-            PrimaryButton(
-                onClick = {
-                    onNext(
-                        PersonalInfoData(
-                            fullName = formViewModel.fullName,
-                            gender = formViewModel.gender,
-                            email = formViewModel.email,
-                            phoneNumber = "${formViewModel.countryDialCode}${formViewModel.phoneNumber}",
-                            kraPin = formViewModel.kraPin,
-                            password = formViewModel.password,
-                        )
-                    )
-                },
-                enabled = isFormValid,
-            ) {
-                Text(
-                    text = "Next",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.padding(vertical = 14.dp),
-                )
-            }
+            Text(
+                text = "Next",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.padding(vertical = 14.dp),
+            )
+        }
 
-            Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = "Already have an account? ",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            TextButton(onClick = onSignIn, contentPadding = PaddingValues(0.dp)) {
                 Text(
-                    text = "Already have an account? ",
+                    text = "Sign In",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = MaterialTheme.colorScheme.primary,
                 )
-                TextButton(onClick = onSignIn, contentPadding = PaddingValues(0.dp)) {
-                    Text(
-                        text = "Sign In",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
             }
-
-            Spacer(Modifier.height(16.dp))
         }
     }
+    } // end outer imePadding Column
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

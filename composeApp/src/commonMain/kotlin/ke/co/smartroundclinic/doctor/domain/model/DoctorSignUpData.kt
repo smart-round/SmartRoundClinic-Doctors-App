@@ -19,6 +19,12 @@ data class DoctorSignUpData(
     val accountName: String,
     val accountNumber: String,
     val profilePicture: ByteArray? = null,
+    val kmpdcRegNumber: String? = null,
+    val title: String? = null,
+    val bio: String? = null,
+    val yearsOfExperience: Int? = null,
+    val languages: List<String> = emptyList(),
+    val facilityName: String? = null,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -41,7 +47,13 @@ data class DoctorSignUpData(
             branchName == other.branchName &&
             accountName == other.accountName &&
             accountNumber == other.accountNumber &&
-            profilePicture.contentEquals(other.profilePicture)
+            profilePicture.contentEquals(other.profilePicture) &&
+            kmpdcRegNumber == other.kmpdcRegNumber &&
+            title == other.title &&
+            bio == other.bio &&
+            yearsOfExperience == other.yearsOfExperience &&
+            languages == other.languages &&
+            facilityName == other.facilityName
     }
 
     override fun hashCode(): Int {
@@ -63,6 +75,12 @@ data class DoctorSignUpData(
         result = 31 * result + accountName.hashCode()
         result = 31 * result + accountNumber.hashCode()
         result = 31 * result + (profilePicture?.contentHashCode() ?: 0)
+        result = 31 * result + (kmpdcRegNumber?.hashCode() ?: 0)
+        result = 31 * result + (title?.hashCode() ?: 0)
+        result = 31 * result + (bio?.hashCode() ?: 0)
+        result = 31 * result + (yearsOfExperience ?: 0)
+        result = 31 * result + languages.hashCode()
+        result = 31 * result + (facilityName?.hashCode() ?: 0)
         return result
     }
 }

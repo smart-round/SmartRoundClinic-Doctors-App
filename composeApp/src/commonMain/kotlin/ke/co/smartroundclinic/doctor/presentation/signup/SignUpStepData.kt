@@ -20,3 +20,13 @@ data class SpecializationData(
     val specializationId: String,
     val specializationName: String,
 )
+
+@Serializable
+data class BioData(
+    val kmpdcRegNumber: String,
+    val title: String,
+    val bio: String,
+    val yearsOfExperience: String,
+    val languages: String,
+    val facilityName: String,
+)

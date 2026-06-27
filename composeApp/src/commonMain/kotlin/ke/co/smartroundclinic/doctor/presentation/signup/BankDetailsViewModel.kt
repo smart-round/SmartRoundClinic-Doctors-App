@@ -8,6 +8,7 @@ import ke.co.smartroundclinic.doctor.domain.model.Bank
 import ke.co.smartroundclinic.doctor.domain.model.DoctorSignUpData
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.SignUpUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.bank.GetLocalBanksUseCase
+import ke.co.smartroundclinic.doctor.presentation.signup.BioData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -50,6 +51,7 @@ class BankDetailsViewModel(
     fun signUp(
         personalInfo: PersonalInfoData,
         specialization: SpecializationData,
+        bioData: BioData,
         licenseFileBytes: ByteArray,
         licenseFileName: String,
         licenseFileMimeType: String,
@@ -84,6 +86,12 @@ class BankDetailsViewModel(
                     accountName = accountName,
                     accountNumber = accountNumber,
                     profilePicture = profilePictureBytes,
+                    kmpdcRegNumber = bioData.kmpdcRegNumber.takeIf { it.isNotBlank() },
+                    title = bioData.title.takeIf { it.isNotBlank() },
+                    bio = bioData.bio.takeIf { it.isNotBlank() },
+                    yearsOfExperience = bioData.yearsOfExperience.toIntOrNull(),
+                    languages = bioData.languages.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                    facilityName = bioData.facilityName.takeIf { it.isNotBlank() },
                 )
             )
             when (result) {

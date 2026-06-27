@@ -63,6 +63,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import smartroundclinic.composeapp.generated.resources.Res
 import smartroundclinic.composeapp.generated.resources.file_icon
 import androidx.compose.ui.graphics.Color
+import smartroundclinic.composeapp.generated.resources.get_files
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,7 +198,7 @@ fun SpecializationAndComplianceScreen(
                             .background(MaterialTheme.colorScheme.primaryContainer),
                     ) {
                         Icon(
-                            painter = painterResource(Res.drawable.file_icon),
+                            painter = painterResource(Res.drawable.get_files),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(32.dp),

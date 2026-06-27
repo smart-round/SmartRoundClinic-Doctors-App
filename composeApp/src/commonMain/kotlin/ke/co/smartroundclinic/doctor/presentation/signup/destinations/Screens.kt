@@ -1,6 +1,7 @@
 package ke.co.smartroundclinic.doctor.presentation.signup.destinations
 
 import androidx.navigation3.runtime.NavKey
+import ke.co.smartroundclinic.doctor.presentation.signup.BioData
 import ke.co.smartroundclinic.doctor.presentation.signup.PersonalInfoData
 import ke.co.smartroundclinic.doctor.presentation.signup.SpecializationData
 import kotlinx.serialization.Serializable
@@ -17,9 +18,16 @@ data class SpecializationAndCompliance(
 ) : NavKey
 
 @Serializable
+data class DoctorBio(
+    val personalInfo: PersonalInfoData,
+    val specialization: SpecializationData,
+) : NavKey
+
+@Serializable
 data class BankDetails(
     val personalInfo: PersonalInfoData,
     val specialization: SpecializationData,
+    val bioData: BioData,
 ) : NavKey
 
 @Serializable

@@ -9,20 +9,22 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -50,11 +52,13 @@ import androidx.navigation3.ui.NavDisplay
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.AccountVerification
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.ApplicationUnderReview
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.BankDetails
+import ke.co.smartroundclinic.doctor.presentation.signup.destinations.DoctorBio
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.SignUp
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.SpecializationAndCompliance
 import ke.co.smartroundclinic.doctor.presentation.signup.ui.AccountVerificationScreen
 import ke.co.smartroundclinic.doctor.presentation.signup.ui.ApplicationUnderReviewScreen
 import ke.co.smartroundclinic.doctor.presentation.signup.ui.BankDetailsScreen
+import ke.co.smartroundclinic.doctor.presentation.signup.ui.DoctorBioScreen
 import ke.co.smartroundclinic.doctor.presentation.signup.ui.SignUpScreen
 import ke.co.smartroundclinic.doctor.presentation.signup.ui.SpecializationAndComplianceScreen
 import ke.co.smartroundclinic.doctor.presentation.theme.smartRoundColors
@@ -74,32 +78,53 @@ fun SignUpRoot(
     val backStack = retain { mutableStateListOf<NavKey>(SignUp) }
     val steps = listOf(
         StepItem("1", "Personal Info"),
-        StepItem("2", "Specialization & Compliance"),
-        StepItem("3", "Bank Details"),
+        StepItem("2", "Specialization"),
+        StepItem("3", "Doctor Bio"),
+        StepItem("4", "Bank Details"),
     )
 
     val currentDestination = backStack.lastOrNull()
     val currentStep = when (currentDestination) {
         is SpecializationAndCompliance -> 1
-        is BankDetails -> 2
+        is DoctorBio -> 2
+        is BankDetails -> 3
         else -> 0
     }
     val showProgress = currentDestination !is AccountVerification &&
             currentDestination !is ApplicationUnderReview
+    val headerTitle = if (currentDestination is AccountVerification) "Enter Your Verification Code" else "Get Started"
+    val headerSubtitle = if (currentDestination is AccountVerification)
+        "A verification code has been sent to your email. Check your inbox and enter the code below."
+    else
+        "Sign up to join our network"
 
     fun navigateTo(destination: NavKey) = backStack.add(destination)
     fun navigateBack() = backStack.removeLastOrNull()
 
+    val isFullScreen = currentDestination is ApplicationUnderReview
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { SignUpTopBar() }
+        topBar = { if (!isFullScreen) SignUpTopBar() },
     ) { paddingValues ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(paddingValues)
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (!isFullScreen) Modifier.padding(paddingValues) else Modifier),
         ) {
-            SignUpHeader()
-            if (showProgress) {
-                SignUpProgress(steps = steps, currentStep = currentStep)
+            if (!isFullScreen) {
+                if (currentDestination !is AccountVerification) {
+                    SignUpHeader(title = headerTitle, subtitle = headerSubtitle)
+                }
+                if (showProgress) {
+                    Column(modifier = modifier.padding(vertical = 8.dp)) {
+                        SignUpProgress(steps = steps, currentStep = currentStep)
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color.Gray.copy(0.3f),
+                        )
+                    }
+                }
             }
             SignUpNavHost(
                 backStack = backStack,
@@ -108,7 +133,7 @@ fun SignUpRoot(
                 onNavigateTo = ::navigateTo,
                 onBack = ::navigateBack,
                 onSignIn = onSignIn,
-                modifier = modifier,
+                modifier = Modifier,
             )
         }
     }
@@ -137,7 +162,10 @@ private fun SignUpTopBar() {
 }
 
 @Composable
-private fun SignUpHeader() {
+private fun SignUpHeader(
+    title: String = "Get Started",
+    subtitle: String = "Sign up to join our network",
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -155,16 +183,16 @@ private fun SignUpHeader() {
             horizontalAlignment = Alignment.Start,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
             Text(
-                text = "Get Started",
+                text = title,
                 color = MaterialTheme.colorScheme.onPrimary,
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             Text(
-                text = "Sign up to join our network",
+                text = subtitle,
                 color = MaterialTheme.colorScheme.onPrimary,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -200,7 +228,14 @@ private fun SignUpNavHost(
                 SpecializationAndComplianceScreen(
                     filesViewModel = filesViewModel,
                     formViewModel = formViewModel,
-                    onNext = { specialization -> onNavigateTo(BankDetails(dest.personalInfo, specialization)) },
+                    onNext = { specialization -> onNavigateTo(DoctorBio(dest.personalInfo, specialization)) },
+                    onBack = onBack,
+                )
+            }
+            entry<DoctorBio> { dest ->
+                DoctorBioScreen(
+                    formViewModel = formViewModel,
+                    onNext = { bioData -> onNavigateTo(BankDetails(dest.personalInfo, dest.specialization, bioData)) },
                     onBack = onBack,
                 )
             }
@@ -210,6 +245,7 @@ private fun SignUpNavHost(
                     formViewModel = formViewModel,
                     personalInfo = dest.personalInfo,
                     specializationData = dest.specialization,
+                    bioData = dest.bioData,
                     onNext = { onNavigateTo(AccountVerification(dest.personalInfo.email)) },
                     onBack = onBack,
                 )
@@ -217,13 +253,13 @@ private fun SignUpNavHost(
             entry<AccountVerification> { dest ->
                 AccountVerificationScreen(
                     email = dest.email,
-                    onVerify = onSignIn,
+                    onVerify = { onNavigateTo(ApplicationUnderReview) },
                     onBack = onBack,
                     onResendCode = {},
                 )
             }
             entry<ApplicationUnderReview> {
-                ApplicationUnderReviewScreen()
+                ApplicationUnderReviewScreen(onNavigateToSignIn = onSignIn)
             }
         }
     )
@@ -244,106 +280,114 @@ private fun SignUpProgress(
     labelInactiveColor: Color = MaterialTheme.colorScheme.outline,
     backgroundColor: Color = Color.Transparent,
 ) {
-    Row(
+    // BoxWithConstraints lets us read maxWidth so lines can be precisely positioned
+    // from the right edge of circle N to the left edge of circle N+1.
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .background(backgroundColor)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.Top,
+            .padding(vertical = 8.dp),
     ) {
-        steps.forEachIndexed { index, step ->
-            val isCompleted = index < currentStep
-            val isActive = index == currentStep
+        val stepWidth = maxWidth / steps.size
+        val circleRadius = 12.dp // half of 24 dp circle
 
-            val circleColor by animateColorAsState(
-                targetValue = when {
-                    isCompleted -> completedColor
-                    isActive -> activeColor
-                    else -> inactiveColor
-                },
-                animationSpec = tween(300),
-                label = "circleColor",
-            )
-            val circleBg by animateColorAsState(
-                targetValue = if (isCompleted) completedColor else Color.Transparent,
-                animationSpec = tween(300),
-                label = "circleBg",
-            )
-            val textColor by animateColorAsState(
-                targetValue = when {
-                    isCompleted -> MaterialTheme.colorScheme.onPrimary
-                    isActive -> activeColor
-                    else -> inactiveColor
-                },
-                animationSpec = tween(300),
-                label = "textColor",
-            )
-            val labelColor by animateColorAsState(
-                targetValue = if (isActive) labelActiveColor else labelInactiveColor,
-                animationSpec = tween(300),
-                label = "labelColor",
-            )
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.widthIn(100.dp),
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(circleBg)
-                        .border(width = 1.dp, color = circleColor, shape = CircleShape),
-                ) {
-                    Text(
-                        text = if (isCompleted) "✓" else step.id,
-                        color = textColor,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = step.label,
-                    color = labelColor,
-                    style = MaterialTheme.typography.bodySmallEmphasized.copy(
-                        fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                        textAlign = TextAlign.Center,
-                    ),
-                    //modifier = Modifier.widthIn(max = 72.dp),
-                )
-            }
-
+        // ── Lines (drawn first so circles appear on top) ────────────────────────
+        steps.forEachIndexed { index, _ ->
             if (index < steps.lastIndex) {
+                val isCompleted = index < currentStep
                 val lineProgress by animateFloatAsState(
                     targetValue = if (isCompleted) 1f else 0f,
                     animationSpec = spring(stiffness = 200f),
-                    label = "lineProgress",
+                    label = "lineProgress$index",
                 )
+                // x from right edge of circle[index] to left edge of circle[index+1], with 2dp gap
+                val lineX = stepWidth * index + stepWidth / 2 + circleRadius + 2.dp
+                val lineW = stepWidth - circleRadius * 2 - 4.dp
+
+                // Inactive track
                 Spacer(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(top = 17.dp)
+                        .offset(x = lineX, y = 11.dp)
+                        .width(lineW)
                         .height(2.dp)
-                        .drawBehind {
-                            drawLine(
-                                color = inactiveColor,
-                                start = Offset(0f, size.height / 2),
-                                end = Offset(size.width, size.height / 2),
-                                strokeWidth = 2.dp.toPx(),
-                                cap = StrokeCap.Round,
-                            )
-                            if (lineProgress > 0f) {
-                                drawLine(
-                                    color = completedColor,
-                                    start = Offset(0f, size.height / 2),
-                                    end = Offset(size.width * lineProgress, size.height / 2),
-                                    strokeWidth = 2.dp.toPx(),
-                                    cap = StrokeCap.Round,
-                                )
-                            }
-                        }
+                        .background(inactiveColor),
                 )
+                // Animated active fill
+                if (lineProgress > 0f) {
+                    Spacer(
+                        modifier = Modifier
+                            .offset(x = lineX, y = 11.dp)
+                            .width(lineW * lineProgress)
+                            .height(2.dp)
+                            .background(completedColor),
+                    )
+                }
+            }
+        }
+
+        // ── Step circles + labels (drawn on top of lines) ───────────────────────
+        Row(modifier = Modifier.fillMaxWidth()) {
+            steps.forEachIndexed { index, step ->
+                val isCompleted = index < currentStep
+                val isActive = index == currentStep
+
+                val circleColor by animateColorAsState(
+                    targetValue = when {
+                        isCompleted -> completedColor
+                        isActive -> activeColor
+                        else -> inactiveColor
+                    },
+                    animationSpec = tween(300),
+                    label = "circleColor$index",
+                )
+                val circleBg by animateColorAsState(
+                    targetValue = if (isCompleted) completedColor else Color.Transparent,
+                    animationSpec = tween(300),
+                    label = "circleBg$index",
+                )
+                val textColor by animateColorAsState(
+                    targetValue = when {
+                        isCompleted -> MaterialTheme.colorScheme.onPrimary
+                        isActive -> activeColor
+                        else -> inactiveColor
+                    },
+                    animationSpec = tween(300),
+                    label = "textColor$index",
+                )
+                val labelColor by animateColorAsState(
+                    targetValue = if (isActive) labelActiveColor else labelInactiveColor,
+                    animationSpec = tween(300),
+                    label = "labelColor$index",
+                )
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(circleBg)
+                            .border(width = 1.dp, color = circleColor, shape = CircleShape),
+                    ) {
+                        Text(
+                            text = if (isCompleted) "✓" else step.id,
+                            color = textColor,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = step.label,
+                        color = labelColor,
+                        style = MaterialTheme.typography.bodySmallEmphasized.copy(
+                            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
+                            textAlign = TextAlign.Center,
+                        ),
+                    )
+                }
             }
         }
     }
