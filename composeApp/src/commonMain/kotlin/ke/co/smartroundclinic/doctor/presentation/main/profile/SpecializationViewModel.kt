@@ -35,7 +35,7 @@ class SpecializationViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val isAccountVerified: StateFlow<Boolean> = userLocalRepository.observeUser()
-        .map { it?.verificationStatus?.contains("APPROVED", ignoreCase = true) == true }
+        .map { it?.verificationStatus?.equals("VERIFIED", ignoreCase = true) == true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     var catalog by mutableStateOf<List<Speciality>>(emptyList())

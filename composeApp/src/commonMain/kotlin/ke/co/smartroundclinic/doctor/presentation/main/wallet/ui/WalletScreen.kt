@@ -71,6 +71,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
 import ke.co.smartroundclinic.doctor.domain.model.DoctorPayment
 import ke.co.smartroundclinic.doctor.domain.model.PaymentSummary
 import ke.co.smartroundclinic.doctor.domain.model.Withdrawal
@@ -101,6 +102,8 @@ private enum class WalletTab(val label: String) {
 @Composable
 internal fun WalletScreen(
     modifier: Modifier = Modifier,
+    onProfileClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
     vm: WalletViewModel = koinViewModel(),
 ) {
     val scope = rememberCoroutineScope()
@@ -124,55 +127,43 @@ internal fun WalletScreen(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0),
+        topBar = {
+            DashboardHeader(
+                title = "Wallet",
+                onProfileClick = onProfileClick,
+                onNotificationsClick = onNotificationsClick,
+                bottomContent = {
+                    TabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White,
+                        indicator = { tabPositions ->
+                            SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                                color = Color.White,
+                            )
+                        },
+                        divider = {},
+                    ) {
+                        WalletTab.entries.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = selectedTab == index,
+                                onClick = { selectedTab = index },
+                                text = {
+                                    Text(
+                                        text = tab.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (selectedTab == index) Color.White else Color.White.copy(alpha = 0.65f),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                },
+            )
+        },
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-
-            // ── Gradient header + tabs ────────────────────────────────────────
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(GradientStart, GradientEnd)))
-                    .statusBarsPadding(),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Wallet",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White,
-                    )
-                }
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = Color.Transparent,
-                    contentColor = Color.White,
-                    indicator = { tabPositions ->
-                        SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            color = Color.White,
-                        )
-                    },
-                    divider = {},
-                ) {
-                    WalletTab.entries.forEachIndexed { index, tab ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            text = {
-                                Text(
-                                    text = tab.label,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (selectedTab == index) Color.White else Color.White.copy(alpha = 0.65f),
-                                )
-                            },
-                        )
-                    }
-                }
-            }
 
             // ── Tab content ───────────────────────────────────────────────────
             PullToRefreshBox(

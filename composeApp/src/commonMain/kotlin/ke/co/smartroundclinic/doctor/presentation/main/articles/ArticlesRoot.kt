@@ -28,6 +28,8 @@ import org.koin.compose.viewmodel.koinViewModel
 fun ArticlesRoot(
     modifier: Modifier = Modifier,
     onAtRootChanged: (Boolean) -> Unit = {},
+    onProfileClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
 ) {
     val viewModel = koinViewModel<ArticlesViewModel>()
     val backStack = retain { mutableStateListOf<NavKey>(ArticleList) }
@@ -54,6 +56,7 @@ fun ArticlesRoot(
                     hasLoadedMine = viewModel.hasLoadedMine,
                     hasLoadedLive = viewModel.hasLoadedLive,
                     selectedTab = selectedTab,
+                    categories = categories,
                     onTabSelected = { tab ->
                         selectedTab = tab
                         if (tab == ArticlesTab.MY_ARTICLES) viewModel.refreshMyArticles()
@@ -69,6 +72,8 @@ fun ArticlesRoot(
                         if (selectedTab == ArticlesTab.MY_ARTICLES) viewModel.refreshMyArticles(forceRefresh = true)
                         else viewModel.refreshLiveArticles(forceRefresh = true)
                     },
+                    onProfileClick = onProfileClick,
+                    onNotificationsClick = onNotificationsClick,
                 )
             }
             entry<WriteArticle> { dest ->

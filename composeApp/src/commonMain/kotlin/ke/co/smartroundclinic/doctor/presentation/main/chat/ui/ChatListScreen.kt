@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,21 +45,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
+import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ChatListScreen(
     appointments: List<Appointment>,
     onAppointmentClick: (Appointment) -> Unit,
+    onProfileClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = {
-            TopAppBar(title = { Text("Consultations", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) })
-        },
+        topBar = { DashboardHeader(title = "Consultations", onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick) },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -116,12 +122,33 @@ private fun AppointmentStatusBadge(status: AppointmentStatus, modifier: Modifier
     }
 }
 
+private fun isJoinable(appointment: Appointment): Boolean {
+    if (appointment.status != AppointmentStatus.CONFIRMED) return false
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val apptDate = runCatching { LocalDate.parse(appointment.date) }.getOrNull() ?: return false
+    if (apptDate != now.date) return false
+    val parts = appointment.slotStart.split(":")
+    val slotHour = parts.getOrNull(0)?.toIntOrNull() ?: return false
+    val slotMinute = parts.getOrNull(1)?.toIntOrNull() ?: return false
+    val currentMinutes = now.hour * 60 + now.minute
+    val slotMinutes = slotHour * 60 + slotMinute
+    return currentMinutes >= slotMinutes - 5
+}
+
 @Composable
 private fun AppointmentRow(appointment: Appointment, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val canJoin = remember(appointment.id, appointment.status) { isJoinable(appointment) }
+    val isClickable = appointment.status != AppointmentStatus.CONFIRMED || canJoin
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
+            .then(
+                if (isClickable)
+                    Modifier.clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
+                else
+                    Modifier
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -139,9 +166,20 @@ private fun AppointmentRow(appointment: Appointment, onClick: () -> Unit, modifi
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             AppointmentStatusBadge(status = appointment.status)
             if (appointment.status == AppointmentStatus.CONFIRMED) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(imageVector = Icons.Filled.VideoCall, contentDescription = null, tint = Primary40, modifier = Modifier.size(18.dp))
-                    Text(text = "Join", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = Primary40)
+                if (canJoin) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(imageVector = Icons.Filled.VideoCall, contentDescription = null, tint = Primary40, modifier = Modifier.size(18.dp))
+                        Text(text = "Join", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = Primary40)
+                    }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(imageVector = Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                        Text(
+                            text = "Opens ${appointment.slotStart}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

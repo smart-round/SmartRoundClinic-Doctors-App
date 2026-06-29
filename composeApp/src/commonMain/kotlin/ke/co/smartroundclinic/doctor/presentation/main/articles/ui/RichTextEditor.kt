@@ -39,7 +39,6 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import com.mohamedrejeb.richeditor.model.HeadingStyle
 import com.mohamedrejeb.richeditor.model.RichTextState
 import com.mohamedrejeb.richeditor.ui.material3.RichTextEditor as LibRichTextEditor
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
@@ -115,12 +114,6 @@ internal fun RichTextEditor(
             EditorIconBtn(Icons.Filled.FormatUnderlined, "Underline", active = isUnderline) {
                 state.toggleSpanStyle(SpanStyle(textDecoration = TextDecoration.Underline))
             }
-
-            EditorDivider()
-
-            EditorTextBtn("H1") { state.setHeadingStyle(HeadingStyle.H1) }
-            EditorTextBtn("H2") { state.setHeadingStyle(HeadingStyle.H2) }
-            EditorTextBtn("H3") { state.setHeadingStyle(HeadingStyle.H3) }
 
             EditorDivider()
 

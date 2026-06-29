@@ -102,7 +102,7 @@ fun SignInScreen(
                 )
         ) {
             Column(
-                modifier = modifier.padding(vertical = 8.dp, horizontal = 16.dp)
+                modifier = modifier.padding(vertical = 16.dp, horizontal = 16.dp)
             ) {
                 Text(
                     text = "Welcome Back",
@@ -114,7 +114,7 @@ fun SignInScreen(
 
                 Text(
                     text = "Sign in to continue",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
             }

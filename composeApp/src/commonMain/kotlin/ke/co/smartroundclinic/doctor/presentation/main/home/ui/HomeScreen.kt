@@ -67,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.rememberSvgPainter
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
@@ -127,7 +128,6 @@ fun HomeScreen(
     scheduleViewModel: ScheduleViewModel = koinViewModel(),
     notificationsViewModel: NotificationsViewModel = koinViewModel(),
 ) {
-    val user by profileViewModel.user.collectAsState()
     val allAppointments by bookingsViewModel.appointments.collectAsState()
     val schedule by scheduleViewModel.schedule.collectAsState()
     val scope = rememberCoroutineScope()
@@ -171,9 +171,6 @@ fun HomeScreen(
             DashboardHeader(
                 onProfileClick = onProfileClick,
                 onNotificationsClick = onNotificationsClick,
-                fullName = user?.fullName ?: "",
-                profilePicture = user?.profilePicture,
-                unreadNotifications = notificationsViewModel.unreadCount,
             )
         },
         contentWindowInsets = WindowInsets(0),
@@ -207,101 +204,6 @@ fun HomeScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun DashboardHeader(
-    onProfileClick: () -> Unit,
-    onNotificationsClick: () -> Unit,
-    fullName: String,
-    profilePicture: String?,
-    unreadNotifications: Int,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        GradientStart,
-                        GradientEnd
-                    )
-                )
-            )
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.25f))
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                            onClick = onProfileClick,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = "Profile",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    if (profilePicture != null) {
-                        AsyncImage(
-                            model = profilePicture,
-                            contentDescription = "Profile picture",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
-                val greeting =
-                    if (fullName.isNotBlank()) "Hello Dr. $fullName 👋" else "Hello Doctor 👋"
-                Text(
-                    text = greeting,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    modifier = Modifier.weight(1f)
-                )
-                Box(
-                    modifier = Modifier.clickable(
-                        enabled = true,
-                        onClick = onNotificationsClick
-                    )
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.notification),
-                        contentDescription = "Notifications",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    if (unreadNotifications > 0) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(Color.Red)
-                                .align(Alignment.TopEnd)
-                                .offset(x=4.dp, y = (-14).dp)
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "A smarter way to expand access to healthcare",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.85f)
-            )
         }
     }
 }

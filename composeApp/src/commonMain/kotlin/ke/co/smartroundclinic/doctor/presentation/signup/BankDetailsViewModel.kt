@@ -72,6 +72,7 @@ class BankDetailsViewModel(
                     email = personalInfo.email,
                     password = personalInfo.password,
                     gender = personalInfo.gender,
+                    dateOfBirth = personalInfo.dateOfBirth.takeIf { it.isNotBlank() },
                     phoneNumber = personalInfo.phoneNumber,
                     kraPin = personalInfo.kraPin,
                     specializationId = specialization.specializationId,

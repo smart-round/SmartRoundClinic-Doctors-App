@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -61,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -185,28 +187,34 @@ internal fun ScheduleManagementScreen(
             ScheduleHeader(onBack = onBack)
 
             // Tab bar
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .shadow(elevation = 4.dp, shape = ShapePill)
+                    .clip(ShapePill)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(4.dp),
             ) {
-                ScheduleTab.entries.forEach { tab ->
-                    val isSelected = selectedTab == tab
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(ShapePill)
-                            .background(if (isSelected) Primary40 else MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { selectedTab = tab }
-                            .padding(vertical = 10.dp),
-                    ) {
-                        Text(
-                            text = if (tab == ScheduleTab.AVAILABILITY) "Availability" else "Calendar",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                Row {
+                    ScheduleTab.entries.forEach { tab ->
+                        val isSelected = selectedTab == tab
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(ShapePill)
+                                .then(if (isSelected) Modifier.background(Color.White) else Modifier)
+                                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { selectedTab = tab }
+                                .padding(vertical = 10.dp),
+                        ) {
+                            Text(
+                                text = if (tab == ScheduleTab.AVAILABILITY) "Availability" else "Calendar",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
@@ -864,11 +872,13 @@ private fun BreakBlockRow(
 
 @Composable
 private fun ScheduleHeader(onBack: () -> Unit, modifier: Modifier = Modifier) {
+    val headerShape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .wrapContentHeight()
+            .heightIn(min = 120.dp)
             .background(brush = Brush.horizontalGradient(colors = listOf(GradientStart, GradientEnd)))
+            .clip(headerShape)
             .statusBarsPadding(),
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {

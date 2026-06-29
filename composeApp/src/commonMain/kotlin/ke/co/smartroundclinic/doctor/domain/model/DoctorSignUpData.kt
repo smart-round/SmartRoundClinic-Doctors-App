@@ -5,6 +5,7 @@ data class DoctorSignUpData(
     val email: String,
     val password: String,
     val gender: String,
+    val dateOfBirth: String? = null,
     val phoneNumber: String,
     val kraPin: String,
     val specializationId: String,
@@ -34,6 +35,7 @@ data class DoctorSignUpData(
             email == other.email &&
             password == other.password &&
             gender == other.gender &&
+            dateOfBirth == other.dateOfBirth &&
             phoneNumber == other.phoneNumber &&
             kraPin == other.kraPin &&
             specializationId == other.specializationId &&
@@ -61,6 +63,7 @@ data class DoctorSignUpData(
         result = 31 * result + email.hashCode()
         result = 31 * result + password.hashCode()
         result = 31 * result + gender.hashCode()
+        result = 31 * result + (dateOfBirth?.hashCode() ?: 0)
         result = 31 * result + phoneNumber.hashCode()
         result = 31 * result + kraPin.hashCode()
         result = 31 * result + specializationId.hashCode()

@@ -46,6 +46,7 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
                                 append("email", data.email)
                                 append("password", data.password)
                                 append("gender", data.gender)
+                                data.dateOfBirth?.let { append("dateOfBirth", it) }
                                 append("phoneNumber", data.phoneNumber)
                                 append("kraPin", data.kraPin)
                                 append("specializationId", data.specializationId)

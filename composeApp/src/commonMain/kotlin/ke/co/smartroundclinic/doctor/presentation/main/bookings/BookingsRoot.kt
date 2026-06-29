@@ -28,9 +28,11 @@ fun BookingsRoot(
     onAtRootChanged: (Boolean) -> Unit = {},
     pendingBookingId: String? = null,
     onPendingNavigated: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(BookingList) }
-    var selectedTab by retain { mutableStateOf(BookingTab.TODAY) }
+    var selectedTab by retain { mutableStateOf(BookingTab.UPCOMING) }
     val isAtRoot = backStack.size == 1
     val viewModel: BookingsViewModel = koinViewModel()
     val medicalRecordViewModel: MedicalRecordViewModel = koinViewModel()
@@ -61,6 +63,8 @@ fun BookingsRoot(
                     onBookingClick = { appointment -> backStack.add(BookingDetail(appointment.id)) },
                     selectedTab = selectedTab,
                     onTabSelected = { selectedTab = it },
+                    onProfileClick = onProfileClick,
+                    onNotificationsClick = onNotificationsClick,
                 )
             }
             entry<BookingDetail> { dest ->

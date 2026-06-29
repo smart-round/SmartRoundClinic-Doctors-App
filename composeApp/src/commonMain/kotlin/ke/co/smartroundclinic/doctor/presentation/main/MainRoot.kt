@@ -202,15 +202,31 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                         onAtRootChanged = { isAtRoot = it },
                         pendingBookingId = pendingBookingId,
                         onPendingNavigated = { pendingBookingId = null },
+                        onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
+                        onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
                     )
                 }
-                entry<Articles> { ArticlesRoot(onAtRootChanged = { isAtRoot = it }) }
-                entry<Wallet> { WalletRoot(onAtRootChanged = { isAtRoot = it }) }
+                entry<Articles> {
+                    ArticlesRoot(
+                        onAtRootChanged = { isAtRoot = it },
+                        onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
+                        onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
+                    )
+                }
+                entry<Wallet> {
+                    WalletRoot(
+                        onAtRootChanged = { isAtRoot = it },
+                        onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
+                        onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
+                    )
+                }
                 entry<Chat> {
                     ChatRoot(
                         onAtRootChanged = { isAtRoot = it },
                         pendingConversation = pendingChatConversation,
                         onPendingNavigated = { pendingChatConversation = null },
+                        onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
+                        onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
                     )
                 }
             },

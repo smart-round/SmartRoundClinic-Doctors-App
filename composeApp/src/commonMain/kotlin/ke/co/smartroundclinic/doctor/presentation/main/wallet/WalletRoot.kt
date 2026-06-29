@@ -17,6 +17,8 @@ import org.koin.compose.viewmodel.koinViewModel
 fun WalletRoot(
     modifier: Modifier = Modifier,
     onAtRootChanged: (Boolean) -> Unit = {},
+    onProfileClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(WalletList) }
     val isAtRoot = backStack.size == 1
@@ -30,7 +32,7 @@ fun WalletRoot(
         backStack = backStack,
         onBack = { backStack.removeLastOrNull() },
         entryProvider = entryProvider {
-            entry<WalletList> { WalletScreen() }
+            entry<WalletList> { WalletScreen(onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick) }
         },
     )
 }

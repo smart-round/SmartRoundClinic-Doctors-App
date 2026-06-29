@@ -25,6 +25,8 @@ fun ChatRoot(
     onAtRootChanged: (Boolean) -> Unit = {},
     pendingConversation: Conversation? = null,
     onPendingNavigated: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
 ) {
     val backStack = retain { mutableStateListOf<NavKey>(ChatList) }
     val isAtRoot = backStack.size == 1
@@ -52,6 +54,8 @@ fun ChatRoot(
                     onAppointmentClick = { appointment ->
                         backStack.add(Conversation(appointment.id, appointment.patientName))
                     },
+                    onProfileClick = onProfileClick,
+                    onNotificationsClick = onNotificationsClick,
                 )
             }
             entry<Conversation> { dest ->

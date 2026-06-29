@@ -138,8 +138,14 @@ fun SignUpScreen(
     }
     val emailError = if (formViewModel.email.isNotBlank() && !formViewModel.email.isValidEmail()) "Enter a valid email" else null
     val phoneNumberError = if (formViewModel.phoneNumber.isNotBlank()) {
-        val digits = formViewModel.phoneNumber.filter { it.isDigit() }
-        if (digits.length < 6 || digits.length > 12) "Enter a valid phone number" else null
+        val n = formViewModel.phoneNumber
+        val isKenya = formViewModel.countryDialCode == "+254"
+        when {
+            isKenya && n.length != 9 -> "Enter 9 digits (e.g. 712345678)"
+            isKenya && !n.startsWith("7") && !n.startsWith("1") -> "Number must start with 7 or 1"
+            !isKenya && (n.length < 5 || n.length > 12) -> "Enter a valid phone number"
+            else -> null
+        }
     } else null
 
     val isFormValid = formViewModel.fullName.isNotBlank() &&
@@ -392,10 +398,10 @@ fun SignUpScreen(
 
             SignUpField(
                 value = formViewModel.phoneNumber,
-                onValueChange = { formViewModel.phoneNumber = it },
+                onValueChange = { if (it.all { c -> c.isDigit() }) formViewModel.phoneNumber = it },
                 label = "Phone Number",
-                placeholder = "7XX XXX XXX",
-                keyboardType = KeyboardType.Phone,
+                placeholder = if (formViewModel.countryDialCode == "+254") "712345678" else "Phone number",
+                keyboardType = KeyboardType.Number,
                 imeAction = ImeAction.Next,
                 errorMessage = phoneNumberError,
                 modifier = Modifier
@@ -472,6 +478,9 @@ fun SignUpScreen(
                     PersonalInfoData(
                         fullName = formViewModel.fullName,
                         gender = formViewModel.gender,
+                        dateOfBirth = formViewModel.dob.let { d ->
+                            if (d.length == 8) "${d.substring(0,2)}/${d.substring(2,4)}/${d.substring(4,8)}" else d
+                        },
                         email = formViewModel.email,
                         phoneNumber = "${formViewModel.countryDialCode}${formViewModel.phoneNumber}",
                         kraPin = formViewModel.kraPin,

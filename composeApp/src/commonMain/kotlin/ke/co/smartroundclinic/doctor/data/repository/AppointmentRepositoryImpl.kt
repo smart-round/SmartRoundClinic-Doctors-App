@@ -32,7 +32,7 @@ class AppointmentRepositoryImpl(private val client: HttpClient) : AppointmentRep
     override suspend fun confirmAppointment(id: String): Resource<SuccessRes> = withContext(Dispatchers.IO) {
         try {
             val res = client.patch("scheduling/appointments/confirm") { parameter("id", id) }.body<SuccessRes>()
-            Resource.Success(res, res.message)
+            if (res.status) Resource.Success(res, res.message) else Resource.Error(res.message ?: "Failed to confirm appointment")
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to confirm appointment")
         }
@@ -41,7 +41,7 @@ class AppointmentRepositoryImpl(private val client: HttpClient) : AppointmentRep
     override suspend fun completeAppointment(id: String): Resource<SuccessRes> = withContext(Dispatchers.IO) {
         try {
             val res = client.patch("scheduling/appointments/complete") { parameter("id", id) }.body<SuccessRes>()
-            Resource.Success(res, res.message)
+            if (res.status) Resource.Success(res, res.message) else Resource.Error(res.message ?: "Failed to complete appointment")
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to complete appointment")
         }
@@ -50,7 +50,7 @@ class AppointmentRepositoryImpl(private val client: HttpClient) : AppointmentRep
     override suspend fun noShowAppointment(id: String): Resource<SuccessRes> = withContext(Dispatchers.IO) {
         try {
             val res = client.patch("scheduling/appointments/no-show") { parameter("id", id) }.body<SuccessRes>()
-            Resource.Success(res, res.message)
+            if (res.status) Resource.Success(res, res.message) else Resource.Error(res.message ?: "Failed to mark no-show")
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to mark no-show")
         }
@@ -62,7 +62,7 @@ class AppointmentRepositoryImpl(private val client: HttpClient) : AppointmentRep
                 parameter("id", id)
                 setBody(CancelAppointmentReq(reason))
             }.body<SuccessRes>()
-            Resource.Success(res, res.message)
+            if (res.status) Resource.Success(res, res.message) else Resource.Error(res.message ?: "Failed to cancel appointment")
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to cancel appointment")
         }
