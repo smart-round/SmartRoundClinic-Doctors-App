@@ -46,8 +46,12 @@ kotlin {
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.ktor.content.negotiation)
             implementation(libs.ktor.serialization.json)
-            // Cloudflare RealtimeKit Android UI Kit
-            implementation("com.cloudflare.realtimekit:ui-android:1.1.0")
+            // Cloudflare RealtimeKit Core SDK — call logic only, no prebuilt UI.
+            // We own the call screen (see presentation/main/chat/call/) so we can
+            // support background continuity and a foreground-service notification,
+            // neither of which the UI Kit's KeepAliveService actually provides in
+            // the version we were previously pinned to.
+            implementation("com.cloudflare.realtimekit:core-android:2.1.0")
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
