@@ -124,7 +124,7 @@ private fun AppointmentStatusBadge(status: AppointmentStatus, modifier: Modifier
 
 private fun isJoinable(appointment: Appointment): Boolean {
     if (appointment.status != AppointmentStatus.CONFIRMED) return false
-    val now = kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     val apptDate = runCatching { LocalDate.parse(appointment.date) }.getOrNull() ?: return false
     if (apptDate != now.date) return false
     val parts = appointment.slotStart.split(":")
