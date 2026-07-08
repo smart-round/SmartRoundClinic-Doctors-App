@@ -33,6 +33,9 @@ class SupportViewModel(
     var isCreating by mutableStateOf(false)
         private set
 
+    var isLoadingCategories by mutableStateOf(false)
+        private set
+
     init {
         load()
     }
@@ -41,10 +44,18 @@ class SupportViewModel(
         viewModelScope.launch {
             isLoading = true
             val ticketsResult = getMyTicketsUseCase()
-            val categoriesResult = getIssueCategoriesUseCase()
             isLoading = false
             if (ticketsResult is Resource.Success) tickets = ticketsResult.data ?: emptyList()
-            if (categoriesResult is Resource.Success) categories = categoriesResult.data ?: emptyList()
+        }
+        loadCategories()
+    }
+
+    fun loadCategories() {
+        viewModelScope.launch {
+            isLoadingCategories = true
+            val result = getIssueCategoriesUseCase()
+            isLoadingCategories = false
+            if (result is Resource.Success) categories = result.data ?: emptyList()
         }
     }
 

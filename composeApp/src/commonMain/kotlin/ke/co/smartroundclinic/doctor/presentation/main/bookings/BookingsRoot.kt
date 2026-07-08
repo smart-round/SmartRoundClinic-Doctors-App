@@ -36,6 +36,7 @@ fun BookingsRoot(
     val isAtRoot = backStack.size == 1
     val viewModel: BookingsViewModel = koinViewModel()
     val medicalRecordViewModel: MedicalRecordViewModel = koinViewModel()
+    val ratingViewModel: RatingViewModel = koinViewModel()
     val appointments by viewModel.appointments.collectAsState()
 
     SideEffect { onAtRootChanged(isAtRoot) }
@@ -74,6 +75,7 @@ fun BookingsRoot(
                         medicalRecordViewModel.loadRecord(appointment.id)
                         medicalRecordViewModel.loadPatientBio(appointment.patientId)
                         medicalRecordViewModel.loadPatientHistory(appointment.patientId)
+                        ratingViewModel.loadRatings(appointment.id, appointment.patientId)
                     }
                     AppointmentDetailScreen(
                         appointment = appointment,
@@ -81,12 +83,28 @@ fun BookingsRoot(
                         medicalRecord = medicalRecordViewModel.record,
                         patientHistory = medicalRecordViewModel.patientHistory,
                         patientBio = medicalRecordViewModel.patientBio,
+                        myRatingOfPatient = ratingViewModel.myRatingOfPatient,
+                        isLoadingRatings = ratingViewModel.isLoadingRatings,
+                        isSubmittingRating = ratingViewModel.isSubmittingRating,
                         onBack = { backStack.removeLastOrNull() },
                         onConfirm = { viewModel.confirmAppointment(appointment.id) },
                         onComplete = { viewModel.completeAppointment(appointment.id) },
                         onNoShow = { viewModel.noShowAppointment(appointment.id) },
                         onCancel = { reason -> viewModel.cancelAppointment(appointment.id, reason) },
                         onAddMedicalRecord = { backStack.add(MedicalRecordDetail(appointment.id, null, appointment.patientId)) },
+                        onSubmitRating = { rating, comment ->
+                            ratingViewModel.submitRating(appointment.id, appointment.patientId, rating, comment)
+                        },
+                        onUpdateRating = { rating, comment -> ratingViewModel.updateRating(rating, comment) },
+                        onDeleteRating = { ratingViewModel.deleteRating() },
+                        patientAverageRating = medicalRecordViewModel.patientBio?.averageRating ?: 0.0,
+                        patientTotalReviews = medicalRecordViewModel.patientBio?.totalReviews ?: 0,
+                        patientReviews = ratingViewModel.patientReviews,
+                        isLoadingPatientReviews = ratingViewModel.isLoadingPatientReviews,
+                        isLoadingMorePatientReviews = ratingViewModel.isLoadingMorePatientReviews,
+                        hasMorePatientReviews = ratingViewModel.patientReviewsCurrentPage < ratingViewModel.patientReviewsTotalPages,
+                        onOpenPatientReviews = { ratingViewModel.loadPatientReviews(appointment.patientId) },
+                        onLoadMorePatientReviews = { ratingViewModel.loadMorePatientReviews(appointment.patientId) },
                     )
                 }
             }
