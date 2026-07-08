@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,11 +24,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -49,6 +59,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,7 +77,10 @@ import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.domain.model.MedicalRecord
 import ke.co.smartroundclinic.doctor.domain.model.PatientBio
+import ke.co.smartroundclinic.doctor.domain.model.Rating
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
+import ke.co.smartroundclinic.doctor.presentation.common.composables.StarRatingDisplay
+import ke.co.smartroundclinic.doctor.presentation.common.composables.StarRatingInput
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
 import ke.co.smartroundclinic.doctor.presentation.theme.Neutral40
 import ke.co.smartroundclinic.doctor.presentation.theme.Neutral80
@@ -96,21 +110,50 @@ internal fun AppointmentDetailScreen(
     patientHistory: List<MedicalRecord> = emptyList(),
     patientBio: PatientBio? = null,
     onAddMedicalRecord: () -> Unit = {},
+    myRatingOfPatient: Rating? = null,
+    isLoadingRatings: Boolean = false,
+    isSubmittingRating: Boolean = false,
+    onSubmitRating: (Int, String?) -> Unit = { _, _ -> },
+    onUpdateRating: (Int, String?) -> Unit = { _, _ -> },
+    onDeleteRating: () -> Unit = {},
+    patientAverageRating: Double = 0.0,
+    patientTotalReviews: Int = 0,
+    patientReviews: List<Rating> = emptyList(),
+    isLoadingPatientReviews: Boolean = false,
+    isLoadingMorePatientReviews: Boolean = false,
+    hasMorePatientReviews: Boolean = false,
+    onOpenPatientReviews: () -> Unit = {},
+    onLoadMorePatientReviews: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val canAddRecord = appointment.status == AppointmentStatus.CONFIRMED || appointment.status == AppointmentStatus.COMPLETED
     var showCancelDialog by remember { mutableStateOf(false) }
     var showPatientBioSheet by remember { mutableStateOf(false) }
     var showHistorySheet by remember { mutableStateOf(false) }
+    var showReviewsSheet by remember { mutableStateOf(false) }
     val bioSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val historySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    if (showReviewsSheet) {
+        LaunchedEffect(Unit) { onOpenPatientReviews() }
+        PatientRatingsSheet(
+            averageRating = patientAverageRating,
+            totalReviews = patientTotalReviews,
+            reviews = patientReviews,
+            isLoading = isLoadingPatientReviews,
+            isLoadingMore = isLoadingMorePatientReviews,
+            hasMore = hasMorePatientReviews,
+            onLoadMore = onLoadMorePatientReviews,
+            onDismiss = { showReviewsSheet = false },
+        )
+    }
+
     if (showCancelDialog) {
-        CancelDialog(
+        CancelBottomSheet(
             onDismiss = { showCancelDialog = false },
             onConfirm = { reason ->
                 showCancelDialog = false
-                onCancel(reason.ifBlank { null })
+                onCancel(reason)
             },
         )
     }
@@ -287,18 +330,16 @@ internal fun AppointmentDetailScreen(
                             }
                         }
                         AppointmentStatus.COMPLETED -> {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = ShapeCard,
-                                colors = CardDefaults.cardColors(containerColor = Tertiary90),
-                            ) {
-                                Text(
-                                    text = "This appointment has been completed.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Tertiary40,
-                                    modifier = Modifier.padding(16.dp),
-                                )
-                            }
+                            RatingSection(
+                                myRating = myRatingOfPatient,
+                                isSubmitting = isSubmittingRating,
+                                onSubmit = onSubmitRating,
+                                onUpdate = onUpdateRating,
+                                onDelete = onDeleteRating,
+                                patientAverageRating = patientAverageRating,
+                                patientTotalReviews = patientTotalReviews,
+                                onViewAllReviews = { showReviewsSheet = true },
+                            )
                         }
                         AppointmentStatus.CANCELLED -> {
                             Card(
@@ -850,34 +891,453 @@ private fun HistoryRecordCard(
 }
 
 @Composable
-private fun CancelDialog(
+private fun RatingSection(
+    myRating: Rating?,
+    isSubmitting: Boolean,
+    onSubmit: (Int, String?) -> Unit,
+    onUpdate: (Int, String?) -> Unit,
+    onDelete: () -> Unit,
+    patientAverageRating: Double,
+    patientTotalReviews: Int,
+    onViewAllReviews: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        RatePatientCard(
+            myRating = myRating,
+            isSubmitting = isSubmitting,
+            onSubmit = onSubmit,
+            onUpdate = onUpdate,
+            onDelete = onDelete,
+        )
+        PatientRatingHistoryCard(
+            averageRating = patientAverageRating,
+            totalReviews = patientTotalReviews,
+            onViewAllReviews = onViewAllReviews,
+        )
+    }
+}
+
+@Composable
+private fun RatePatientCard(
+    myRating: Rating?,
+    isSubmitting: Boolean,
+    onSubmit: (Int, String?) -> Unit,
+    onUpdate: (Int, String?) -> Unit,
+    onDelete: () -> Unit,
+) {
+    var isEditing by remember(myRating) { mutableStateOf(myRating == null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        DeleteRatingDialog(
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = { showDeleteDialog = false; onDelete() },
+        )
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = ShapeCard,
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("Rate Patient", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
+                if (myRating != null && !isEditing) {
+                    Row {
+                        TextButton(onClick = { isEditing = true }) {
+                            Text("Edit", style = MaterialTheme.typography.labelSmall, color = Tertiary40)
+                        }
+                        TextButton(onClick = { showDeleteDialog = true }) {
+                            Text("Delete", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+
+            if (isEditing) {
+                RatingForm(
+                    initialRating = myRating?.rating ?: 0,
+                    initialComment = myRating?.comment.orEmpty(),
+                    isSubmitting = isSubmitting,
+                    submitLabel = if (myRating != null) "Save Changes" else "Submit Rating",
+                    onCancel = if (myRating != null) ({ isEditing = false }) else null,
+                    onSubmit = { rating, comment ->
+                        if (myRating != null) onUpdate(rating, comment) else onSubmit(rating, comment)
+                    },
+                )
+            } else if (myRating != null) {
+                StarRatingDisplay(rating = myRating.rating.toDouble(), starSize = 20.dp)
+                if (!myRating.comment.isNullOrBlank()) {
+                    Text(
+                        text = myRating.comment,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RatingForm(
+    initialRating: Int,
+    initialComment: String,
+    isSubmitting: Boolean,
+    submitLabel: String,
+    onCancel: (() -> Unit)?,
+    onSubmit: (Int, String?) -> Unit,
+) {
+    var rating by remember { mutableStateOf(initialRating) }
+    var comment by remember { mutableStateOf(initialComment) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        StarRatingInput(rating = rating, onRatingChange = { rating = it })
+        OutlinedTextField(
+            value = comment,
+            onValueChange = { comment = it },
+            placeholder = { Text("Add a comment (optional)", style = MaterialTheme.typography.bodySmall) },
+            shape = ShapeInput,
+            minLines = 2,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (onCancel != null) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f),
+                    shape = ShapePill,
+                ) {
+                    Text("Cancel", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(vertical = 4.dp))
+                }
+            }
+            PrimaryButton(
+                onClick = { onSubmit(rating, comment.ifBlank { null }) },
+                enabled = rating > 0 && !isSubmitting,
+                modifier = Modifier.weight(1f),
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+                } else {
+                    Text(
+                        text = submitLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PatientRatingHistoryCard(averageRating: Double, totalReviews: Int, onViewAllReviews: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onViewAllReviews,
+            ),
+        shape = ShapeCard,
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("This Patient's Ratings", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("See all", style = MaterialTheme.typography.labelSmall, color = Tertiary40)
+                    Icon(
+                        imageVector = Icons.Filled.ChevronRight,
+                        contentDescription = null,
+                        tint = Tertiary40,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+            if (totalReviews > 0) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StarRatingDisplay(rating = averageRating, starSize = 18.dp)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "$totalReviews rating${if (totalReviews == 1) "" else "s"} from doctors",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                Text(
+                    text = "No previous doctors have rated this patient yet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeleteRatingDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Rating") },
+        text = { Text("Are you sure you want to delete this rating?", style = MaterialTheme.typography.bodyMedium) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Delete", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PatientRatingsSheet(
+    averageRating: Double,
+    totalReviews: Int,
+    reviews: List<Rating>,
+    isLoading: Boolean,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    onLoadMore: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val listState = rememberLazyListState()
+
+    val nearBottom by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: return@derivedStateOf false
+            lastVisible >= info.totalItemsCount - 3
+        }
+    }
+    LaunchedEffect(nearBottom) {
+        if (nearBottom && hasMore && !isLoading && !isLoadingMore) onLoadMore()
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.background,
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.85f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Patient Ratings",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Filled.Star, contentDescription = null, tint = Primary40, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "${averageRating.formatOneDecimal()} · $totalReviews rating${if (totalReviews == 1) "" else "s"} from doctors",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(imageVector = Icons.Filled.Close, contentDescription = "Close")
+                }
+            }
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+            when {
+                isLoading && reviews.isEmpty() -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Primary40)
+                    }
+                }
+                reviews.isEmpty() -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "No previous doctors have rated this patient yet.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(reviews, key = { it.id }) { review -> ReviewItem(review) }
+                        if (isLoadingMore) {
+                            item(key = "loading_more") {
+                                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Primary40)
+                                }
+                            }
+                        } else if (!hasMore) {
+                            item(key = "end_of_list") {
+                                Text(
+                                    text = "· End of reviews ·",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewItem(review: Rating) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = ShapeCard,
+        colors = CardDefaults.cardColors(containerColor = Neutral90),
+        elevation = CardDefaults.cardElevation(0.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(28.dp).clip(CircleShape).background(Secondary90),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (review.raterProfilePicture != null) {
+                        AsyncImage(
+                            model = review.raterProfilePicture,
+                            contentDescription = review.raterName,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        )
+                    } else {
+                        Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(16.dp))
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = review.raterName ?: "Doctor",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = review.createdAt.take(10),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            StarRatingDisplay(rating = review.rating.toDouble(), starSize = 14.dp)
+            if (!review.comment.isNullOrBlank()) {
+                Text(
+                    text = review.comment,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+    }
+}
+
+private fun Double.formatOneDecimal(): String {
+    val scaled = (this * 10).toInt()
+    return "${scaled / 10}.${scaled % 10}"
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CancelBottomSheet(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
     var reason by remember { mutableStateOf("") }
-    AlertDialog(
+    var showError by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("Cancel Appointment") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Are you sure you want to cancel this appointment?", style = MaterialTheme.typography.bodyMedium)
-                OutlinedTextField(
-                    value = reason,
-                    onValueChange = { reason = it },
-                    placeholder = { Text("Reason (optional)", style = MaterialTheme.typography.bodySmall) },
-                    shape = ShapeInput,
-                    modifier = Modifier.fillMaxWidth(),
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 8.dp)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = "Cancel Appointment",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
+            Text(
+                text = "Are you sure you want to cancel this appointment? This action cannot be undone.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = reason,
+                onValueChange = {
+                    reason = it
+                    if (showError && it.isNotBlank()) showError = false
+                },
+                label = { Text("Reason") },
+                placeholder = { Text("Enter a reason…") },
+                isError = showError,
+                supportingText = {
+                    if (showError) Text("A reason is required to cancel this appointment")
+                },
+                minLines = 3,
+                maxLines = 5,
+                shape = ShapeInput,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = {
+                    if (reason.isBlank()) showError = true
+                    else onConfirm(reason.trim())
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                shape = ShapeInput,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) {
+                Text(
+                    text = "Yes, Cancel",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                 )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(reason) }) {
-                Text("Cancel Appointment", color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Keep Appointment",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Keep") }
-        },
-    )
+            Spacer(Modifier.height(8.dp))
+        }
+    }
 }
 

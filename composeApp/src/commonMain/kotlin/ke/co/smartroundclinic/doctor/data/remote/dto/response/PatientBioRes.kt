@@ -14,6 +14,8 @@ data class PatientBioData(
     val allergies: List<String> = emptyList(),
     val chronicConditions: List<String> = emptyList(),
     val currentMedications: List<String> = emptyList(),
+    val averageRating: Double = 0.0,
+    val totalReviews: Int = 0,
 )
 
 @Serializable
@@ -34,4 +36,6 @@ fun PatientBioData.toDomain() = PatientBio(
     allergies = allergies,
     chronicConditions = chronicConditions,
     currentMedications = currentMedications,
+    averageRating = averageRating,
+    totalReviews = totalReviews,
 )

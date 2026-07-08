@@ -10,4 +10,6 @@ data class PatientBio(
     val allergies: List<String>,
     val chronicConditions: List<String>,
     val currentMedications: List<String>,
+    val averageRating: Double = 0.0,
+    val totalReviews: Int = 0,
 )

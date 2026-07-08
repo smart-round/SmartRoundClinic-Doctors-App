@@ -16,6 +16,7 @@ data class IssueCategory(
     val id: String,
     val name: String,
     val description: String?,
+    val isActive: Boolean = true,
 )
 
 data class SupportChatMessage(

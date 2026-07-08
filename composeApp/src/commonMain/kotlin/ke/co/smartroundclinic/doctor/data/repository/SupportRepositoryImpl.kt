@@ -35,8 +35,12 @@ class SupportRepositoryImpl(private val client: HttpClient) : SupportRepository 
                     parameter("page", 1)
                     parameter("size", 50)
                 }.body<GetIssueCategoriesRes>()
-                if (res.status) Resource.Success(res.data?.items?.map { it.toDomain() } ?: emptyList(), res.message)
-                else Resource.Error(res.message)
+                if (res.status) {
+                    val categories = res.data?.items?.map { it.toDomain() }?.filter { it.isActive } ?: emptyList()
+                    Resource.Success(categories, res.message)
+                } else {
+                    Resource.Error(res.message)
+                }
             } catch (e: Exception) {
                 Resource.Error(e.message ?: "Failed to load categories")
             }

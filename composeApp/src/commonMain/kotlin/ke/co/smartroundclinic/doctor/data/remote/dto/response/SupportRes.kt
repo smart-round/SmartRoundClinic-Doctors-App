@@ -87,7 +87,7 @@ data class IssueCategoryItemRes(
     val updatedAt: String? = null,
 )
 
-fun IssueCategoryItemRes.toDomain() = IssueCategory(id = id, name = name, description = description)
+fun IssueCategoryItemRes.toDomain() = IssueCategory(id = id, name = name, description = description, isActive = status)
 
 // ── Chat messages ─────────────────────────────────────────────────────────────
 
