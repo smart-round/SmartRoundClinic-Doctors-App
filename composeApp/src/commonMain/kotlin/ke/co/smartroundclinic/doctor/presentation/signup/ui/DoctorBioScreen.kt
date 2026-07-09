@@ -60,42 +60,6 @@ fun DoctorBioScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 16.dp),
         ) {
-            ExposedDropdownMenuBox(
-                expanded = titleExpanded,
-                onExpandedChange = { titleExpanded = it },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                OutlinedTextField(
-                    value = formViewModel.doctorTitle,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Title (Optional)", style = MaterialTheme.typography.bodySmall) },
-                    placeholder = { Text("Select title", style = MaterialTheme.typography.bodySmall) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(titleExpanded) },
-                    shape = ShapeInput,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                )
-                ExposedDropdownMenu(
-                    expanded = titleExpanded,
-                    onDismissRequest = { titleExpanded = false },
-                    containerColor = MaterialTheme.colorScheme.background,
-                ) {
-                    TITLE_OPTIONS.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option, style = MaterialTheme.typography.bodyMedium) },
-                            colors = MenuDefaults.itemColors(textColor = MaterialTheme.colorScheme.onBackground),
-                            onClick = {
-                                formViewModel.doctorTitle = option
-                                titleExpanded = false
-                            },
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
 
             SignUpField(
                 value = formViewModel.kmpdcRegNumber,

@@ -35,7 +35,7 @@ import ke.co.smartroundclinic.doctor.core.database.entity.UserEntity
         ArticleEntity::class,
         ArticleCategoryEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @ConstructedBy(AppDatabaseConstructor::class)

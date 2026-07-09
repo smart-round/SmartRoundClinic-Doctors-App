@@ -12,7 +12,11 @@ import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.domain.model.ComplianceStatus
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.GetComplianceStatusUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.SignOutUseCase
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private const val MAX_CHECK_ATTEMPTS = 4
+private const val RETRY_DELAY_MS = 1500L
 
 class ComplianceViewModel(
     private val getComplianceStatusUseCase: GetComplianceStatusUseCase,
@@ -30,12 +34,13 @@ class ComplianceViewModel(
         private set
 
     init {
-        // If we know from a previous session that the account is not approved,
-        // show the dialog immediately with a generic PENDING state so the user
-        // isn't left with a blank screen while the API call completes.
-        // The real status (PENDING vs REJECTED + rejection reason) is filled in
-        // once checkStatus() returns.
-        val cachedIsApproved = secureStorage.bool(KEY_COMPLIANCE_IS_APPROVED) ?: true
+        // Fail closed: until we have a confirmed approval from the backend, assume the
+        // account is NOT approved. This matters most right after signup, when there is no
+        // cached value yet and the compliance record may not have materialized on the
+        // backend — we must never grant full app access on that ambiguity.
+        // The real status (PENDING vs REJECTED + rejection reason) is filled in once
+        // checkStatus() returns a confirmed result.
+        val cachedIsApproved = secureStorage.bool(KEY_COMPLIANCE_IS_APPROVED) ?: false
         if (!cachedIsApproved) {
             complianceStatus = ComplianceStatus(isApproved = false, status = "PENDING")
         }
@@ -45,7 +50,13 @@ class ComplianceViewModel(
     fun checkStatus() {
         viewModelScope.launch {
             isChecking = true
-            val result = getComplianceStatusUseCase()
+            var result = getComplianceStatusUseCase()
+            var attempts = 1
+            while (result !is Resource.Success && attempts < MAX_CHECK_ATTEMPTS) {
+                delay(RETRY_DELAY_MS)
+                result = getComplianceStatusUseCase()
+                attempts++
+            }
             if (result is Resource.Success) {
                 complianceStatus = result.data
                 result.data?.let { status ->

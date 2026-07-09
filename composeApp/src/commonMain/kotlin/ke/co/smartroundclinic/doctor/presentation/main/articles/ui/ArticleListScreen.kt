@@ -6,13 +6,16 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,15 +25,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -49,9 +55,12 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import ke.co.smartroundclinic.doctor.domain.model.Article
@@ -60,13 +69,13 @@ import ke.co.smartroundclinic.doctor.domain.model.ArticleState
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
-import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.Error90
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientStart
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
+import ke.co.smartroundclinic.doctor.presentation.theme.Primary95
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeBadge
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
@@ -194,7 +203,7 @@ internal fun ArticleListScreen(
                                 ArticleCard(
                                     article = article,
                                     isOwn = isMyTab,
-                                    authorName = if (isMyTab) doctorName else "",
+                                    authorName = article.authorName ?: (if (isMyTab) doctorName else ""),
                                     onClick = { onArticleClick(article) },
                                     onEdit = { onEditArticle(article) },
                                     onPublish = { onPublish(article) },
@@ -377,135 +386,145 @@ private fun ArticleCard(
         }
     }
 
+    var menuExpanded by remember { mutableStateOf(false) }
+    val canManage = isOwn && article.state != ArticleState.SUSPENDED && article.state != ArticleState.DELETED
+
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = ShapeCard,
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp, pressedElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Primary95),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).heightIn(min = 170.dp)) {
+            Column(
+                modifier = Modifier.weight(1f).fillMaxHeight().padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
 
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = buildString {
-                        if (authorName.isNotBlank()) append("$authorName · ")
-                        append("$readMinutes min read")
-                        if (formattedDate.isNotBlank()) append(" · $formattedDate")
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (isOwn) {
-                    Spacer(Modifier.width(8.dp))
-                    ArticleStateBadge(state = article.state)
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
+                if (authorName.isNotBlank()) {
                     Text(
-                        text = article.title,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = article.summary,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(ShapeCard)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (article.thumbnailUrl != null) {
-                        AsyncImage(
-                            model = article.thumbnailUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Outlined.Image,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(28.dp),
-                        )
-                    }
-                }
-            }
-
-            if (isOwn && article.state != ArticleState.SUSPENDED) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    when (article.state) {
-                        ArticleState.DRAFT -> ActionChip(label = "Publish", color = Primary40, onClick = onPublish)
-                        ArticleState.LIVE -> ActionChip(label = "Unpublish", color = MaterialTheme.colorScheme.onSurfaceVariant, onClick = onUnpublish)
-                        else -> Unit
-                    }
-                    ActionChip(
-                        label = "Edit",
+                        text = authorName,
+                        style = MaterialTheme.typography.labelSmall,
                         color = Primary40,
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Filled.Edit,
-                                contentDescription = null,
-                                tint = Primary40,
-                                modifier = Modifier.size(12.dp),
-                            )
-                        },
-                        onClick = onEdit,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    ActionChip(
-                        label = "Delete",
-                        color = Error40,
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = null,
-                                tint = Error40,
-                                modifier = Modifier.size(12.dp),
-                            )
+                }
+
+                Text(
+                    text = article.title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    text = article.summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = buildAnnotatedString {
+                            append("$readMinutes min read")
+                            if (isOwn) {
+                                val (stateLabel, stateColor) = when (article.state) {
+                                    ArticleState.DRAFT -> "Draft" to MaterialTheme.colorScheme.onSurfaceVariant
+                                    ArticleState.LIVE -> "Published" to StatusPublished
+                                    ArticleState.SUSPENDED -> "Suspended" to StatusSuspended
+                                    ArticleState.DELETED -> "Deleted" to Error40
+                                }
+                                append("  ·  ")
+                                withStyle(SpanStyle(color = stateColor, fontWeight = FontWeight.Medium)) {
+                                    append(stateLabel)
+                                }
+                            }
                         },
-                        onClick = onDelete,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
+                    if (formattedDate.isNotBlank()) {
+                        Text(
+                            text = formattedDate,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            modifier = Modifier.padding(start = 6.dp),
+                        )
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .width(110.dp)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                if (article.thumbnailUrl != null) {
+                    AsyncImage(
+                        model = article.thumbnailUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize(),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Image,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(28.dp).align(Alignment.Center),
+                    )
+                }
+
+                if (canManage) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.35f)),
+                    ) {
+                        IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = "Article actions",
+                                tint = Color.White,
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false },
+                            containerColor = MaterialTheme.colorScheme.background,
+                        ) {
+                            when (article.state) {
+                                ArticleState.DRAFT -> DropdownMenuItem(
+                                    text = { Text("Publish") },
+                                    onClick = { menuExpanded = false; onPublish() },
+                                )
+                                ArticleState.LIVE -> DropdownMenuItem(
+                                    text = { Text("Unpublish") },
+                                    onClick = { menuExpanded = false; onUnpublish() },
+                                )
+                                else -> Unit
+                            }
+                            DropdownMenuItem(text = { Text("Edit") }, onClick = { menuExpanded = false; onEdit() })
+                            DropdownMenuItem(
+                                text = { Text("Delete", color = Error40) },
+                                onClick = { menuExpanded = false; onDelete() },
+                            )
+                        }
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ActionChip(
-    label: String,
-    color: Color,
-    icon: (@Composable () -> Unit)? = null,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .clip(ShapePill)
-            .background(color.copy(alpha = 0.1f))
-            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        icon?.invoke()
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
 

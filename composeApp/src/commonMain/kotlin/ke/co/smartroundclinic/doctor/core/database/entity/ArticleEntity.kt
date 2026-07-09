@@ -19,6 +19,7 @@ data class ArticleEntity(
     val createdAt: String,
     val updatedAt: String?,
     val isOwn: Boolean,
+    val authorName: String? = null,
 )
 
 fun ArticleEntity.toDomain() = Article(
@@ -38,6 +39,7 @@ fun ArticleEntity.toDomain() = Article(
     datePosted = datePosted,
     createdAt = createdAt,
     updatedAt = updatedAt,
+    authorName = authorName,
 )
 
 fun Article.toEntity(isOwn: Boolean) = ArticleEntity(
@@ -53,4 +55,5 @@ fun Article.toEntity(isOwn: Boolean) = ArticleEntity(
     createdAt = createdAt,
     updatedAt = updatedAt,
     isOwn = isOwn,
+    authorName = authorName,
 )
