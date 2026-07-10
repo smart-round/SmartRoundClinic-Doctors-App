@@ -1,6 +1,11 @@
 package ke.co.smartroundclinic.doctor.presentation.main.chat.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,6 +55,8 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -118,7 +125,9 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Secondary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Secondary90
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -142,6 +151,12 @@ internal fun ConversationScreen(
     currentUserId: String,
     patientBio: PatientBio? = null,
     patientHistory: List<MedicalRecord> = emptyList(),
+    otherPartyTyping: Boolean = false,
+    otherPartyOnline: Boolean = false,
+    otherPartyLastSeenAt: String? = null,
+    otherPartyLastReadAt: String? = null,
+    otherPartyLastDeliveredAt: String? = null,
+    onTyping: (Boolean) -> Unit = {},
     onBack: () -> Unit,
     onVoiceCall: () -> Unit,
     onVideoCall: () -> Unit,
@@ -160,12 +175,12 @@ internal fun ConversationScreen(
     // identity never changes — remember(messages) would cache the first result forever and silently
     // go stale on every websocket-delivered message. Recomputing here is cheap and always correct.
     val conversationItems = buildConversationItems(messages)
-    val totalItems = conversationItems.size + pendingFiles.size
+    val totalItems = conversationItems.size + pendingFiles.size + (if (otherPartyTyping) 1 else 0)
 
     // Only the newest message changing (initial load, or a live append) should snap to bottom —
     // loadMoreHistory prepends older messages at the top and must NOT fight the user's scroll.
     val lastMessageId = messages.lastOrNull()?.id
-    LaunchedEffect(lastMessageId, pendingFiles.size) {
+    LaunchedEffect(lastMessageId, pendingFiles.size, otherPartyTyping) {
         if (totalItems > 0) listState.animateScrollToItem(totalItems - 1)
     }
 
@@ -174,6 +189,18 @@ internal fun ConversationScreen(
             if (hasMoreHistory && !isLoadingMoreHistory && index <= 2) {
                 onLoadMoreHistory()
             }
+        }
+    }
+
+    // Notify the other party while the input has text; stop after a few seconds of inactivity or
+    // once it's cleared (send / manual clear) — mirrors the debounce already done in the ViewModel.
+    LaunchedEffect(inputText) {
+        if (inputText.isNotBlank()) {
+            onTyping(true)
+            delay(3_000L)
+            onTyping(false)
+        } else {
+            onTyping(false)
         }
     }
 
@@ -226,16 +253,25 @@ internal fun ConversationScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
+                                    val presenceLabel = when {
+                                        otherPartyTyping -> "typing…"
+                                        otherPartyOnline -> "Online"
+                                        otherPartyLastSeenAt != null -> "Last seen ${formatLastSeen(otherPartyLastSeenAt)}"
+                                        else -> "Offline"
+                                    }
+                                    val presenceColor = if (otherPartyOnline || otherPartyTyping) Tertiary40 else MaterialTheme.colorScheme.onSurfaceVariant
                                     Icon(
                                         imageVector = Icons.Filled.Circle,
                                         contentDescription = null,
-                                        tint = if (isConnected) Tertiary40 else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        tint = if (otherPartyOnline) Tertiary40 else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(7.dp),
                                     )
                                     Text(
-                                        text = if (isConnected) "Online" else "Connecting…",
+                                        text = presenceLabel,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (isConnected) Tertiary40 else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = presenceColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
                                 }
                             }
@@ -305,16 +341,25 @@ internal fun ConversationScreen(
                             ) { item ->
                                 when (item) {
                                     is ConversationItem.ConsultationDivider -> ConsultationDividerRow(label = item.label)
-                                    is ConversationItem.MessageItem -> MessageBubble(
-                                        message = item.message,
-                                        fromMe = item.message.senderId == currentUserId,
-                                        onFileClick = { viewerFile = it },
-                                    )
+                                    is ConversationItem.MessageItem -> {
+                                        val fromMe = item.message.senderId == currentUserId
+                                        MessageBubble(
+                                            message = item.message,
+                                            fromMe = fromMe,
+                                            receiptStatus = if (fromMe) {
+                                                receiptStatusFor(item.message, otherPartyLastReadAt, otherPartyLastDeliveredAt)
+                                            } else null,
+                                            onFileClick = { viewerFile = it },
+                                        )
+                                    }
                                 }
                             }
                             // Optimistic pending messages — appear immediately, removed when server echoes back
                             items(pendingFiles, key = { "p_${it.localId}" }) { pending ->
                                 PendingFileBubble(pending = pending)
+                            }
+                            if (otherPartyTyping) {
+                                item(key = "typing_indicator") { TypingIndicatorBubble() }
                             }
                         }
                         ScrollToBottomButton(
@@ -382,6 +427,33 @@ private sealed class ConversationItem {
     data class ConsultationDivider(val label: String, val consultationId: String) : ConversationItem()
     data class MessageItem(val message: ConsultationMessage) : ConversationItem()
 }
+
+// Read-receipt watermark model: a message is READ if its timestamp is at or before the other
+// party's last-read watermark, DELIVERED if at or before their last-delivered watermark, else
+// just SENT. ISO-8601 UTC timestamp strings compare correctly with plain string ordering.
+private enum class ReadReceiptStatus { SENT, DELIVERED, READ }
+
+private fun receiptStatusFor(
+    message: ConsultationMessage,
+    otherPartyLastReadAt: String?,
+    otherPartyLastDeliveredAt: String?,
+): ReadReceiptStatus = when {
+    otherPartyLastReadAt != null && message.createdAt <= otherPartyLastReadAt -> ReadReceiptStatus.READ
+    otherPartyLastDeliveredAt != null && message.createdAt <= otherPartyLastDeliveredAt -> ReadReceiptStatus.DELIVERED
+    else -> ReadReceiptStatus.SENT
+}
+
+private fun formatLastSeen(iso: String): String = try {
+    val zone = TimeZone.currentSystemDefault()
+    val dateTime = Instant.parse(iso).toLocalDateTime(zone)
+    val today = Clock.System.now().toLocalDateTime(zone).date
+    val hour = dateTime.hour
+    val ampm = if (hour < 12) "AM" else "PM"
+    val h = if (hour % 12 == 0) 12 else hour % 12
+    val time = "$h:${dateTime.minute.toString().padStart(2, '0')} $ampm"
+    if (dateTime.date == today) "today at $time"
+    else "${dateTime.date.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }} ${dateTime.date.dayOfMonth} at $time"
+} catch (_: Exception) { "recently" }
 
 // The merged history spans every consultation a doctor-patient pair has had — insert a divider
 // whenever the consultation changes so users can tell which visit a run of messages belongs to.
@@ -708,6 +780,7 @@ private fun MessageBubble(
     message: ConsultationMessage,
     fromMe: Boolean,
     onFileClick: (ConsultationFileAttachment) -> Unit,
+    receiptStatus: ReadReceiptStatus? = null,
     modifier: Modifier = Modifier,
 ) {
     val isFile = message.messageType.uppercase() == "FILE"
@@ -729,24 +802,78 @@ private fun MessageBubble(
                 )
             }
             when {
-                isPrescription -> PrescriptionMessageCard(jsonMessage = message.message ?: "", time = formatTime(message.createdAt))
+                isPrescription -> PrescriptionMessageCard(jsonMessage = message.message ?: "", time = formatTime(message.createdAt), receiptStatus = receiptStatus)
                 isFile -> FileBubble(message = message, fromMe = fromMe, onFileClick = onFileClick)
-                else -> TextBubble(text = message.message ?: "", fromMe = fromMe, time = formatTime(message.createdAt))
+                else -> TextBubble(text = message.message ?: "", fromMe = fromMe, time = formatTime(message.createdAt), receiptStatus = receiptStatus)
             }
             if (isFile) {
-                Text(
-                    text = formatTime(message.createdAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp, start = 4.dp, end = 4.dp),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 2.dp, start = 4.dp, end = 4.dp)) {
+                    Text(
+                        text = formatTime(message.createdAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (receiptStatus != null) {
+                        ReadReceiptTicks(status = receiptStatus, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun PrescriptionMessageCard(jsonMessage: String, time: String, modifier: Modifier = Modifier) {
+private fun ReadReceiptTicks(status: ReadReceiptStatus, tint: Color, modifier: Modifier = Modifier) {
+    Icon(
+        imageVector = if (status == ReadReceiptStatus.SENT) Icons.Filled.Done else Icons.Filled.DoneAll,
+        contentDescription = when (status) {
+            ReadReceiptStatus.SENT -> "Sent"
+            ReadReceiptStatus.DELIVERED -> "Delivered"
+            ReadReceiptStatus.READ -> "Read"
+        },
+        tint = if (status == ReadReceiptStatus.READ) Color(0xFF4FC3F7) else tint,
+        modifier = modifier.size(14.dp),
+    )
+}
+
+@Composable
+private fun TypingIndicatorBubble(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxWidth().padding(vertical = 2.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+        ) {
+            TypingDots()
+        }
+    }
+}
+
+@Composable
+private fun TypingDots(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "typing")
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        repeat(3) { index ->
+            val alpha by transition.animateFloat(
+                initialValue = 0.3f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 600, delayMillis = index * 150),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+                label = "dot$index",
+            )
+            Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)))
+        }
+    }
+}
+
+@Composable
+private fun PrescriptionMessageCard(jsonMessage: String, time: String, receiptStatus: ReadReceiptStatus? = null, modifier: Modifier = Modifier) {
     val record = remember(jsonMessage) {
         runCatching {
             Json { ignoreUnknownKeys = true }.decodeFromString<MedicalRecordData>(jsonMessage)
@@ -788,13 +915,22 @@ private fun PrescriptionMessageCard(jsonMessage: String, time: String, modifier:
                     }
                 }
             }
-            Text(time, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.align(Alignment.End))
+            Row(
+                modifier = Modifier.align(Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(time, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (receiptStatus != null) {
+                    ReadReceiptTicks(status = receiptStatus, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun TextBubble(text: String, fromMe: Boolean, time: String) {
+private fun TextBubble(text: String, fromMe: Boolean, time: String, receiptStatus: ReadReceiptStatus? = null) {
     val bubbleColor = if (fromMe) Primary40 else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (fromMe) Color.White else MaterialTheme.colorScheme.onSurface
     val timeColor = if (fromMe) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
@@ -814,12 +950,16 @@ private fun TextBubble(text: String, fromMe: Boolean, time: String) {
     ) {
         Column {
             Text(text = text, style = MaterialTheme.typography.bodyMedium, color = textColor)
-            Text(
-                text = time,
-                style = MaterialTheme.typography.labelSmall,
-                color = timeColor,
+            Row(
                 modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(text = time, style = MaterialTheme.typography.labelSmall, color = timeColor)
+                if (receiptStatus != null) {
+                    ReadReceiptTicks(status = receiptStatus, tint = timeColor)
+                }
+            }
         }
     }
 }

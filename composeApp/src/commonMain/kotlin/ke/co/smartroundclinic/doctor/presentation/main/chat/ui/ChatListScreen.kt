@@ -1,7 +1,9 @@
 package ke.co.smartroundclinic.doctor.presentation.main.chat.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -20,14 +22,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +46,7 @@ import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
+import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -49,10 +57,13 @@ import kotlinx.datetime.toLocalDateTime
 internal fun ChatListScreen(
     threads: List<ConversationThread>,
     onThreadClick: (ConversationThread) -> Unit,
+    onDeleteThread: (ConversationThread) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    var threadPendingDelete by remember { mutableStateOf<ConversationThread?>(null) }
+
     Scaffold(
         modifier = modifier,
         topBar = { DashboardHeader(title = "Consultations", onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick) },
@@ -64,12 +75,32 @@ internal fun ChatListScreen(
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     items(threads, key = { it.threadId }) { thread ->
-                        ThreadRow(thread = thread, onClick = { onThreadClick(thread) })
+                        ThreadRow(
+                            thread = thread,
+                            onClick = { onThreadClick(thread) },
+                            onLongClick = { threadPendingDelete = thread },
+                        )
                         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(start = 76.dp))
                     }
                 }
             }
         }
+    }
+
+    threadPendingDelete?.let { thread ->
+        AlertDialog(
+            onDismissRequest = { threadPendingDelete = null },
+            title = { Text("Delete conversation?") },
+            text = { Text("This removes your conversation with ${thread.counterpartName} from this list. It will reappear if they send a new message.") },
+            confirmButton = {
+                TextButton(onClick = { onDeleteThread(thread); threadPendingDelete = null }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { threadPendingDelete = null }) { Text("Cancel") }
+            },
+        )
     }
 }
 
@@ -95,17 +126,37 @@ private fun EmptyView(modifier: Modifier = Modifier) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ThreadRow(thread: ConversationThread, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ThreadRow(thread: ConversationThread, onClick: () -> Unit, onLongClick: () -> Unit = {}, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
+            .combinedClickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onClick,
+                onLongClick = onLongClick,
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        PatientAvatar(name = thread.counterpartName, picture = thread.counterpartPicture, size = 48)
+        Box {
+            PatientAvatar(name = thread.counterpartName, picture = thread.counterpartPicture, size = 48)
+            if (thread.isOnline) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(13.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(2.dp)
+                        .clip(CircleShape)
+                        .background(Tertiary40),
+                )
+            }
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(text = thread.counterpartName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
             Spacer(Modifier.height(3.dp))
