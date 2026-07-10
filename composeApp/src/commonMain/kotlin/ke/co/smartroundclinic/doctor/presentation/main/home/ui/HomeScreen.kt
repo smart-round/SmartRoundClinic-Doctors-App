@@ -119,7 +119,7 @@ fun HomeScreen(
     onNotificationsClick: () -> Unit = {},
     onSeeAllAppointments: () -> Unit = {},
     onSeeAllConsultations: () -> Unit = {},
-    onOpenConsultation: (appointmentId: String, patientName: String) -> Unit = { _, _ -> },
+    onOpenConsultation: (appointmentId: String, patientId: String, patientName: String) -> Unit = { _, _, _ -> },
     onViewAppointment: (appointmentId: String) -> Unit = {},
     onSetUpCalendar: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -293,7 +293,7 @@ private fun AppointmentsSection(
 private fun RecentMessagesSection(
     consultations: List<Appointment>,
     onSeeAll: () -> Unit,
-    onOpenConsultation: (appointmentId: String, patientName: String) -> Unit,
+    onOpenConsultation: (appointmentId: String, patientId: String, patientName: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -312,7 +312,7 @@ private fun RecentMessagesSection(
                     preview = "Consultation  •  ${appt.slotStart} – ${appt.slotEnd}",
                     timestamp = appt.date,
                     profilePicture = appt.patientProfilePicture,
-                    onClick = { onOpenConsultation(appt.id, appt.patientName) }
+                    onClick = { onOpenConsultation(appt.id, appt.patientId, appt.patientName) }
                 )
                 Spacer(Modifier.height(8.dp))
             }

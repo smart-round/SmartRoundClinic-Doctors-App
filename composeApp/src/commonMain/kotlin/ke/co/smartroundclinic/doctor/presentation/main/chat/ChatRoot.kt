@@ -50,31 +50,43 @@ fun ChatRoot(
         entryProvider = entryProvider {
             entry<ChatList> {
                 ChatListScreen(
-                    appointments = vm.appointments,
-                    onAppointmentClick = { appointment ->
-                        backStack.add(Conversation(appointment.id, appointment.patientName))
+                    threads = vm.threads,
+                    onThreadClick = { thread ->
+                        backStack.add(Conversation(thread.patientId, thread.counterpartName, thread.latestAppointmentId))
                     },
                     onProfileClick = onProfileClick,
                     onNotificationsClick = onNotificationsClick,
                 )
             }
             entry<Conversation> { dest ->
-                LaunchedEffect(dest.appointmentId) {
-                    vm.startConsultation(dest.appointmentId)
+                LaunchedEffect(dest.latestAppointmentId) {
+                    vm.startConsultation(dest.latestAppointmentId)
                 }
-                val appointment = vm.appointments.firstOrNull { it.id == dest.appointmentId }
-                LaunchedEffect(appointment?.patientId) {
-                    appointment?.patientId?.let { pid ->
-                        medicalRecordVm.loadPatientBio(pid)
-                        medicalRecordVm.loadPatientHistory(pid)
+                LaunchedEffect(dest.patientId) {
+                    medicalRecordVm.loadPatientBio(dest.patientId)
+                    medicalRecordVm.loadPatientHistory(dest.patientId)
+                }
+                // currentUserId loads asynchronously from Room — re-key on it so that if this fires
+                // before it's populated (cold start / fresh login), it retries once the id is ready
+                // instead of calling loadMergedHistory with an empty doctorId forever.
+                LaunchedEffect(dest.patientId, vm.currentUserId) {
+                    if (vm.currentUserId.isNotBlank()) {
+                        vm.loadMergedHistory(vm.currentUserId, dest.patientId)
                     }
                 }
+                val appointment = vm.appointments.firstOrNull { it.id == dest.latestAppointmentId }
+                val patientPicture = vm.threads.firstOrNull { it.patientId == dest.patientId }?.counterpartPicture
+                    ?: appointment?.patientProfilePicture
                 ConversationScreen(
                     patientName = dest.patientName,
-                    patientPicture = appointment?.patientProfilePicture,
+                    patientPicture = patientPicture,
                     session = vm.activeSession,
                     messages = vm.messages,
                     isStartingSession = vm.isStartingSession,
+                    isLoadingHistory = vm.isLoadingHistory,
+                    isLoadingMoreHistory = vm.isLoadingMoreHistory,
+                    hasMoreHistory = vm.hasMoreHistory,
+                    onLoadMoreHistory = { vm.loadMoreHistory(vm.currentUserId, dest.patientId) },
                     isConnected = vm.isConnected,
                     isUploadingFile = vm.isUploadingFile,
                     isCallEnabled = appointment?.status == AppointmentStatus.CONFIRMED,
@@ -96,7 +108,8 @@ fun ChatRoot(
                 val callConversation = backStack.filterIsInstance<Conversation>().firstOrNull()
                 val patientName = callConversation?.patientName ?: "Patient"
                 val patientPicture = callConversation?.let { c ->
-                    vm.appointments.firstOrNull { it.id == c.appointmentId }?.patientProfilePicture
+                    vm.threads.firstOrNull { it.patientId == c.patientId }?.counterpartPicture
+                        ?: vm.appointments.firstOrNull { it.id == c.latestAppointmentId }?.patientProfilePicture
                 }
                 CallScreen(
                     participantName = patientName,

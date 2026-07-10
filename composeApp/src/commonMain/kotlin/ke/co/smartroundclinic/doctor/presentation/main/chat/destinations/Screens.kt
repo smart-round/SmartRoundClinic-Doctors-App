@@ -4,5 +4,8 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable data object ChatList : NavKey
-@Serializable data class Conversation(val appointmentId: String, val patientName: String) : NavKey
+
+// doctorId is always the currently-signed-in doctor (this is the doctor app), so it isn't carried
+// here — patientId identifies the thread. latestAppointmentId seeds the active session for sending.
+@Serializable data class Conversation(val patientId: String, val patientName: String, val latestAppointmentId: String) : NavKey
 @Serializable data class Call(val sessionId: String, val isVideo: Boolean) : NavKey

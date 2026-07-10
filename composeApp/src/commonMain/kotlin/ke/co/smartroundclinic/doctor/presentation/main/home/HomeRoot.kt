@@ -58,7 +58,7 @@ fun HomeRoot(
     onSignOut: () -> Unit = {},
     onSeeAllAppointments: () -> Unit = {},
     onSeeAllConsultations: () -> Unit = {},
-    onOpenConsultation: (appointmentId: String, patientName: String) -> Unit = { _, _ -> },
+    onOpenConsultation: (appointmentId: String, patientId: String, patientName: String) -> Unit = { _, _, _ -> },
     onViewAppointment: (appointmentId: String) -> Unit = {},
     pendingDestinations: List<NavKey> = emptyList(),
     onPendingNavigated: () -> Unit = {},

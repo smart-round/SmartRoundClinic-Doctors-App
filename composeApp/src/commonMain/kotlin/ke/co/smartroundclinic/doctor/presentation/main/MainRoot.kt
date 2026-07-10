@@ -144,7 +144,7 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                 }
                 is NotificationEvent.ToConversation -> {
                     selectTab(Chat)
-                    pendingChatConversation = Conversation(event.appointmentId, event.patientName)
+                    pendingChatConversation = Conversation(event.patientId, event.patientName, event.appointmentId)
                 }
                 is NotificationEvent.ToArticles -> selectTab(Articles)
                 is NotificationEvent.ToSupportTicket -> {
@@ -187,9 +187,9 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                             selectTab(Bookings)
                             pendingBookingId = appointmentId
                         },
-                        onOpenConsultation = { appointmentId, patientName ->
+                        onOpenConsultation = { appointmentId, patientId, patientName ->
                             selectTab(Chat)
-                            pendingChatConversation = Conversation(appointmentId, patientName)
+                            pendingChatConversation = Conversation(patientId, patientName, appointmentId)
                         },
                         pendingDestinations = pendingHomeDestinations,
                         onPendingNavigated = { pendingHomeDestinations = emptyList() },

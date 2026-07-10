@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.asStateFlow
 sealed class NotificationEvent {
     data object ToNotifications : NotificationEvent()
     data class ToBookingDetail(val appointmentId: String) : NotificationEvent()
-    data class ToConversation(val appointmentId: String, val patientName: String) : NotificationEvent()
+    data class ToConversation(val patientId: String, val patientName: String, val appointmentId: String) : NotificationEvent()
     data object ToArticles : NotificationEvent()
     data class ToSupportTicket(val ticketId: String) : NotificationEvent()
 }

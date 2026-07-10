@@ -21,8 +21,9 @@ import ke.co.smartroundclinic.doctor.presentation.main.wallet.WalletViewModel
 import ke.co.smartroundclinic.doctor.domain.usecase.notification.MarkNotificationReadUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.notification.RegisterDeviceTokenUseCase
 import ke.co.smartroundclinic.doctor.presentation.main.notifications.NotificationsViewModel
-import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetConsultationMessagesUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetMergedConsultationHistoryUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.ListConversationThreadsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetMedicalRecordUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetPatientBioUseCase
@@ -165,8 +166,9 @@ val useCaseModule = module {
 
     // Consultation use cases
     single { StartConsultationUseCase(get()) }
-    single { GetConsultationMessagesUseCase(get()) }
     single { JoinConsultationCallUseCase(get()) }
+    single { ListConversationThreadsUseCase(get()) }
+    single { GetMergedConsultationHistoryUseCase(get()) }
 
     // Medical record use cases
     single { SaveMedicalRecordUseCase(get()) }
@@ -198,7 +200,7 @@ val useCaseModule = module {
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }
-    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { MedicalRecordViewModel(get(), get(), get(), get(), get()) }
     viewModel { RatingViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { NotificationsViewModel(get(), get()) }
