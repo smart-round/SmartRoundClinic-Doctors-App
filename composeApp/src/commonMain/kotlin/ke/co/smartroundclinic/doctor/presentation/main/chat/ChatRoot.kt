@@ -9,7 +9,6 @@ import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.MedicalRecordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Call
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.ChatList
@@ -34,6 +33,12 @@ fun ChatRoot(
     val medicalRecordVm: MedicalRecordViewModel = koinViewModel()
 
     SideEffect { onAtRootChanged(isAtRoot) }
+
+    // The chat list has no socket of its own — keep its online/last-seen previews live by polling
+    // only while it's the visible screen (stop once a specific conversation is opened).
+    LaunchedEffect(isAtRoot) {
+        if (isAtRoot) vm.startThreadsPolling() else vm.stopThreadsPolling()
+    }
 
     LaunchedEffect(pendingConversation) {
         if (pendingConversation != null) {
@@ -60,10 +65,8 @@ fun ChatRoot(
                 )
             }
             entry<Conversation> { dest ->
-                LaunchedEffect(dest.latestAppointmentId) {
-                    vm.startConsultation(dest.latestAppointmentId)
-                }
                 LaunchedEffect(dest.patientId) {
+                    vm.connectToThread(dest.patientId)
                     medicalRecordVm.loadPatientBio(dest.patientId)
                     medicalRecordVm.loadPatientHistory(dest.patientId)
                 }
@@ -81,16 +84,13 @@ fun ChatRoot(
                 ConversationScreen(
                     patientName = dest.patientName,
                     patientPicture = patientPicture,
-                    session = vm.activeSession,
                     messages = vm.messages,
-                    isStartingSession = vm.isStartingSession,
                     isLoadingHistory = vm.isLoadingHistory,
                     isLoadingMoreHistory = vm.isLoadingMoreHistory,
                     hasMoreHistory = vm.hasMoreHistory,
                     onLoadMoreHistory = { vm.loadMoreHistory(vm.currentUserId, dest.patientId) },
                     isConnected = vm.isConnected,
                     isUploadingFile = vm.isUploadingFile,
-                    isCallEnabled = appointment?.status == AppointmentStatus.CONFIRMED,
                     pendingFiles = vm.pendingFiles,
                     currentUserId = vm.currentUserId,
                     patientBio = medicalRecordVm.patientBio,
@@ -102,11 +102,11 @@ fun ChatRoot(
                     otherPartyLastDeliveredAt = vm.otherPartyLastDeliveredAt,
                     onTyping = vm::sendTypingEvent,
                     onBack = {
-                        vm.closeSession()
+                        vm.disconnect()
                         backStack.removeLastOrNull()
                     },
-                    onVoiceCall = { backStack.add(Call(vm.activeSession?.id ?: "", isVideo = false)) },
-                    onVideoCall = { backStack.add(Call(vm.activeSession?.id ?: "", isVideo = true)) },
+                    onVoiceCall = { backStack.add(Call(dest.patientId, isVideo = false)) },
+                    onVideoCall = { backStack.add(Call(dest.patientId, isVideo = true)) },
                     onSendText = vm::sendText,
                     onSendFile = vm::sendFile,
                 )
@@ -124,7 +124,7 @@ fun ChatRoot(
                     selfPicture = vm.currentUserProfilePicture,
                     isVideo = dest.isVideo,
                     joinState = vm.callJoinState,
-                    onJoin = { vm.joinCall(dest.sessionId) },
+                    onJoin = { vm.joinCall(dest.otherUserId) },
                     onEnd = {
                         vm.endCall()
                         backStack.removeLastOrNull()

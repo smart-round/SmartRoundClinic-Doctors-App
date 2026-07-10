@@ -25,7 +25,6 @@ import ke.co.smartroundclinic.doctor.domain.usecase.consultation.DeleteConversat
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetMergedConsultationHistoryUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.ListConversationThreadsUseCase
-import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetMedicalRecordUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetPatientBioUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetPatientMedicalHistoryUseCase
@@ -166,7 +165,6 @@ val useCaseModule = module {
     single { UpdateDoctorProfileUseCase(get()) }
 
     // Consultation use cases
-    single { StartConsultationUseCase(get()) }
     single { JoinConsultationCallUseCase(get()) }
     single { ListConversationThreadsUseCase(get()) }
     single { GetMergedConsultationHistoryUseCase(get()) }
@@ -202,7 +200,7 @@ val useCaseModule = module {
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }
-    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { MedicalRecordViewModel(get(), get(), get(), get(), get()) }
     viewModel { RatingViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { NotificationsViewModel(get(), get()) }

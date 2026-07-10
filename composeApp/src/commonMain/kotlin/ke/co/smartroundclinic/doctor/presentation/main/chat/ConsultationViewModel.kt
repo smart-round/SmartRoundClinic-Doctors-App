@@ -25,7 +25,6 @@ import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationWsOutg
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.toDomain
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationMessage
-import ke.co.smartroundclinic.doctor.domain.model.ConsultationSession
 import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.UserLocalRepository
@@ -33,10 +32,8 @@ import ke.co.smartroundclinic.doctor.domain.usecase.consultation.DeleteConversat
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetMergedConsultationHistoryUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.ListConversationThreadsUseCase
-import ke.co.smartroundclinic.doctor.domain.usecase.consultation.StartConsultationUseCase
 import ke.co.smartroundclinic.doctor.domain.model.CallJoinInfo
 import ke.co.smartroundclinic.doctor.domain.repository.ConsultationRepository
-import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.CompleteAppointmentUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -66,9 +63,7 @@ data class PendingFile(
 
 class ConsultationViewModel(
     private val consultationRepository: ConsultationRepository,
-    private val startConsultationUseCase: StartConsultationUseCase,
     private val joinCallUseCase: JoinConsultationCallUseCase,
-    private val completeAppointmentUseCase: CompleteAppointmentUseCase,
     private val appointmentLocalRepository: AppointmentLocalRepository,
     private val userLocalRepository: UserLocalRepository,
     private val httpClient: HttpClient,
@@ -91,10 +86,8 @@ class ConsultationViewModel(
     var currentUserProfilePicture by mutableStateOf<String?>(null)
         private set
 
-    var activeSession by mutableStateOf<ConsultationSession?>(null)
-        private set
-    var isStartingSession by mutableStateOf(false)
-        private set
+    // The patient id of the permanent thread currently connected over the chat WebSocket.
+    private var currentOtherUserId: String? = null
 
     val messages = mutableStateListOf<ConsultationMessage>()
     val pendingFiles = mutableStateListOf<PendingFile>()
@@ -159,23 +152,6 @@ class ConsultationViewModel(
         }
     }
 
-    fun startConsultation(appointmentId: String) {
-        if (isStartingSession) return
-        viewModelScope.launch {
-            isStartingSession = true
-            when (val result = startConsultationUseCase(appointmentId)) {
-                is Resource.Success -> {
-                    val session = result.data ?: return@launch
-                    activeSession = session
-                    connectWebSocket(session.id)
-                }
-                is Resource.Error -> snackbarController.show(result.message ?: "Failed to start consultation", isError = true)
-                else -> {}
-            }
-            isStartingSession = false
-        }
-    }
-
     fun loadThreads() {
         viewModelScope.launch {
             isLoadingThreads = true
@@ -186,6 +162,29 @@ class ConsultationViewModel(
             }
             isLoadingThreads = false
         }
+    }
+
+    private var threadsPollJob: Job? = null
+
+    // The chat list's isOnline/lastSeenAt are only as fresh as the last loadThreads() call — unlike
+    // an open conversation (which gets live PRESENCE frames over its own socket), the list has no
+    // socket of its own. Poll it while it's the visible screen so presence there isn't stale.
+    fun startThreadsPolling() {
+        if (threadsPollJob?.isActive == true) return
+        threadsPollJob = viewModelScope.launch {
+            while (isActive) {
+                delay(10_000L)
+                when (val result = listConversationThreadsUseCase()) {
+                    is Resource.Success -> threads = result.data ?: threads
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    fun stopThreadsPolling() {
+        threadsPollJob?.cancel()
+        threadsPollJob = null
     }
 
     // Bumped on every loadMergedHistory call so a slow, superseded loadMoreHistory (or an old
@@ -259,8 +258,11 @@ class ConsultationViewModel(
         }
     }
 
-    private fun connectWebSocket(sessionId: String) {
+    /** Connects the permanent chat thread with [otherUserId] (the patient) — no "start" step needed. */
+    fun connectToThread(otherUserId: String) {
+        if (currentOtherUserId == otherUserId && wsJob?.isActive == true) return
         wsJob?.cancel()
+        currentOtherUserId = otherUserId
         isConnected = false
         wsJob = viewModelScope.launch(Dispatchers.IO) {
             val wsBase = Constants.BASE_URL
@@ -269,7 +271,7 @@ class ConsultationViewModel(
             var attempt = 0
             while (isActive) {
                 try {
-                    httpClient.webSocket("${wsBase}consultation/$sessionId/chat") {
+                    httpClient.webSocket("${wsBase}chat/$otherUserId") {
                         wsSession = this
                         withContext(Dispatchers.Main) { isConnected = true }
                         attempt = 0
@@ -318,6 +320,10 @@ class ConsultationViewModel(
                                                             msg.files.any { it.fileName == p.fileName }
                                                         }
                                                     }
+                                                    // This screen is open right now — acknowledge the other party's
+                                                    // message immediately instead of waiting for the next time the
+                                                    // conversation is (re)opened, which is the only other read trigger.
+                                                    if (msg.senderId != currentUserId) sendReadReceipt()
                                                 }
                                             }
                                         }
@@ -384,6 +390,16 @@ class ConsultationViewModel(
         }
     }
 
+    /** Tells the backend we've just seen the other party's latest message, live, while this screen is open. */
+    private fun sendReadReceipt() {
+        val session = wsSession ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                session.send(Frame.Text(wsJson.encodeToString(ConsultationWsOutgoing(type = "READ"))))
+            } catch (_: Exception) {}
+        }
+    }
+
     fun deleteThread(doctorId: String, patientId: String) {
         viewModelScope.launch {
             when (val result = deleteConversationThreadUseCase(doctorId, patientId)) {
@@ -395,9 +411,9 @@ class ConsultationViewModel(
     }
 
     fun sendFile(fileName: String, contentType: String, bytes: ByteArray) {
-        val sessionId = activeSession?.id
-        if (sessionId == null) {
-            snackbarController.show("No active session", isError = true)
+        val otherUserId = currentOtherUserId
+        if (otherUserId == null) {
+            snackbarController.show("Not connected", isError = true)
             return
         }
         val pending = PendingFile(
@@ -409,7 +425,7 @@ class ConsultationViewModel(
         pendingFiles.add(pending)
 
         viewModelScope.launch {
-            when (val result = consultationRepository.uploadFile(sessionId, fileName, contentType, bytes)) {
+            when (val result = consultationRepository.uploadFile(otherUserId, fileName, contentType, bytes)) {
                 is Resource.Success -> {
                     // The WebSocket change-stream broadcast will deliver the message
                     // and remove the pending entry. If the broadcast somehow misses,
@@ -429,22 +445,18 @@ class ConsultationViewModel(
         }
     }
 
-    fun joinCall(sessionId: String) {
+    fun joinCall(otherUserId: String) {
         if (callJoinState is Resource.Success) return
         viewModelScope.launch {
             callJoinState = Resource.Loading()
-            callJoinState = joinCallUseCase(sessionId)
+            callJoinState = joinCallUseCase(otherUserId)
         }
     }
 
     fun endCall() {
-        val sessionId = activeSession?.id ?: run { clearCallState(); return }
-        val appointmentId = activeSession?.appointmentId ?: ""
+        val otherUserId = currentOtherUserId ?: run { clearCallState(); return }
         viewModelScope.launch {
-            consultationRepository.endCall(sessionId)
-            if (appointmentId.isNotEmpty()) {
-                completeAppointmentUseCase(appointmentId)
-            }
+            consultationRepository.endCall(otherUserId)
             clearCallState()
         }
     }
@@ -458,20 +470,12 @@ class ConsultationViewModel(
         if (idx >= 0) pendingFiles[idx] = pending.copy(failed = true)
     }
 
-    fun endConsultation() {
-        val sessionId = activeSession?.id ?: return
-        viewModelScope.launch {
-            consultationRepository.endConsultation(sessionId)
-            closeSession()
-        }
-    }
-
-    fun closeSession() {
+    fun disconnect() {
         wsJob?.cancel()
         typingClearJob?.cancel()
         wsSession = null
         isConnected = false
-        activeSession = null
+        currentOtherUserId = null
         messages.clear()
         pendingFiles.clear()
         nextHistoryCursor = null
@@ -488,5 +492,6 @@ class ConsultationViewModel(
     override fun onCleared() {
         super.onCleared()
         wsJob?.cancel()
+        threadsPollJob?.cancel()
     }
 }
