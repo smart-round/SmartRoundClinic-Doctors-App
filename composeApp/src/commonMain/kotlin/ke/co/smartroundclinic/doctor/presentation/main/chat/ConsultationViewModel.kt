@@ -25,10 +25,13 @@ import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationMessage
 import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
 import ke.co.smartroundclinic.doctor.domain.model.NextAppointment
+import ke.co.smartroundclinic.doctor.core.notification.OutgoingCallState
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.UserLocalRepository
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.CancelCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.DeleteConversationThreadUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetMergedConsultationHistoryUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.InviteToCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.ListConversationThreadsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetNextAppointmentUseCase
@@ -66,6 +69,8 @@ data class PendingFile(
 class ConsultationViewModel(
     private val consultationRepository: ConsultationRepository,
     private val joinCallUseCase: JoinConsultationCallUseCase,
+    private val inviteToCallUseCase: InviteToCallUseCase,
+    private val cancelCallUseCase: CancelCallUseCase,
     private val appointmentLocalRepository: AppointmentLocalRepository,
     private val userLocalRepository: UserLocalRepository,
     private val httpClient: HttpClient,
@@ -461,6 +466,25 @@ class ConsultationViewModel(
 
     fun clearCallState() {
         callJoinState = null
+    }
+
+    /** Rings [otherUserId] (WhatsApp-style) — does not join the meeting; see OutgoingCallState. */
+    fun startCall(otherUserId: String, isVideo: Boolean, calleeName: String?) {
+        viewModelScope.launch {
+            when (val result = inviteToCallUseCase(otherUserId, isVideo)) {
+                is Resource.Success -> {
+                    val invite = result.data ?: return@launch
+                    OutgoingCallState.calling(invite.callId, otherUserId, calleeName, isVideo)
+                }
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to start call", isError = true)
+                else -> {}
+            }
+        }
+    }
+
+    fun cancelOutgoingCall(otherUserId: String, callId: String) {
+        OutgoingCallState.clear()
+        viewModelScope.launch { cancelCallUseCase(otherUserId, callId) }
     }
 
     private fun markFailed(pending: PendingFile) {

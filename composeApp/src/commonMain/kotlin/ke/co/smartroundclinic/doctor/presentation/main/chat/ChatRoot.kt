@@ -1,21 +1,29 @@
 package ke.co.smartroundclinic.doctor.presentation.main.chat
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.retain.retain
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import ke.co.smartroundclinic.doctor.core.notification.OutgoingCallState
+import ke.co.smartroundclinic.doctor.core.notification.OutgoingCallStatus
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.MedicalRecordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Call
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.ChatList
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Conversation
+import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.OutgoingCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.CallScreen
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatListScreen
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ConversationScreen
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.OutgoingCallScreen
+import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -119,10 +127,62 @@ fun ChatRoot(
                         vm.disconnect()
                         backStack.removeLastOrNull()
                     },
-                    onVoiceCall = { backStack.add(Call(dest.patientId, isVideo = false)) },
-                    onVideoCall = { backStack.add(Call(dest.patientId, isVideo = true)) },
+                    onVoiceCall = { backStack.add(OutgoingCall(dest.patientId, dest.patientName, isVideo = false)) },
+                    onVideoCall = { backStack.add(OutgoingCall(dest.patientId, dest.patientName, isVideo = true)) },
                     onSendText = vm::sendText,
                     onSendFile = vm::sendFile,
+                )
+            }
+            entry<OutgoingCall> { dest ->
+                LaunchedEffect(dest.otherUserId) {
+                    vm.startCall(dest.otherUserId, dest.isVideo, dest.calleeName)
+                }
+                DisposableEffect(dest.otherUserId) {
+                    onDispose {
+                        val status = OutgoingCallState.current.value
+                        if (status is OutgoingCallStatus.Calling && status.otherUserId == dest.otherUserId) {
+                            vm.cancelOutgoingCall(dest.otherUserId, status.callId)
+                        }
+                    }
+                }
+
+                val status by OutgoingCallState.current.collectAsState()
+                LaunchedEffect(status) {
+                    when (val s = status) {
+                        is OutgoingCallStatus.Answered -> {
+                            OutgoingCallState.clear()
+                            backStack.removeLastOrNull()
+                            backStack.add(Call(dest.otherUserId, isVideo = dest.isVideo))
+                        }
+                        is OutgoingCallStatus.Declined -> {
+                            OutgoingCallState.clear()
+                            backStack.removeLastOrNull()
+                        }
+                        is OutgoingCallStatus.Calling -> {
+                            // Ring timeout mirrors the backend's RedisKeys.CALL_INVITE_TTL_SECONDS —
+                            // if nobody answers in time, cancel on the caller's own initiative too.
+                            delay(45_000L)
+                            if (OutgoingCallState.current.value == s) {
+                                vm.cancelOutgoingCall(dest.otherUserId, s.callId)
+                                backStack.removeLastOrNull()
+                            }
+                        }
+                        null -> Unit
+                    }
+                }
+
+                OutgoingCallScreen(
+                    calleeName = dest.calleeName,
+                    statusText = when (status) {
+                        is OutgoingCallStatus.Declined -> "Call declined"
+                        else -> "Calling…"
+                    },
+                    onCancel = {
+                        val s = OutgoingCallState.current.value
+                        if (s is OutgoingCallStatus.Calling) vm.cancelOutgoingCall(dest.otherUserId, s.callId)
+                        else OutgoingCallState.clear()
+                        backStack.removeLastOrNull()
+                    },
                 )
             }
             entry<Call> { dest ->

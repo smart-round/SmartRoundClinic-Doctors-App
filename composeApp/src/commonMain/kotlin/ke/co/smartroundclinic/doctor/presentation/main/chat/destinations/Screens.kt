@@ -10,3 +10,7 @@ import kotlinx.serialization.Serializable
 // header (fallback profile picture) from the appointments list.
 @Serializable data class Conversation(val patientId: String, val patientName: String, val latestAppointmentId: String) : NavKey
 @Serializable data class Call(val otherUserId: String, val isVideo: Boolean) : NavKey
+
+// Ringing screen shown to the caller between InviteToCallUseCase and the callee answering —
+// see OutgoingCallState. otherUserId doubles as the patientId (doctor app is doctor-only).
+@Serializable data class OutgoingCall(val otherUserId: String, val calleeName: String, val isVideo: Boolean) : NavKey

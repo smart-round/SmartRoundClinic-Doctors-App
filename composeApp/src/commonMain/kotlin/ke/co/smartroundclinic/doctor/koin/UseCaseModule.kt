@@ -23,6 +23,9 @@ import ke.co.smartroundclinic.doctor.domain.usecase.notification.RegisterDeviceT
 import ke.co.smartroundclinic.doctor.presentation.main.notifications.NotificationsViewModel
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.DeleteConversationThreadUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.GetMergedConsultationHistoryUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.CancelCallUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.DeclineCallUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.consultation.InviteToCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.JoinConsultationCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.ListConversationThreadsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.medicalrecord.GetMedicalRecordUseCase
@@ -170,6 +173,9 @@ val useCaseModule = module {
 
     // Consultation use cases
     single { JoinConsultationCallUseCase(get()) }
+    single { InviteToCallUseCase(get()) }
+    single { DeclineCallUseCase(get()) }
+    single { CancelCallUseCase(get()) }
     single { ListConversationThreadsUseCase(get()) }
     single { GetMergedConsultationHistoryUseCase(get()) }
     single { DeleteConversationThreadUseCase(get()) }
@@ -204,7 +210,7 @@ val useCaseModule = module {
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }
-    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { MedicalRecordViewModel(get(), get(), get(), get(), get()) }
     viewModel { RatingViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { NotificationsViewModel(get(), get()) }
