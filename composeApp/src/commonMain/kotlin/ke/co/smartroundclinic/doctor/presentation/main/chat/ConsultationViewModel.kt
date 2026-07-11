@@ -15,6 +15,10 @@ import io.ktor.websocket.readText
 import ke.co.smartroundclinic.doctor.common.Constants
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationCallAnsweredEventData
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationCallCancelledEventData
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationCallDeclinedEventData
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationCallInviteEventData
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationMessageData
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationPresenceEventData
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.ConsultationTypingEventData
@@ -25,6 +29,7 @@ import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationMessage
 import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
 import ke.co.smartroundclinic.doctor.domain.model.NextAppointment
+import ke.co.smartroundclinic.doctor.core.notification.IncomingCallHandler
 import ke.co.smartroundclinic.doctor.core.notification.OutgoingCallState
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
 import ke.co.smartroundclinic.doctor.domain.repository.UserLocalRepository
@@ -315,6 +320,35 @@ class ConsultationViewModel(
                                                 otherPartyOnline = event.isOnline
                                                 otherPartyLastSeenAt = event.lastSeenAt
                                             }
+                                        }
+                                        // Low-latency ringing path — arrives here instantly whenever the other
+                                        // party has this thread open; push (see NotificationSetup.onPayloadData)
+                                        // is the fallback for backgrounded/killed apps.
+                                        "CALL_INVITE" -> {
+                                            val event = wsJson.decodeFromString<ConsultationCallInviteEventData>(raw)
+                                            withContext(Dispatchers.Main) {
+                                                IncomingCallHandler.onCallInvite(
+                                                    callId = event.callId,
+                                                    callerId = event.callerId,
+                                                    callerName = event.callerName,
+                                                    doctorId = currentUserId,
+                                                    patientId = otherUserId,
+                                                    isVideo = event.isVideo,
+                                                    ringTimeoutSeconds = event.ringTimeoutSeconds,
+                                                )
+                                            }
+                                        }
+                                        "CALL_ANSWERED" -> {
+                                            val event = wsJson.decodeFromString<ConsultationCallAnsweredEventData>(raw)
+                                            withContext(Dispatchers.Main) { IncomingCallHandler.onCallAnswered(event.callId) }
+                                        }
+                                        "CALL_DECLINED" -> {
+                                            val event = wsJson.decodeFromString<ConsultationCallDeclinedEventData>(raw)
+                                            withContext(Dispatchers.Main) { IncomingCallHandler.onCallDeclined(event.callId) }
+                                        }
+                                        "CALL_CANCELLED" -> {
+                                            val event = wsJson.decodeFromString<ConsultationCallCancelledEventData>(raw)
+                                            withContext(Dispatchers.Main) { IncomingCallHandler.onCallCancelled(event.callId) }
                                         }
                                         else -> {
                                             val msg = wsJson.decodeFromString<ConsultationMessageData>(raw).toDomain()
