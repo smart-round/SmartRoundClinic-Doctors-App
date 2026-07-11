@@ -49,14 +49,20 @@ import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
+import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
 
 import kotlinx.datetime.LocalDate
 import ke.co.smartroundclinic.doctor.core.platform.todayDay
 import ke.co.smartroundclinic.doctor.core.platform.todayMonth
 import ke.co.smartroundclinic.doctor.core.platform.todayYear
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingsViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ConsultationViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ScheduleViewModel
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,6 +95,21 @@ import org.jetbrains.compose.resources.painterResource
 import smartroundclinic.composeapp.generated.resources.Res
 import smartroundclinic.composeapp.generated.resources.notification
 
+
+// Same "time today, otherwise abbreviated date" convention as the chat list's formatThreadTimestamp.
+private fun formatRecentMessageTimestamp(iso: String): String = try {
+    val zone = TimeZone.currentSystemDefault()
+    val dateTime = Instant.parse(iso).toLocalDateTime(zone)
+    val today = Clock.System.now().toLocalDateTime(zone).date
+    if (dateTime.date == today) {
+        val hour = dateTime.hour
+        val ampm = if (hour < 12) "AM" else "PM"
+        val h = if (hour % 12 == 0) 12 else hour % 12
+        "$h:${dateTime.minute.toString().padStart(2, '0')} $ampm"
+    } else {
+        "${dateTime.date.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }} ${dateTime.date.dayOfMonth}"
+    }
+} catch (_: Exception) { "" }
 
 private fun formatAppointmentDateTime(date: String, slotStart: String, slotEnd: String): String {
     val localDate = runCatching { LocalDate.parse(date) }.getOrNull()
@@ -127,6 +148,7 @@ fun HomeScreen(
     bookingsViewModel: BookingsViewModel = koinViewModel(),
     scheduleViewModel: ScheduleViewModel = koinViewModel(),
     notificationsViewModel: NotificationsViewModel = koinViewModel(),
+    consultationViewModel: ConsultationViewModel = koinViewModel(),
 ) {
     val allAppointments by bookingsViewModel.appointments.collectAsState()
     val schedule by scheduleViewModel.schedule.collectAsState()
@@ -139,6 +161,7 @@ fun HomeScreen(
             bookingsViewModel.loadAppointments()
             scheduleViewModel.refresh()
             notificationsViewModel.load()
+            consultationViewModel.loadThreads()
         }
     }
 
@@ -158,11 +181,9 @@ fun HomeScreen(
 
     val isCalendarBlocked = schedule.none { it.isActive }
 
-    val recentConsultations = remember(allAppointments) {
-        allAppointments
-            .filter { it.status == AppointmentStatus.CONFIRMED || it.status == AppointmentStatus.COMPLETED }
-            .sortedByDescending { it.date + it.slotStart }
-            .take(2)
+    // Already sorted newest-first by ListConversationThreadsUseCase — just cap it for the home preview.
+    val recentThreads = remember(consultationViewModel.threads) {
+        consultationViewModel.threads.take(5)
     }
 
     Scaffold(
@@ -197,7 +218,7 @@ fun HomeScreen(
                     }
                     item {
                         RecentMessagesSection(
-                            consultations = recentConsultations,
+                            threads = recentThreads,
                             onSeeAll = onSeeAllConsultations,
                             onOpenConsultation = onOpenConsultation,
                         )
@@ -291,7 +312,7 @@ private fun AppointmentsSection(
 
 @Composable
 private fun RecentMessagesSection(
-    consultations: List<Appointment>,
+    threads: List<ConversationThread>,
     onSeeAll: () -> Unit,
     onOpenConsultation: (appointmentId: String, patientId: String, patientName: String) -> Unit,
     modifier: Modifier = Modifier
@@ -299,20 +320,20 @@ private fun RecentMessagesSection(
     Column(modifier = modifier) {
         SectionHeader(title = "Recent Messages", onSeeAll = onSeeAll)
         Spacer(Modifier.height(8.dp))
-        if (consultations.isEmpty()) {
+        if (threads.isEmpty()) {
             EmptyPlaceholder(
                 icon = Icons.Outlined.ChatBubbleOutline,
                 title = "No Messages Yet",
                 subtitle = "Messages will appear as soon as patients reach out"
             )
         } else {
-            consultations.forEach { appt ->
+            threads.forEach { thread ->
                 MessageRow(
-                    senderName = appt.patientName,
-                    preview = "Consultation  •  ${appt.slotStart} – ${appt.slotEnd}",
-                    timestamp = appt.date,
-                    profilePicture = appt.patientProfilePicture,
-                    onClick = { onOpenConsultation(appt.id, appt.patientId, appt.patientName) }
+                    senderName = thread.counterpartName,
+                    preview = thread.lastMessagePreview ?: "",
+                    timestamp = thread.lastMessageAt?.let(::formatRecentMessageTimestamp) ?: "",
+                    profilePicture = thread.counterpartPicture,
+                    onClick = { onOpenConsultation(thread.latestAppointmentId, thread.patientId, thread.counterpartName) }
                 )
                 Spacer(Modifier.height(8.dp))
             }
