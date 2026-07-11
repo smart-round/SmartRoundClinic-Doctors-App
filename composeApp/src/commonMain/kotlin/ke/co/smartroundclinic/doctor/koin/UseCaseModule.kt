@@ -48,6 +48,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.articles.GetMyArticlesUseCas
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.PublishArticleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.UnpublishArticleUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.articles.UpdateArticleUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.auth.ConfirmComplianceCorrectionUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.DeleteProfilePictureUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.GetComplianceStatusUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.SignOutUseCase
@@ -130,6 +131,7 @@ val useCaseModule = module {
     single { DeleteProfilePictureUseCase(get()) }
     single { GetUserUseCase(get(), get()) }
     single { GetComplianceStatusUseCase(get()) }
+    single { ConfirmComplianceCorrectionUseCase(get()) }
     single { SignOutUseCase(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { PreloadDashboardUseCase(get(), get(), get(), get(), get()) }
     single { GetScheduleUseCase(get(), get()) }
@@ -198,7 +200,7 @@ val useCaseModule = module {
     viewModel { PaymentDetailsViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { SpecializationViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ScheduleViewModel(get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { ComplianceViewModel(get(), get(), get()) }
+    viewModel { ComplianceViewModel(get(), get(), get(), get(), get()) }
     viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }

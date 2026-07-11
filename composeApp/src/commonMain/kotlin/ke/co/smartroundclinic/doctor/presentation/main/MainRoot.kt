@@ -2,6 +2,7 @@ package ke.co.smartroundclinic.doctor.presentation.main
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,6 +28,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -247,10 +249,13 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
         ComplianceDialog(
             isRejected = isRejected,
             failedApprovalReason = complianceStatus?.failedApprovalReason,
+            hasPendingCorrection = complianceStatus?.hasPendingCorrection ?: false,
             isChecking = complianceViewModel.isChecking,
             isSigningOut = complianceViewModel.isSigningOut,
+            isConfirmingCorrection = complianceViewModel.isConfirmingCorrection,
             onCheckStatus = { complianceViewModel.checkStatus() },
             onSignOut = { complianceViewModel.signOut(onSignOut) },
+            onConfirmCorrection = { complianceViewModel.confirmCorrection() },
             onGoToLicences = {
                 inComplianceFixMode = true
                 selectTab(Home)
@@ -264,10 +269,13 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
 private fun ComplianceDialog(
     isRejected: Boolean,
     failedApprovalReason: String?,
+    hasPendingCorrection: Boolean,
     isChecking: Boolean,
     isSigningOut: Boolean,
+    isConfirmingCorrection: Boolean,
     onCheckStatus: () -> Unit,
     onSignOut: () -> Unit,
+    onConfirmCorrection: () -> Unit,
     onGoToLicences: () -> Unit,
 ) {
     val headerGradient = if (isRejected) {
@@ -388,6 +396,61 @@ private fun ComplianceDialog(
                         )
                     }
                     Spacer(Modifier.height(4.dp))
+
+                    if (hasPendingCorrection) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Primary40.copy(alpha = 0.08f))
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                        ) {
+                            Text(
+                                text = "Corrections Submitted",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = Primary40,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "Your corrections have been submitted and are awaiting admin review.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                    } else {
+                        OutlinedButton(
+                            onClick = onConfirmCorrection,
+                            enabled = !isChecking && !isSigningOut && !isConfirmingCorrection,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, Primary40),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Primary40),
+                        ) {
+                            if (isConfirmingCorrection) {
+                                CircularProgressIndicator(
+                                    color = Primary40,
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Submitting…",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Primary40,
+                                    modifier = Modifier.padding(vertical = 6.dp),
+                                )
+                            } else {
+                                Text(
+                                    text = "I've Made the Corrections",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Primary40,
+                                    modifier = Modifier.padding(vertical = 6.dp),
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                    }
                 }
 
                 // Check Status button

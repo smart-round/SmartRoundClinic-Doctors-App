@@ -9,7 +9,9 @@ import com.liftric.kvault.KVault
 import ke.co.smartroundclinic.doctor.common.Constants.KEY_COMPLIANCE_IS_APPROVED
 import ke.co.smartroundclinic.doctor.common.Constants.KEY_COMPLIANCE_STATUS
 import ke.co.smartroundclinic.doctor.common.Resource
+import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.domain.model.ComplianceStatus
+import ke.co.smartroundclinic.doctor.domain.usecase.auth.ConfirmComplianceCorrectionUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.GetComplianceStatusUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.auth.SignOutUseCase
 import kotlinx.coroutines.delay
@@ -22,6 +24,8 @@ class ComplianceViewModel(
     private val getComplianceStatusUseCase: GetComplianceStatusUseCase,
     private val signOutUseCase: SignOutUseCase,
     private val secureStorage: KVault,
+    private val confirmComplianceCorrectionUseCase: ConfirmComplianceCorrectionUseCase,
+    private val snackbarController: SnackbarController,
 ) : ViewModel() {
 
     var complianceStatus by mutableStateOf<ComplianceStatus?>(null)
@@ -31,6 +35,9 @@ class ComplianceViewModel(
         private set
 
     var isSigningOut by mutableStateOf(false)
+        private set
+
+    var isConfirmingCorrection by mutableStateOf(false)
         private set
 
     init {
@@ -65,6 +72,21 @@ class ComplianceViewModel(
                 }
             }
             isChecking = false
+        }
+    }
+
+    fun confirmCorrection() {
+        viewModelScope.launch {
+            isConfirmingCorrection = true
+            when (val result = confirmComplianceCorrectionUseCase()) {
+                is Resource.Success -> {
+                    snackbarController.show("Corrections submitted for review")
+                    checkStatus()
+                }
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to submit corrections", isError = true)
+                else -> Unit
+            }
+            isConfirmingCorrection = false
         }
     }
 

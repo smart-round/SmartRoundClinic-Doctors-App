@@ -4,4 +4,5 @@ data class ComplianceStatus(
     val isApproved: Boolean,
     val status: String,
     val failedApprovalReason: String? = null,
+    val hasPendingCorrection: Boolean = false,
 )

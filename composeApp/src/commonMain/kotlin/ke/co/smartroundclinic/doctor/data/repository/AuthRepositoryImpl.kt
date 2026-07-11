@@ -278,4 +278,14 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
             Resource.Error("An unknown error occurred")
         }
     }
+
+    override suspend fun confirmComplianceCorrection(): Resource<SuccessRes> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.post("/doctor/compliance/corrections/confirm").body<SuccessRes>()
+            if (response.status) Resource.Success(data = response, message = response.message)
+            else Resource.Error(message = response.message)
+        } catch (e: Exception) {
+            Resource.Error("An unknown error occurred")
+        }
+    }
 }

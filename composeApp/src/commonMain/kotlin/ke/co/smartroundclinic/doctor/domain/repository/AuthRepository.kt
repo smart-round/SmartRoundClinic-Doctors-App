@@ -28,4 +28,5 @@ interface AuthRepository {
     suspend fun deleteProfilePicture(): Resource<DeleteProfilePictureRes>
     suspend fun updatePersonalInfo(body: UpdatePersonalInformationReq): Resource<UpdatePersonalInformationRes>
     suspend fun getComplianceStatus(): Resource<GetComplianceStatusRes>
+    suspend fun confirmComplianceCorrection(): Resource<SuccessRes>
 }

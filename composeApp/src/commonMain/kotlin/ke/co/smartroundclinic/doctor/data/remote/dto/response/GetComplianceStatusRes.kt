@@ -18,11 +18,13 @@ data class ComplianceData(
     val id: String, // 6a08a70b8751f92f85e39bb6
     val isApproved: Boolean, // false
     val status: String, // PENDING, REJECTED, APPROVED
-    val failedApprovalReason: String? = null
+    val failedApprovalReason: String? = null,
+    val hasPendingCorrection: Boolean = false,
 )
 
 fun ComplianceData.toDomain() = ComplianceStatus(
     isApproved = isApproved,
     status = status,
     failedApprovalReason = failedApprovalReason,
+    hasPendingCorrection = hasPendingCorrection,
 )
