@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import ke.co.smartroundclinic.doctor.presentation.main.notifications.NotificationsViewModel
@@ -117,7 +118,9 @@ fun DashboardHeader(
                     } else {
                         title
                     },
-                    style = MaterialTheme.typography.titleMedium,
+                    // FontFamily.Default (not the brand Montserrat/Raleway fonts, which carry no
+                    // emoji glyphs or fallback chain) — needed for the 👋 to render on iOS.
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Default),
                     color = Color.White,
                     modifier = Modifier.weight(1f),
                 )

@@ -25,14 +25,20 @@ import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -40,6 +46,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.LicenceManagement
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ProfileList
 import androidx.compose.ui.Alignment
@@ -52,8 +61,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
@@ -77,7 +84,6 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientStart
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
-import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -168,6 +174,19 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
     val complianceStatus = complianceViewModel.complianceStatus
     val showComplianceDialog = complianceStatus != null && !complianceStatus.isApproved && !inComplianceFixMode
 
+    // Re-check compliance status every time the app comes back to the foreground — a doctor's
+    // account can be rejected/suspended by an admin at any time, so re-fetching on every resume
+    // (rather than only once at cold start) is what lets the blocking sheet re-appear as soon as
+    // possible instead of waiting for the doctor to happen to tap "Check Status" themselves.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, complianceViewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) complianceViewModel.checkStatus()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = { if (isAtRoot) BottomNavBar(currentTab = currentTab, onTabSelected = ::selectTab) },
@@ -246,7 +265,7 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
 
     if (showComplianceDialog) {
         val isRejected = complianceStatus?.status == "REJECTED"
-        ComplianceDialog(
+        ComplianceBottomSheet(
             isRejected = isRejected,
             failedApprovalReason = complianceStatus?.failedApprovalReason,
             hasPendingCorrection = complianceStatus?.hasPendingCorrection ?: false,
@@ -265,8 +284,9 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ComplianceDialog(
+private fun ComplianceBottomSheet(
     isRejected: Boolean,
     failedApprovalReason: String?,
     hasPendingCorrection: Boolean,
@@ -284,28 +304,33 @@ private fun ComplianceDialog(
         Brush.horizontalGradient(listOf(GradientStart, GradientEnd))
     }
 
-    Dialog(
+    // The doctor must resolve their compliance status before using the app — swipe-to-dismiss,
+    // scrim tap, and the system back gesture are all disabled, and confirmValueChange blocks the
+    // sheet from ever reaching Hidden, so it stays locked open until isApproved flips to true and
+    // this composable is removed from composition entirely (see showComplianceDialog above).
+    ModalBottomSheet(
         onDismissRequest = {},
-        properties = DialogProperties(
-            dismissOnBackPress = false,
-            dismissOnClickOutside = false,
+        sheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = { it != SheetValue.Hidden },
         ),
+        sheetGesturesEnabled = false,
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = null,
+        contentWindowInsets = { WindowInsets(0) },
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(ShapeCard)
-                .background(MaterialTheme.colorScheme.surface),
+                .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Gradient header band
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        brush = headerGradient,
-                        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                    )
+                    .background(brush = headerGradient)
                     .padding(vertical = 24.dp),
                 contentAlignment = Alignment.Center,
             ) {
