@@ -9,7 +9,10 @@ import io.ktor.client.request.setBody
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.CancelAppointmentReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetAppointmentsRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.NextAppointmentRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.SuccessRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.toDomain
+import ke.co.smartroundclinic.doctor.domain.model.NextAppointment
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -65,6 +68,15 @@ class AppointmentRepositoryImpl(private val client: HttpClient) : AppointmentRep
             if (res.status) Resource.Success(res, res.message) else Resource.Error(res.message ?: "Failed to cancel appointment")
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to cancel appointment")
+        }
+    }
+
+    override suspend fun getNextAppointment(otherUserId: String): Resource<NextAppointment?> = withContext(Dispatchers.IO) {
+        try {
+            val res = client.get("scheduling/appointments/next") { parameter("otherUserId", otherUserId) }.body<NextAppointmentRes>()
+            if (res.status) Resource.Success(res.data?.toDomain()) else Resource.Error(res.message.ifBlank { "Failed to load next appointment" })
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to load next appointment")
         }
     }
 }

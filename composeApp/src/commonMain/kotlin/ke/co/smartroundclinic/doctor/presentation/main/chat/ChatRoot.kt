@@ -24,6 +24,8 @@ fun ChatRoot(
     onAtRootChanged: (Boolean) -> Unit = {},
     pendingConversation: Conversation? = null,
     onPendingNavigated: () -> Unit = {},
+    pendingCall: Call? = null,
+    onPendingCallNavigated: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
 ) {
@@ -48,6 +50,17 @@ fun ChatRoot(
         }
     }
 
+    // Fires after the pendingConversation effect above (both are set together from the same
+    // notification event), so Conversation is already on the stack for Call's entry to read
+    // the patient name/picture off of.
+    LaunchedEffect(pendingCall) {
+        if (pendingCall != null) {
+            backStack.removeAll { it is Call }
+            backStack.add(pendingCall)
+            onPendingCallNavigated()
+        }
+    }
+
     NavDisplay(
         modifier = modifier,
         backStack = backStack,
@@ -67,6 +80,7 @@ fun ChatRoot(
             entry<Conversation> { dest ->
                 LaunchedEffect(dest.patientId) {
                     vm.connectToThread(dest.patientId)
+                    vm.loadNextAppointment(dest.patientId)
                     medicalRecordVm.loadPatientBio(dest.patientId)
                     medicalRecordVm.loadPatientHistory(dest.patientId)
                 }
@@ -84,6 +98,8 @@ fun ChatRoot(
                 ConversationScreen(
                     patientName = dest.patientName,
                     patientPicture = patientPicture,
+                    appointment = vm.nextAppointment,
+                    onLockedCallClick = { vm.notifyCallLocked(it) },
                     messages = vm.messages,
                     isLoadingHistory = vm.isLoadingHistory,
                     isLoadingMoreHistory = vm.isLoadingMoreHistory,

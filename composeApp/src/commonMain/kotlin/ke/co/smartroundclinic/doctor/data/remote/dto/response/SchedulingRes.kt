@@ -3,6 +3,7 @@ package ke.co.smartroundclinic.doctor.data.remote.dto.response
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.domain.model.DoctorAvailability
+import ke.co.smartroundclinic.doctor.domain.model.NextAppointment
 import ke.co.smartroundclinic.doctor.domain.model.ScheduleBreakBlock
 import kotlinx.serialization.Serializable
 
@@ -57,6 +58,25 @@ data class AppointmentData(
 @Serializable
 data class AppointmentActionRes(val data: AppointmentData)
 
+@Serializable
+data class NextAppointmentRes(
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+    val data: NextAppointmentData? = null,
+)
+
+@Serializable
+data class NextAppointmentData(
+    val id: String,
+    val doctorId: String,
+    val patientId: String,
+    val date: String,
+    val slotStart: String,
+    val slotEnd: String,
+    val status: String,
+)
+
 fun AvailabilityEntryData.toDomain() = DoctorAvailability(
     id = id,
     dayOfWeek = dayOfWeek,
@@ -86,4 +106,11 @@ fun AppointmentData.toDomain() = Appointment(
     },
     notes = notes,
     cancellationReason = cancellationReason,
+)
+
+fun NextAppointmentData.toDomain() = NextAppointment(
+    date = date,
+    slotStart = slotStart,
+    slotEnd = slotEnd,
+    status = status,
 )

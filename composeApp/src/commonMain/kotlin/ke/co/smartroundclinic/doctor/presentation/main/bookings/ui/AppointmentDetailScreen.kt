@@ -35,6 +35,9 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,15 +76,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import ke.co.smartroundclinic.doctor.core.util.parseAppointmentInstant
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.domain.model.MedicalRecord
 import ke.co.smartroundclinic.doctor.domain.model.PatientBio
 import ke.co.smartroundclinic.doctor.domain.model.Rating
+import kotlinx.coroutines.delay
+import kotlinx.datetime.Clock
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.common.composables.StarRatingDisplay
 import ke.co.smartroundclinic.doctor.presentation.common.composables.StarRatingInput
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
+import ke.co.smartroundclinic.doctor.presentation.theme.Error40
+import ke.co.smartroundclinic.doctor.presentation.theme.Error90
 import ke.co.smartroundclinic.doctor.presentation.theme.Neutral40
 import ke.co.smartroundclinic.doctor.presentation.theme.Neutral80
 import ke.co.smartroundclinic.doctor.presentation.theme.Neutral90
@@ -127,7 +135,19 @@ internal fun AppointmentDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val canAddRecord = appointment.status == AppointmentStatus.CONFIRMED || appointment.status == AppointmentStatus.COMPLETED
+    var now by remember { mutableStateOf(Clock.System.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            now = Clock.System.now()
+        }
+    }
+    val slotEndInstant = remember(appointment.date, appointment.slotEnd) {
+        parseAppointmentInstant(appointment.date, appointment.slotEnd)
+    }
+    val canComplete = slotEndInstant == null || now >= slotEndInstant
     var showCancelDialog by remember { mutableStateOf(false) }
+    var showCompleteConfirmSheet by remember { mutableStateOf(false) }
     var showPatientBioSheet by remember { mutableStateOf(false) }
     var showHistorySheet by remember { mutableStateOf(false) }
     var showReviewsSheet by remember { mutableStateOf(false) }
@@ -154,6 +174,16 @@ internal fun AppointmentDetailScreen(
             onConfirm = { reason ->
                 showCancelDialog = false
                 onCancel(reason)
+            },
+        )
+    }
+
+    if (showCompleteConfirmSheet) {
+        CompleteConfirmationBottomSheet(
+            onDismiss = { showCompleteConfirmSheet = false },
+            onConfirm = {
+                showCompleteConfirmSheet = false
+                onComplete()
             },
         )
     }
@@ -303,8 +333,16 @@ internal fun AppointmentDetailScreen(
                             }
                         }
                         AppointmentStatus.CONFIRMED -> {
-                            PrimaryButton(onClick = onComplete) {
+                            PrimaryButton(onClick = { showCompleteConfirmSheet = true }, enabled = canComplete) {
                                 Text("Mark as Complete", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(vertical = 14.dp))
+                            }
+                            if (!canComplete) {
+                                Text(
+                                    text = "Available after the appointment ends at ${appointment.slotEnd}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+                                )
                             }
                             Button(
                                 onClick = onNoShow,
@@ -1265,6 +1303,90 @@ private fun ReviewItem(review: Rating) {
 private fun Double.formatOneDecimal(): String {
     val scaled = (this * 10).toInt()
     return "${scaled / 10}.${scaled % 10}"
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CompleteConfirmationBottomSheet(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    var acknowledged by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 8.dp)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(imageVector = Icons.Filled.WarningAmber, contentDescription = null, tint = Error40)
+                Text(
+                    text = "Mark Appointment as Complete?",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(ShapeInput)
+                    .background(Error90)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = "You're about to mark this appointment as complete.",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = Error40,
+                )
+                Text(
+                    text = "Doing so without having actually conducted the consultation with the patient is a violation of our Terms of Service and could lead to licence termination and blacklisting from the platform.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Error40,
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) { acknowledged = !acknowledged },
+            ) {
+                Checkbox(
+                    checked = acknowledged,
+                    onCheckedChange = { acknowledged = it },
+                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
+                )
+                Text(
+                    text = "I confirm I conducted this appointment with the patient and can now mark it as completed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            PrimaryButton(onClick = onConfirm, enabled = acknowledged) {
+                Text(
+                    text = "Mark as Complete",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White,
+                    modifier = Modifier.padding(vertical = 14.dp),
+                )
+            }
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Cancel", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -41,13 +41,21 @@ fun setupNotificationListener() {
 
             Napier.d(tag = TAG, message = "Notification tapped — event=$event appointmentId=$appointmentId consultationId=$consultationId ticketId=$ticketId")
 
+            suspend fun resolvedPatientId(appointmentId: String): String? = patientId
+                ?: component.appointmentLocalRepository.observeAppointments().first()
+                    .firstOrNull { it.id == appointmentId }?.patientId
+
+            // The push payload doesn't always carry patientId (only "New Chat Message" does today) —
+            // fall back to the locally-cached appointment so every chat-bound event can still deep-link.
             suspend fun toConversation(appointmentId: String): NotificationEvent {
-                // The push payload doesn't always carry patientId (only "New Chat Message" does today) —
-                // fall back to the locally-cached appointment so every chat-bound event can still deep-link.
-                val resolvedPatientId = patientId
-                    ?: component.appointmentLocalRepository.observeAppointments().first()
-                        .firstOrNull { it.id == appointmentId }?.patientId
-                return if (!resolvedPatientId.isNullOrBlank()) NotificationEvent.ToConversation(resolvedPatientId, patientName, appointmentId)
+                val resolved = resolvedPatientId(appointmentId)
+                return if (!resolved.isNullOrBlank()) NotificationEvent.ToConversation(resolved, patientName, appointmentId)
+                else NotificationEvent.ToNotifications
+            }
+
+            suspend fun toCall(appointmentId: String): NotificationEvent {
+                val resolved = resolvedPatientId(appointmentId)
+                return if (!resolved.isNullOrBlank()) NotificationEvent.ToCall(resolved, patientName, appointmentId)
                 else NotificationEvent.ToNotifications
             }
 
@@ -62,7 +70,10 @@ fun setupNotificationListener() {
                         else NotificationEvent.ToNotifications
                     }
                     "Patient is Ready",
-                    "Patient Joined the Call",
+                    "Patient Joined the Call" -> {
+                        if (!appointmentId.isNullOrBlank()) toCall(appointmentId)
+                        else NotificationEvent.ToNotifications
+                    }
                     "Consultation Ended",
                     "Call Ended" -> {
                         if (!appointmentId.isNullOrBlank()) toConversation(appointmentId)
