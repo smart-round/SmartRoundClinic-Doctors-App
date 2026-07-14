@@ -35,3 +35,12 @@ data class AccountVerification(val email: String) : NavKey
 
 @Serializable
 data object ApplicationUnderReview : NavKey
+
+@Serializable
+data object PrivacyPolicy : NavKey
+
+@Serializable
+data object TermsAndConditions : NavKey
+
+@Serializable
+data object DoctorAgreement : NavKey

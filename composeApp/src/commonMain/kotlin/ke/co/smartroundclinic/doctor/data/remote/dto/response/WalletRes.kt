@@ -1,62 +1,52 @@
 package ke.co.smartroundclinic.doctor.data.remote.dto.response
 
-import ke.co.smartroundclinic.doctor.domain.model.DoctorPayment
 import ke.co.smartroundclinic.doctor.domain.model.PaymentSummary
+import ke.co.smartroundclinic.doctor.domain.model.WalletTransaction
+import ke.co.smartroundclinic.doctor.domain.model.Withdrawal
 import ke.co.smartroundclinic.doctor.domain.model.WithdrawalBalance
 import kotlinx.serialization.Serializable
 
-// ── GET /doctor/payments ──────────────────────────────────────────────────────
+// ── GET /doctor/payments — wallet transaction ledger, live from IntaSend ────────
 
 @Serializable
-data class GetDoctorPaymentsRes(
+data class GetWalletTransactionsRes(
     val httpStatusCode: Int,
     val status: Boolean,
     val message: String,
-    val data: DoctorPaymentsPageData? = null,
+    val data: WalletTransactionsPageData? = null,
 )
 
 @Serializable
-data class DoctorPaymentsPageData(
-    val items: List<DoctorPaymentItemRes>,
-    val total: Long = 0,
+data class WalletTransactionsPageData(
+    val items: List<WalletTransactionItemRes>,
+    val total: Int = 0,
     val page: Int = 1,
-    val size: Int = 20,
-    val pages: Long = 0,
+    val hasMore: Boolean = false,
 )
 
 @Serializable
-data class DoctorPaymentItemRes(
-    val id: String,
-    val appointmentId: String? = null,
-    val patientId: String,
-    val doctorId: String,
-    val amount: Double,
+data class WalletTransactionItemRes(
+    val transactionId: String,
+    val invoice: String? = null,
     val currency: String,
+    val value: Double,
+    val runningBalance: Double,
+    val narrative: String? = null,
+    val transType: String,
     val status: String,
-    val paymentMethod: String? = null,
-    val transactionRef: String? = null,
-    val invoiceId: String? = null,
-    val notes: String? = null,
-    val commissionRate: Double = 0.0,
-    val platformFee: Double,
-    val netEarnings: Double,
     val createdAt: String,
     val updatedAt: String? = null,
 )
 
-fun DoctorPaymentItemRes.toDomain() = DoctorPayment(
-    id = id,
-    appointmentId = appointmentId,
-    amount = amount,
+fun WalletTransactionItemRes.toDomain() = WalletTransaction(
+    transactionId = transactionId,
+    invoice = invoice,
     currency = currency,
+    value = value,
+    runningBalance = runningBalance,
+    narrative = narrative,
+    transType = transType,
     status = status,
-    paymentMethod = paymentMethod,
-    transactionRef = transactionRef,
-    invoiceId = invoiceId,
-    notes = notes,
-    commissionRate = commissionRate,
-    platformFee = platformFee,
-    netEarnings = netEarnings,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
@@ -98,7 +88,7 @@ fun PaymentSummaryData.toDomain() = PaymentSummary(
     availableBalance = availableBalance,
 )
 
-// ── GET /doctor/payments/withdraw/history ────────────────────────────────────
+// ── GET /doctor/payments/withdraw/history — live from IntaSend send-money ───────
 
 @Serializable
 data class GetWithdrawalHistoryRes(
@@ -111,34 +101,42 @@ data class GetWithdrawalHistoryRes(
 @Serializable
 data class WithdrawalHistoryPageData(
     val items: List<WithdrawalItemRes>,
-    val total: Long = 0,
+    val total: Int = 0,
     val page: Int = 1,
-    val size: Int = 20,
-    val pages: Long = 0,
+    val hasMore: Boolean = false,
 )
 
 @Serializable
 data class WithdrawalItemRes(
-    val id: String,
-    val doctorId: String,
-    val amount: Double,
-    val currency: String,
-    val trackingId: String,
+    val transactionId: String,
     val status: String,
-    val provider: String,
-    val platformCommission: Double,
+    val statusCode: String? = null,
+    val statusDescription: String? = null,
+    val provider: String? = null,
+    val bankCode: String? = null,
+    val name: String? = null,
+    val account: String? = null,
+    val amount: String,
+    val charge: String? = null,
+    val narrative: String? = null,
+    val currency: String,
     val createdAt: String,
     val updatedAt: String? = null,
 )
 
-fun WithdrawalItemRes.toDomain() = ke.co.smartroundclinic.doctor.domain.model.Withdrawal(
-    id = id,
-    amount = amount,
-    currency = currency,
-    trackingId = trackingId,
+fun WithdrawalItemRes.toDomain() = Withdrawal(
+    transactionId = transactionId,
     status = status,
+    statusCode = statusCode,
+    statusDescription = statusDescription,
     provider = provider,
-    platformCommission = platformCommission,
+    bankCode = bankCode,
+    name = name,
+    account = account,
+    amount = amount,
+    charge = charge,
+    narrative = narrative,
+    currency = currency,
     createdAt = createdAt,
     updatedAt = updatedAt,
 )

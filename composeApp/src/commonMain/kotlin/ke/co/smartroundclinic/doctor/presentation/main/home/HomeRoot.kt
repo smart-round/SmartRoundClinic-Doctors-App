@@ -11,17 +11,24 @@ import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import ke.co.smartroundclinic.doctor.core.legal.DoctorAgreementScreen
+import ke.co.smartroundclinic.doctor.core.legal.FaqScreen
+import ke.co.smartroundclinic.doctor.core.legal.PrivacyPolicyScreen
+import ke.co.smartroundclinic.doctor.core.legal.TermsAndConditionsScreen
 import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.HomeList
 import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.Notifications
 import ke.co.smartroundclinic.doctor.presentation.main.notifications.NotificationsScreen
 import ke.co.smartroundclinic.doctor.presentation.main.home.ui.HomeScreen
 import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.About
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.BankingDetails
+import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.DoctorAgreement
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.DoctorProfile
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.CreateNewPasswordSecurity
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.PasswordChanged
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.PersonalInfo
+import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.PrivacyPolicy
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ProfileList
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ResetPassword
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ScheduleManagement
@@ -29,12 +36,10 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Lice
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.LicenceViewer
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Specialization
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Faqs
-import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.Support
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.TermsAndConditions
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.VerifyEmailSecurity
-import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.FaqsScreen
+import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.AboutScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.ProfileScreen
-import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.TermsAndConditionsScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.CreateNewPasswordSecurityScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.PasswordChangedScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.PaymentDetailsScreen
@@ -45,7 +50,6 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.ScheduleManage
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.LicenceScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.LicenceViewerScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.SpecializationScreen
-import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.SupportScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.VerifyEmailSecurityScreen
 import ke.co.smartroundclinic.doctor.presentation.main.support.SupportRoot
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ContactSupport
@@ -81,7 +85,7 @@ fun HomeRoot(
 
     LaunchedEffect(pendingSupportTicketId) {
         if (!pendingSupportTicketId.isNullOrBlank()) {
-            listOf(ProfileList, Support, ContactSupport).forEach { dest ->
+            listOf(ProfileList, ContactSupport).forEach { dest ->
                 if (backStack.none { it::class == dest::class }) backStack.add(dest)
             }
         }
@@ -112,7 +116,8 @@ fun HomeRoot(
                     onPersonalInfo = { backStack.add(PersonalInfo) },
                     onBankingDetails = { backStack.add(BankingDetails) },
                     onSecuritySettings = { backStack.add(ResetPassword) },
-                    onSupport = { backStack.add(Support) },
+                    onSupport = { backStack.add(ContactSupport) },
+                    onAbout = { backStack.add(About) },
                     onScheduleManagement = { backStack.add(ScheduleManagement) },
                     onSpecialization = { backStack.add(Specialization(it)) },
                     onLicences = { backStack.add(LicenceManagement) },
@@ -158,19 +163,26 @@ fun HomeRoot(
                     onOk = { backStack.removeAll { it is PasswordChanged } },
                 )
             }
-            entry<Support> {
-                SupportScreen(
+            entry<About> {
+                AboutScreen(
                     onBack = { backStack.removeLastOrNull() },
-                    onContactUs = { backStack.add(ContactSupport) },
                     onFaqs = { backStack.add(Faqs) },
                     onTerms = { backStack.add(TermsAndConditions) },
+                    onPrivacyPolicy = { backStack.add(PrivacyPolicy) },
+                    onDoctorAgreement = { backStack.add(DoctorAgreement) },
                 )
             }
             entry<Faqs> {
-                FaqsScreen(onBack = { backStack.removeLastOrNull() })
+                FaqScreen(onBack = { backStack.removeLastOrNull() })
             }
             entry<TermsAndConditions> {
                 TermsAndConditionsScreen(onBack = { backStack.removeLastOrNull() })
+            }
+            entry<PrivacyPolicy> {
+                PrivacyPolicyScreen(onBack = { backStack.removeLastOrNull() })
+            }
+            entry<DoctorAgreement> {
+                DoctorAgreementScreen(onBack = { backStack.removeLastOrNull() })
             }
             entry<ContactSupport> {
                 SupportRoot(

@@ -44,4 +44,5 @@ class SignUpFormViewModel : ViewModel() {
     var accountName by mutableStateOf("")
     var accountNumber by mutableStateOf("")
     var agreedToTerms by mutableStateOf(false)
+    var agreedToDoctorAgreement by mutableStateOf(false)
 }

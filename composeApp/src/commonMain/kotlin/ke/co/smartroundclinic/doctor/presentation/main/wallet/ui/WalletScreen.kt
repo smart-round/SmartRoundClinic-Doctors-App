@@ -1,6 +1,5 @@
 package ke.co.smartroundclinic.doctor.presentation.main.wallet.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -63,7 +63,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -72,8 +71,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
-import ke.co.smartroundclinic.doctor.domain.model.DoctorPayment
 import ke.co.smartroundclinic.doctor.domain.model.PaymentSummary
+import ke.co.smartroundclinic.doctor.domain.model.WalletTransaction
 import ke.co.smartroundclinic.doctor.domain.model.Withdrawal
 import ke.co.smartroundclinic.doctor.domain.model.WithdrawalBalance
 import ke.co.smartroundclinic.doctor.presentation.main.wallet.WalletViewModel
@@ -86,11 +85,7 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
-import smartroundclinic.composeapp.generated.resources.Res
-import smartroundclinic.composeapp.generated.resources.card_payment
-import smartroundclinic.composeapp.generated.resources.mpesa
 
 private enum class WalletTab(val label: String) {
     OVERVIEW("Overview"),
@@ -111,11 +106,11 @@ internal fun WalletScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var showWithdrawSheet by remember { mutableStateOf(false) }
-    var selectedPayment by remember { mutableStateOf<DoctorPayment?>(null) }
+    var selectedTransaction by remember { mutableStateOf<WalletTransaction?>(null) }
     var selectedWithdrawalId by remember { mutableStateOf<String?>(null) }
 
     val withdrawSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val paymentDetailSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val transactionDetailSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val withdrawalDetailSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     // Fetch detail when a withdrawal is tapped
@@ -179,14 +174,14 @@ internal fun WalletScreen(
                         onWithdraw = { showWithdrawSheet = true },
                     )
                     WalletTab.TRANSACTIONS -> TransactionsTab(
-                        payments = vm.payments,
+                        transactions = vm.transactions,
                         isLoading = vm.isLoading,
-                        onPaymentClick = { selectedPayment = it },
+                        onTransactionClick = { selectedTransaction = it },
                     )
                     WalletTab.WITHDRAWALS -> WithdrawalsTab(
                         withdrawals = vm.withdrawals,
                         isLoading = vm.isLoading,
-                        onWithdrawalClick = { selectedWithdrawalId = it.id },
+                        onWithdrawalClick = { selectedWithdrawalId = it.transactionId },
                     )
                 }
             }
@@ -216,18 +211,18 @@ internal fun WalletScreen(
         }
     }
 
-    // ── Payment detail sheet ──────────────────────────────────────────────────
-    selectedPayment?.let { payment ->
+    // ── Transaction detail sheet ──────────────────────────────────────────────
+    selectedTransaction?.let { transaction ->
         ModalBottomSheet(
-            onDismissRequest = { selectedPayment = null },
-            sheetState = paymentDetailSheetState,
+            onDismissRequest = { selectedTransaction = null },
+            sheetState = transactionDetailSheetState,
             containerColor = MaterialTheme.colorScheme.background,
         ) {
-            PaymentDetailSheetContent(
-                payment = payment,
+            WalletTransactionDetailSheetContent(
+                transaction = transaction,
                 onCopy = { clipboard.setText(AnnotatedString(it)) },
                 onDismiss = {
-                    scope.launch { paymentDetailSheetState.hide() }.invokeOnCompletion { selectedPayment = null }
+                    scope.launch { transactionDetailSheetState.hide() }.invokeOnCompletion { selectedTransaction = null }
                 },
             )
         }
@@ -283,15 +278,15 @@ private fun OverviewTab(
 
 @Composable
 private fun TransactionsTab(
-    payments: List<DoctorPayment>,
+    transactions: List<WalletTransaction>,
     isLoading: Boolean,
-    onPaymentClick: (DoctorPayment) -> Unit,
+    onTransactionClick: (WalletTransaction) -> Unit,
 ) {
-    if (payments.isEmpty() && !isLoading) {
+    if (transactions.isEmpty() && !isLoading) {
         EmptyState(
             icon = Icons.Outlined.AccountBalanceWallet,
             title = "No Transactions Yet",
-            subtitle = "Payment history will appear here once patients start booking consultations.",
+            subtitle = "Your wallet transactions will appear here once patients start booking consultations.",
         )
     } else {
         LazyColumn(
@@ -299,8 +294,8 @@ private fun TransactionsTab(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(payments, key = { it.id }) { payment ->
-                PaymentCard(payment = payment, onClick = { onPaymentClick(payment) })
+            items(transactions, key = { it.transactionId }) { transaction ->
+                WalletTransactionCard(transaction = transaction, onClick = { onTransactionClick(transaction) })
             }
         }
     }
@@ -326,7 +321,7 @@ private fun WithdrawalsTab(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(withdrawals, key = { it.id }) { withdrawal ->
+            items(withdrawals, key = { it.transactionId }) { withdrawal ->
                 WithdrawalCard(withdrawal = withdrawal, onClick = { onWithdrawalClick(withdrawal) })
             }
         }
@@ -453,11 +448,12 @@ private fun StatChip(label: String, value: String, color: Color) {
     }
 }
 
-// ── Payment card ──────────────────────────────────────────────────────────────
+// ── Wallet transaction card ───────────────────────────────────────────────────
 
 @Composable
-private fun PaymentCard(payment: DoctorPayment, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val (statusColor, statusLabel) = paymentStatusStyle(payment.status)
+private fun WalletTransactionCard(transaction: WalletTransaction, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val isCredit = transaction.value >= 0
+    val (statusColor, statusLabel) = walletTransactionStatusStyle(transaction.status)
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -466,14 +462,31 @@ private fun PaymentCard(payment: DoctorPayment, onClick: () -> Unit, modifier: M
         elevation = CardDefaults.cardElevation(1.dp),
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            PaymentMethodIcon(payment.paymentMethod, modifier = Modifier.size(40.dp).clip(CircleShape))
+            Box(
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(Primary90),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (isCredit) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
+                    contentDescription = null,
+                    tint = Primary40,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(paymentMethodLabel(payment.paymentMethod), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                Text(formatPaymentDate(payment.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    transaction.narrative ?: transaction.transType.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                )
+                Text(formatPaymentDate(transaction.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("KES ${formatAmount(payment.netEarnings)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = Tertiary40)
+                Text(
+                    "${if (isCredit) "+" else "-"}KES ${formatAmount(kotlin.math.abs(transaction.value))}",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = if (isCredit) Tertiary40 else Error40,
+                )
                 StatusBadge(statusLabel, statusColor)
             }
         }
@@ -498,11 +511,18 @@ private fun WithdrawalCard(withdrawal: Withdrawal, onClick: () -> Unit, modifier
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(withdrawal.provider.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                Text(
+                    withdrawal.provider?.replaceFirstChar { it.uppercase() } ?: "Withdrawal",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                )
                 Text(formatPaymentDate(withdrawal.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("KES ${formatAmount(withdrawal.amount)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = Error40)
+                Text(
+                    "KES ${formatAmount(withdrawal.amount.toDoubleOrNull() ?: 0.0)}",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Error40,
+                )
                 StatusBadge(statusLabel, statusColor)
             }
         }
@@ -516,61 +536,54 @@ private fun StatusBadge(label: String, color: Color) {
     }
 }
 
-// ── Payment method icon ───────────────────────────────────────────────────────
+// ── Wallet transaction detail sheet ───────────────────────────────────────────
 
 @Composable
-private fun PaymentMethodIcon(paymentMethod: String?, modifier: Modifier = Modifier) {
-    val method = paymentMethod?.uppercase() ?: ""
-    when {
-        "MPESA" in method -> Image(
-            painter = painterResource(Res.drawable.mpesa),
-            contentDescription = "M-Pesa",
-            contentScale = ContentScale.Fit,
-            modifier = modifier.background(Color.White).padding(4.dp),
-        )
-        "CARD" in method -> Image(
-            painter = painterResource(Res.drawable.card_payment),
-            contentDescription = "Card",
-            contentScale = ContentScale.Fit,
-            modifier = modifier.background(Primary90).padding(6.dp),
-        )
-        else -> Box(modifier = modifier.background(Primary90), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.AccountBalanceWallet, contentDescription = "Payment", tint = Primary40, modifier = Modifier.size(20.dp))
-        }
-    }
-}
-
-// ── Payment detail sheet ──────────────────────────────────────────────────────
-
-@Composable
-private fun PaymentDetailSheetContent(
-    payment: DoctorPayment,
+private fun WalletTransactionDetailSheetContent(
+    transaction: WalletTransaction,
     onCopy: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val (statusColor, statusLabel) = paymentStatusStyle(payment.status)
+    val isCredit = transaction.value >= 0
+    val (statusColor, statusLabel) = walletTransactionStatusStyle(transaction.status)
     Column(
         modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            PaymentMethodIcon(payment.paymentMethod, modifier = Modifier.size(48.dp).clip(CircleShape))
+            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Primary90), contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = if (isCredit) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
+                    contentDescription = null,
+                    tint = Primary40,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(paymentMethodLabel(payment.paymentMethod), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                Text(formatPaymentDate(payment.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    transaction.narrative ?: transaction.transType.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(formatPaymentDate(transaction.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             StatusBadge(statusLabel, statusColor)
         }
         Spacer(Modifier.height(20.dp))
-        AmountsStrip(payment.amount, payment.platformFee, payment.netEarnings, payment.currency)
+        Box(
+            modifier = Modifier.fillMaxWidth().clip(ShapeCard).background(Brush.horizontalGradient(listOf(GradientStart, GradientEnd))).padding(16.dp),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                AmountStat(if (isCredit) "Credited" else "Debited", kotlin.math.abs(transaction.value), transaction.currency)
+                Box(modifier = Modifier.size(width = 1.dp, height = 36.dp).background(Color.White.copy(alpha = 0.3f)))
+                AmountStat("Running Balance", transaction.runningBalance, transaction.currency)
+            }
+        }
         Spacer(Modifier.height(16.dp))
-        DetailRow("Currency", payment.currency)
-        DetailRow("Commission Rate", "${payment.commissionRate}%")
-        if (!payment.transactionRef.isNullOrBlank()) CopyableDetailRow("Transaction Ref", payment.transactionRef, onCopy)
-        if (!payment.invoiceId.isNullOrBlank()) CopyableDetailRow("Invoice ID", payment.invoiceId, onCopy)
-        if (!payment.appointmentId.isNullOrBlank()) CopyableDetailRow("Appointment ID", payment.appointmentId, onCopy)
-        if (!payment.notes.isNullOrBlank()) DetailRow("Notes", payment.notes)
-        if (!payment.updatedAt.isNullOrBlank()) DetailRow("Last Updated", formatPaymentDate(payment.updatedAt))
+        DetailRow("Currency", transaction.currency)
+        DetailRow("Type", transaction.transType.replaceFirstChar { it.uppercase() })
+        CopyableDetailRow("Transaction ID", transaction.transactionId, onCopy)
+        if (!transaction.invoice.isNullOrBlank()) CopyableDetailRow("Invoice", transaction.invoice, onCopy)
+        if (!transaction.updatedAt.isNullOrBlank()) DetailRow("Last Updated", formatPaymentDate(transaction.updatedAt))
         Spacer(Modifier.height(16.dp))
         TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("Close", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -603,25 +616,32 @@ private fun WithdrawalDetailSheetContent(
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(withdrawal.provider.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    Text(
+                        withdrawal.provider?.replaceFirstChar { it.uppercase() } ?: "Withdrawal",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    )
                     Text(formatPaymentDate(withdrawal.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 StatusBadge(statusLabel, statusColor)
             }
             Spacer(Modifier.height(20.dp))
-            // Amount strip
             Box(
                 modifier = Modifier.fillMaxWidth().clip(ShapeCard).background(Brush.horizontalGradient(listOf(GradientStart, GradientEnd))).padding(16.dp),
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    AmountStat("Amount", withdrawal.amount, withdrawal.currency)
+                    AmountStat("Amount", withdrawal.amount.toDoubleOrNull() ?: 0.0, withdrawal.currency)
                     Box(modifier = Modifier.size(width = 1.dp, height = 36.dp).background(Color.White.copy(alpha = 0.3f)))
-                    AmountStat("Commission", withdrawal.platformCommission, withdrawal.currency)
+                    AmountStat("Charge", withdrawal.charge?.toDoubleOrNull() ?: 0.0, withdrawal.currency)
                 }
             }
             Spacer(Modifier.height(16.dp))
+            if (!withdrawal.statusDescription.isNullOrBlank()) DetailRow("Status", withdrawal.statusDescription)
             DetailRow("Currency", withdrawal.currency)
-            CopyableDetailRow("Tracking ID", withdrawal.trackingId, onCopy)
+            if (!withdrawal.name.isNullOrBlank()) DetailRow("Recipient", withdrawal.name)
+            if (!withdrawal.account.isNullOrBlank()) CopyableDetailRow("Account", withdrawal.account, onCopy)
+            if (!withdrawal.bankCode.isNullOrBlank()) DetailRow("Bank Code", withdrawal.bankCode)
+            CopyableDetailRow("Transaction ID", withdrawal.transactionId, onCopy)
+            if (!withdrawal.narrative.isNullOrBlank()) DetailRow("Narrative", withdrawal.narrative)
             if (!withdrawal.updatedAt.isNullOrBlank()) DetailRow("Last Updated", formatPaymentDate(withdrawal.updatedAt))
         }
         Spacer(Modifier.height(16.dp))
@@ -633,21 +653,6 @@ private fun WithdrawalDetailSheetContent(
 }
 
 // ── Shared sheet components ───────────────────────────────────────────────────
-
-@Composable
-private fun AmountsStrip(gross: Double, fee: Double, net: Double, currency: String) {
-    Box(
-        modifier = Modifier.fillMaxWidth().clip(ShapeCard).background(Brush.horizontalGradient(listOf(GradientStart, GradientEnd))).padding(16.dp),
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            AmountStat("Gross", gross, currency)
-            Box(modifier = Modifier.size(width = 1.dp, height = 36.dp).background(Color.White.copy(alpha = 0.3f)))
-            AmountStat("Platform Fee", fee, currency)
-            Box(modifier = Modifier.size(width = 1.dp, height = 36.dp).background(Color.White.copy(alpha = 0.3f)))
-            AmountStat("Net Earned", net, currency)
-        }
-    }
-}
 
 @Composable
 private fun AmountStat(label: String, amount: Double, currency: String) {
@@ -770,30 +775,19 @@ private fun EmptyState(icon: ImageVector, title: String, subtitle: String, modif
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-private fun paymentMethodLabel(method: String?): String {
-    val m = method?.uppercase() ?: ""
-    return when {
-        "MPESA" in m -> "M-Pesa"
-        "CARD" in m -> "Card Payment"
-        else -> method?.replace("_", " ")?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "Payment"
-    }
-}
-
 @Composable
-private fun paymentStatusStyle(status: String): Pair<Color, String> = when (status.uppercase()) {
-    "COMPLETED" -> Tertiary40 to "Completed"
-    "PENDING" -> Primary40 to "Pending"
-    "PROCESSING" -> Primary40 to "Processing"
+private fun walletTransactionStatusStyle(status: String): Pair<Color, String> = when (status.uppercase()) {
+    "AVAILABLE", "COMPLETED" -> Tertiary40 to "Available"
+    "PENDING", "PROCESSING" -> Primary40 to "Pending"
     "FAILED" -> Error40 to "Failed"
-    "REFUNDED" -> Error40 to "Refunded"
     else -> Pair(MaterialTheme.colorScheme.onSurfaceVariant, status)
 }
 
 @Composable
-private fun withdrawalStatusStyle(status: String): Pair<Color, String> = when (status.uppercase()) {
-    "COMPLETED" -> Tertiary40 to "Completed"
-    "FAILED" -> Error40 to "Failed"
-    else -> Primary40 to "Pending"
+private fun withdrawalStatusStyle(status: String): Pair<Color, String> = when {
+    status.contains("complete", ignoreCase = true) -> Tertiary40 to "Completed"
+    status.contains("fail", ignoreCase = true) || status.contains("reject", ignoreCase = true) -> Error40 to "Failed"
+    else -> Primary40 to "Processing"
 }
 
 private fun formatAmount(value: Double): String {

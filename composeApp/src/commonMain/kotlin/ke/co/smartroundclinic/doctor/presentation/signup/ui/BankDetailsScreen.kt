@@ -32,10 +32,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
@@ -58,6 +59,9 @@ fun BankDetailsScreen(
     bioData: BioData,
     onNext: () -> Unit,
     onBack: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit,
+    onOpenTermsAndConditions: () -> Unit,
+    onOpenDoctorAgreement: () -> Unit,
     viewModel: BankDetailsViewModel = koinViewModel(),
 ) {
     val allBanks by viewModel.banks.collectAsStateWithLifecycle()
@@ -85,6 +89,7 @@ fun BankDetailsScreen(
         formViewModel.accountNumber.isNotBlank() &&
         formViewModel.accountName.isNotBlank() &&
         formViewModel.agreedToTerms &&
+        formViewModel.agreedToDoctorAgreement &&
         filesViewModel.licenseFileBytes != null
 
     Column(
@@ -234,9 +239,61 @@ fun BankDetailsScreen(
             Text(
                 text = buildAnnotatedString {
                     append("I agree to the ")
-                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) { append("Terms and Conditions") }
+                    val termsStart = length
+                    append("Terms and Conditions")
+                    addStyle(
+                        SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline),
+                        termsStart,
+                        length,
+                    )
+                    addLink(
+                        LinkAnnotation.Clickable(tag = "terms_and_conditions") { onOpenTermsAndConditions() },
+                        termsStart,
+                        length,
+                    )
                     append(" / ")
-                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) { append("Privacy Policy") }
+                    val privacyStart = length
+                    append("Privacy Policy")
+                    addStyle(
+                        SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline),
+                        privacyStart,
+                        length,
+                    )
+                    addLink(
+                        LinkAnnotation.Clickable(tag = "privacy_policy") { onOpenPrivacyPolicy() },
+                        privacyStart,
+                        length,
+                    )
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Checkbox(
+                checked = formViewModel.agreedToDoctorAgreement,
+                onCheckedChange = { formViewModel.agreedToDoctorAgreement = it },
+                colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
+            )
+            Text(
+                text = buildAnnotatedString {
+                    append("I agree to the ")
+                    val agreementStart = length
+                    append("Doctor Agreement")
+                    addStyle(
+                        SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline),
+                        agreementStart,
+                        length,
+                    )
+                    addLink(
+                        LinkAnnotation.Clickable(tag = "doctor_agreement") { onOpenDoctorAgreement() },
+                        agreementStart,
+                        length,
+                    )
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onBackground,

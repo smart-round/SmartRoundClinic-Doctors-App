@@ -112,7 +112,6 @@ internal fun AppointmentDetailScreen(
     onBack: () -> Unit,
     onConfirm: () -> Unit,
     onComplete: () -> Unit,
-    onNoShow: () -> Unit,
     onCancel: (String?) -> Unit,
     medicalRecord: MedicalRecord? = null,
     patientHistory: List<MedicalRecord> = emptyList(),
@@ -142,10 +141,10 @@ internal fun AppointmentDetailScreen(
             now = Clock.System.now()
         }
     }
-    val slotEndInstant = remember(appointment.date, appointment.slotEnd) {
-        parseAppointmentInstant(appointment.date, appointment.slotEnd)
+    val slotStartInstant = remember(appointment.date, appointment.slotStart) {
+        parseAppointmentInstant(appointment.date, appointment.slotStart)
     }
-    val canComplete = slotEndInstant == null || now >= slotEndInstant
+    val canComplete = slotStartInstant == null || now >= slotStartInstant
     var showCancelDialog by remember { mutableStateOf(false) }
     var showCompleteConfirmSheet by remember { mutableStateOf(false) }
     var showPatientBioSheet by remember { mutableStateOf(false) }
@@ -338,22 +337,11 @@ internal fun AppointmentDetailScreen(
                             }
                             if (!canComplete) {
                                 Text(
-                                    text = "Available after the appointment ends at ${appointment.slotEnd}",
+                                    text = "Available after the appointment starts at ${appointment.slotStart}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
                                 )
-                            }
-                            Button(
-                                onClick = onNoShow,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = ShapePill,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                ),
-                            ) {
-                                Text("Patient No-Show", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(vertical = 10.dp))
                             }
                             Button(
                                 onClick = { showCancelDialog = true },

@@ -52,9 +52,15 @@ import androidx.navigation3.ui.NavDisplay
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.AccountVerification
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.ApplicationUnderReview
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.BankDetails
+import ke.co.smartroundclinic.doctor.presentation.signup.destinations.DoctorAgreement
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.DoctorBio
+import ke.co.smartroundclinic.doctor.presentation.signup.destinations.PrivacyPolicy
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.SignUp
 import ke.co.smartroundclinic.doctor.presentation.signup.destinations.SpecializationAndCompliance
+import ke.co.smartroundclinic.doctor.presentation.signup.destinations.TermsAndConditions
+import ke.co.smartroundclinic.doctor.core.legal.DoctorAgreementScreen
+import ke.co.smartroundclinic.doctor.core.legal.PrivacyPolicyScreen
+import ke.co.smartroundclinic.doctor.core.legal.TermsAndConditionsScreen
 import ke.co.smartroundclinic.doctor.presentation.signup.ui.AccountVerificationScreen
 import ke.co.smartroundclinic.doctor.presentation.signup.ui.ApplicationUnderReviewScreen
 import ke.co.smartroundclinic.doctor.presentation.signup.ui.BankDetailsScreen
@@ -91,7 +97,10 @@ fun SignUpRoot(
         else -> 0
     }
     val showProgress = currentDestination !is AccountVerification &&
-            currentDestination !is ApplicationUnderReview
+            currentDestination !is ApplicationUnderReview &&
+            currentDestination !is PrivacyPolicy &&
+            currentDestination !is TermsAndConditions &&
+            currentDestination !is DoctorAgreement
     val headerTitle = if (currentDestination is AccountVerification) "Enter Your Verification Code" else "Get Started"
     val headerSubtitle = if (currentDestination is AccountVerification)
         "A verification code has been sent to your email. Check your inbox and enter the code below."
@@ -101,7 +110,10 @@ fun SignUpRoot(
     fun navigateTo(destination: NavKey) = backStack.add(destination)
     fun navigateBack() = backStack.removeLastOrNull()
 
-    val isFullScreen = currentDestination is ApplicationUnderReview
+    val isFullScreen = currentDestination is ApplicationUnderReview ||
+            currentDestination is PrivacyPolicy ||
+            currentDestination is TermsAndConditions ||
+            currentDestination is DoctorAgreement
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -248,6 +260,9 @@ private fun SignUpNavHost(
                     bioData = dest.bioData,
                     onNext = { onNavigateTo(AccountVerification(dest.personalInfo.email)) },
                     onBack = onBack,
+                    onOpenPrivacyPolicy = { onNavigateTo(PrivacyPolicy) },
+                    onOpenTermsAndConditions = { onNavigateTo(TermsAndConditions) },
+                    onOpenDoctorAgreement = { onNavigateTo(DoctorAgreement) },
                 )
             }
             entry<AccountVerification> { dest ->
@@ -260,6 +275,15 @@ private fun SignUpNavHost(
             }
             entry<ApplicationUnderReview> {
                 ApplicationUnderReviewScreen(onNavigateToSignIn = onSignIn)
+            }
+            entry<PrivacyPolicy> {
+                PrivacyPolicyScreen(onBack = onBack)
+            }
+            entry<TermsAndConditions> {
+                TermsAndConditionsScreen(onBack = onBack)
+            }
+            entry<DoctorAgreement> {
+                DoctorAgreementScreen(onBack = onBack)
             }
         }
     )

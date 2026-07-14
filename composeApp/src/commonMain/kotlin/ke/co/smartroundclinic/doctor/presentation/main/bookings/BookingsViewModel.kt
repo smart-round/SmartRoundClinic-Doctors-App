@@ -13,7 +13,6 @@ import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.CancelAppointment
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.CompleteAppointmentUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.ConfirmAppointmentUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetAppointmentsUseCase
-import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.NoShowAppointmentUseCase
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -25,7 +24,6 @@ class BookingsViewModel(
     private val getAppointmentsUseCase: GetAppointmentsUseCase,
     private val confirmAppointmentUseCase: ConfirmAppointmentUseCase,
     private val completeAppointmentUseCase: CompleteAppointmentUseCase,
-    private val noShowAppointmentUseCase: NoShowAppointmentUseCase,
     private val cancelAppointmentUseCase: CancelAppointmentUseCase,
     private val appointmentLocalRepository: AppointmentLocalRepository,
     private val snackbarController: SnackbarController,
@@ -77,19 +75,6 @@ class BookingsViewModel(
             when (result) {
                 is Resource.Success -> { snackbarController.show("Appointment marked complete"); loadAppointments() }
                 is Resource.Error -> snackbarController.show(result.message ?: "Failed to complete", isError = true)
-                else -> Unit
-            }
-        }
-    }
-
-    fun noShowAppointment(id: String) {
-        viewModelScope.launch {
-            isActioning = true
-            val result = noShowAppointmentUseCase(id)
-            isActioning = false
-            when (result) {
-                is Resource.Success -> { snackbarController.show("Marked as no-show"); loadAppointments() }
-                is Resource.Error -> snackbarController.show(result.message ?: "Failed to mark no-show", isError = true)
                 else -> Unit
             }
         }

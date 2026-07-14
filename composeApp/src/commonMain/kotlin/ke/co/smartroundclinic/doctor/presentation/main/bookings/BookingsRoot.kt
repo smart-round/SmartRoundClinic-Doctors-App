@@ -89,7 +89,6 @@ fun BookingsRoot(
                         onBack = { backStack.removeLastOrNull() },
                         onConfirm = { viewModel.confirmAppointment(appointment.id) },
                         onComplete = { viewModel.completeAppointment(appointment.id) },
-                        onNoShow = { viewModel.noShowAppointment(appointment.id) },
                         onCancel = { reason -> viewModel.cancelAppointment(appointment.id, reason) },
                         onAddMedicalRecord = { backStack.add(MedicalRecordDetail(appointment.id, null, appointment.patientId)) },
                         onSubmitRating = { rating, comment ->

@@ -41,16 +41,8 @@ class ComplianceViewModel(
         private set
 
     init {
-        // Fail closed: until we have a confirmed approval from the backend, assume the
-        // account is NOT approved. This matters most right after signup, when there is no
-        // cached value yet and the compliance record may not have materialized on the
-        // backend — we must never grant full app access on that ambiguity.
-        // The real status (PENDING vs REJECTED + rejection reason) is filled in once
-        // checkStatus() returns a confirmed result.
-        val cachedIsApproved = secureStorage.bool(KEY_COMPLIANCE_IS_APPROVED) ?: false
-        if (!cachedIsApproved) {
-            complianceStatus = ComplianceStatus(isApproved = false, status = "PENDING")
-        }
+        // Stay unresolved (null, dialog hidden) until checkStatus() confirms the real status —
+        // an already-approved doctor must never see a "pending" flash on every sign-in.
         checkStatus()
     }
 
@@ -70,6 +62,12 @@ class ComplianceViewModel(
                     secureStorage.set(KEY_COMPLIANCE_STATUS, status.status)
                     secureStorage.set(KEY_COMPLIANCE_IS_APPROVED, status.isApproved)
                 }
+            } else if (complianceStatus == null && secureStorage.bool(KEY_COMPLIANCE_IS_APPROVED) != true) {
+                // Fail closed only when we've never confirmed approval before (e.g. right after
+                // signup, before the compliance record has materialized on the backend, or the
+                // backend is unreachable) — never override an already-confirmed approved status
+                // just because a later periodic re-check failed transiently.
+                complianceStatus = ComplianceStatus(isApproved = false, status = "PENDING")
             }
             isChecking = false
         }

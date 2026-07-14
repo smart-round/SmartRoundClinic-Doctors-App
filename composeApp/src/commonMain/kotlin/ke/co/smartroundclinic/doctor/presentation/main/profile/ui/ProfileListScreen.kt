@@ -97,6 +97,7 @@ internal fun ProfileListScreen(
     onBankingDetails: () -> Unit = {},
     onSecuritySettings: () -> Unit = {},
     onSupport: () -> Unit  = {},
+    onAbout: () -> Unit = {},
     onScheduleManagement: () -> Unit  = {},
     onSpecialization: (isEnabled: Boolean) -> Unit = {},
     onLicences: () -> Unit = {},
@@ -181,6 +182,12 @@ internal fun ProfileListScreen(
                     icon = Icons.AutoMirrored.Outlined.HelpOutline,
                     label = "Support",
                     onClick = onSupport,
+                )
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                ProfileMenuItem(
+                    icon = Icons.Outlined.Description,
+                    label = "About",
+                    onClick = onAbout,
                 )
             }
 

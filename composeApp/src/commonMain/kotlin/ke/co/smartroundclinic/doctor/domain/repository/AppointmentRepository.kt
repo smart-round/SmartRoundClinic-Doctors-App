@@ -9,7 +9,6 @@ interface AppointmentRepository {
     suspend fun getAppointments(filter: String?): Resource<GetAppointmentsRes>
     suspend fun confirmAppointment(id: String): Resource<SuccessRes>
     suspend fun completeAppointment(id: String): Resource<SuccessRes>
-    suspend fun noShowAppointment(id: String): Resource<SuccessRes>
     suspend fun cancelAppointment(id: String, reason: String?): Resource<SuccessRes>
     suspend fun getNextAppointment(otherUserId: String): Resource<NextAppointment?>
 }

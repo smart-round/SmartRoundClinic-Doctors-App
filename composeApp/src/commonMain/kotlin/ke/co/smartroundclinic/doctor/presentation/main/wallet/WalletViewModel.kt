@@ -7,11 +7,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
-import ke.co.smartroundclinic.doctor.domain.model.DoctorPayment
 import ke.co.smartroundclinic.doctor.domain.model.PaymentSummary
+import ke.co.smartroundclinic.doctor.domain.model.WalletTransaction
 import ke.co.smartroundclinic.doctor.domain.model.Withdrawal
 import ke.co.smartroundclinic.doctor.domain.model.WithdrawalBalance
-import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetDoctorPaymentsUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetWalletTransactionsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetPaymentSummaryUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetWithdrawalBalanceUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetWithdrawalByIdUseCase
@@ -20,7 +20,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.wallet.WithdrawUseCase
 import kotlinx.coroutines.launch
 
 class WalletViewModel(
-    private val getPaymentsUseCase: GetDoctorPaymentsUseCase,
+    private val getWalletTransactionsUseCase: GetWalletTransactionsUseCase,
     private val getSummaryUseCase: GetPaymentSummaryUseCase,
     private val getBalanceUseCase: GetWithdrawalBalanceUseCase,
     private val withdrawUseCase: WithdrawUseCase,
@@ -35,7 +35,7 @@ class WalletViewModel(
     var balance by mutableStateOf<WithdrawalBalance?>(null)
         private set
 
-    var payments by mutableStateOf<List<DoctorPayment>>(emptyList())
+    var transactions by mutableStateOf<List<WalletTransaction>>(emptyList())
         private set
 
     var withdrawals by mutableStateOf<List<Withdrawal>>(emptyList())
@@ -62,18 +62,18 @@ class WalletViewModel(
             isLoading = true
             val summaryResult = getSummaryUseCase()
             val balanceResult = getBalanceUseCase()
-            val paymentsResult = getPaymentsUseCase()
+            val transactionsResult = getWalletTransactionsUseCase()
             val withdrawalsResult = getWithdrawalHistoryUseCase()
             isLoading = false
 
             if (summaryResult is Resource.Success) summary = summaryResult.data
             if (balanceResult is Resource.Success) balance = balanceResult.data
-            if (paymentsResult is Resource.Success) payments = paymentsResult.data ?: emptyList()
+            if (transactionsResult is Resource.Success) transactions = transactionsResult.data ?: emptyList()
             if (withdrawalsResult is Resource.Success) withdrawals = withdrawalsResult.data ?: emptyList()
 
             // Only show an error if every single endpoint failed — individual failures
-            // (e.g. no payments yet for summary) are shown as empty state, not snackbars.
-            val allFailed = listOf(summaryResult, balanceResult, paymentsResult, withdrawalsResult)
+            // (e.g. no transactions yet for summary) are shown as empty state, not snackbars.
+            val allFailed = listOf(summaryResult, balanceResult, transactionsResult, withdrawalsResult)
                 .all { it is Resource.Error }
             if (allFailed) {
                 snackbarController.show("Failed to load wallet data", isError = true)

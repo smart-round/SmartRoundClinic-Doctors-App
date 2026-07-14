@@ -4,7 +4,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.profile.GetDoctorProfileUseC
 import ke.co.smartroundclinic.doctor.domain.usecase.profile.UpdateDoctorProfileUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.PreloadDashboardUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.notification.GetMyNotificationsUseCase
-import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetDoctorPaymentsUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetWalletTransactionsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetPaymentSummaryUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.wallet.GetWithdrawalBalanceUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.support.CreateSupportTicketUseCase
@@ -81,7 +81,6 @@ import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.ConfirmAppointmen
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetAppointmentsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetNextAppointmentUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.GetScheduleUseCase
-import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.NoShowAppointmentUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpdateAvailabilityUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.scheduling.UpsertAvailabilityUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.AddDoctorSpecializationUseCase
@@ -144,7 +143,6 @@ val useCaseModule = module {
     single { GetNextAppointmentUseCase(get()) }
     single { ConfirmAppointmentUseCase(get()) }
     single { CompleteAppointmentUseCase(get()) }
-    single { NoShowAppointmentUseCase(get()) }
     single { CancelAppointmentUseCase(get()) }
     single { DeactivateScheduleUseCase(get(), get()) }
     single { GetCategoriesUseCase(get(), get()) }
@@ -162,7 +160,7 @@ val useCaseModule = module {
     single { RegisterDeviceTokenUseCase(get()) }
     single { GetMyNotificationsUseCase(get()) }
     single { MarkNotificationReadUseCase(get()) }
-    single { GetDoctorPaymentsUseCase(get()) }
+    single { GetWalletTransactionsUseCase(get()) }
     single { GetPaymentSummaryUseCase(get()) }
     single { GetWithdrawalBalanceUseCase(get()) }
     single { GetWithdrawalHistoryUseCase(get()) }
@@ -207,7 +205,7 @@ val useCaseModule = module {
     viewModel { SpecializationViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ScheduleViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ComplianceViewModel(get(), get(), get(), get(), get()) }
-    viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { BookingsViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { ArticlesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { LicenceViewModel(get(), get(), get(), get()) }
     viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }

@@ -110,6 +110,13 @@ private fun formatHhmm(hour: Int, minute: Int): String {
     return "$h:$m"
 }
 
+private fun formatHhmmTo12Hour(value: String): String {
+    val (hour, minute) = parseHhmm(value)
+    val ampm = if (hour < 12) "AM" else "PM"
+    val h = if (hour % 12 == 0) 12 else hour % 12
+    return "$h:${minute.toString().padStart(2, '0')} $ampm"
+}
+
 private fun daysInMonth(year: Int, month: Int): Int {
     val nextM = if (month == 12) 1 else month + 1
     val nextY = if (month == 12) year + 1 else year
@@ -704,12 +711,17 @@ private fun DayDetailSection(
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 if (dayEntry != null && dayEntry.isActive) {
-                    DetailRow(label = "Working hours", value = "${dayEntry.windowStart} – ${dayEntry.windowEnd}")
+                    DetailRow(
+                        label = "Working hours",
+                        value = "${formatHhmmTo12Hour(dayEntry.windowStart)} – ${formatHhmmTo12Hour(dayEntry.windowEnd)}",
+                    )
                     DetailRow(label = "Slot duration", value = "${dayEntry.slotDuration} min")
                     if (dayEntry.breakBlocks.isNotEmpty()) {
                         DetailRow(
                             label = "Breaks",
-                            value = dayEntry.breakBlocks.joinToString("  •  ") { "${it.start} – ${it.end}" },
+                            value = dayEntry.breakBlocks.joinToString("  •  ") {
+                                "${formatHhmmTo12Hour(it.start)} – ${formatHhmmTo12Hour(it.end)}"
+                            },
                         )
                     }
                 } else {
@@ -798,7 +810,7 @@ private fun TimePickerField(
 ) {
     var showPicker by remember { mutableStateOf(false) }
     val (initHour, initMinute) = remember(value) { parseHhmm(value) }
-    val pickerState = rememberTimePickerState(initialHour = initHour, initialMinute = initMinute, is24Hour = true)
+    val pickerState = rememberTimePickerState(initialHour = initHour, initialMinute = initMinute, is24Hour = false)
 
     if (showPicker) {
         AlertDialog(
@@ -834,7 +846,7 @@ private fun TimePickerField(
     }
 
     OutlinedTextField(
-        value = value,
+        value = formatHhmmTo12Hour(value),
         onValueChange = {},
         readOnly = true,
         label = { Text(label, style = MaterialTheme.typography.bodySmall) },

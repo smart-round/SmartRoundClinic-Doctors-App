@@ -50,15 +50,6 @@ class AppointmentRepositoryImpl(private val client: HttpClient) : AppointmentRep
         }
     }
 
-    override suspend fun noShowAppointment(id: String): Resource<SuccessRes> = withContext(Dispatchers.IO) {
-        try {
-            val res = client.patch("scheduling/appointments/no-show") { parameter("id", id) }.body<SuccessRes>()
-            if (res.status) Resource.Success(res, res.message) else Resource.Error(res.message ?: "Failed to mark no-show")
-        } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to mark no-show")
-        }
-    }
-
     override suspend fun cancelAppointment(id: String, reason: String?): Resource<SuccessRes> = withContext(Dispatchers.IO) {
         try {
             val res = client.patch("scheduling/appointments/cancel") {

@@ -8,15 +8,15 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.WithdrawReq
-import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetDoctorPaymentsRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetWalletTransactionsRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.SuccessRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetPaymentSummaryRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetWithdrawalBalanceRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetWithdrawalByIdRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetWithdrawalHistoryRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.toDomain
-import ke.co.smartroundclinic.doctor.domain.model.DoctorPayment
 import ke.co.smartroundclinic.doctor.domain.model.PaymentSummary
+import ke.co.smartroundclinic.doctor.domain.model.WalletTransaction
 import ke.co.smartroundclinic.doctor.domain.model.Withdrawal
 import ke.co.smartroundclinic.doctor.domain.model.WithdrawalBalance
 import ke.co.smartroundclinic.doctor.domain.repository.WalletRepository
@@ -26,17 +26,16 @@ import kotlinx.coroutines.withContext
 
 class WalletRepositoryImpl(private val client: HttpClient) : WalletRepository {
 
-    override suspend fun getPayments(page: Int, size: Int): Resource<List<DoctorPayment>> =
+    override suspend fun getWalletTransactions(page: Int): Resource<List<WalletTransaction>> =
         withContext(Dispatchers.IO) {
             try {
                 val res = client.get("doctor/payments") {
                     parameter("page", page)
-                    parameter("size", size)
-                }.body<GetDoctorPaymentsRes>()
+                }.body<GetWalletTransactionsRes>()
                 if (res.status) Resource.Success(res.data?.items?.map { it.toDomain() } ?: emptyList(), res.message)
                 else Resource.Error(res.message)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Failed to load payments")
+                Resource.Error(e.message ?: "Failed to load wallet transactions")
             }
         }
 
@@ -62,12 +61,11 @@ class WalletRepositoryImpl(private val client: HttpClient) : WalletRepository {
             }
         }
 
-    override suspend fun getWithdrawalHistory(page: Int, size: Int): Resource<List<Withdrawal>> =
+    override suspend fun getWithdrawalHistory(page: Int): Resource<List<Withdrawal>> =
         withContext(Dispatchers.IO) {
             try {
                 val res = client.get("doctor/payments/withdraw/history") {
                     parameter("page", page)
-                    parameter("size", size)
                 }.body<GetWithdrawalHistoryRes>()
                 if (res.status) Resource.Success(res.data?.items?.map { it.toDomain() } ?: emptyList(), res.message)
                 else Resource.Error(res.message)
