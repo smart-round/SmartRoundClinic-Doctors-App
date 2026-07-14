@@ -168,6 +168,7 @@ data class WithdrawalBalanceData(
     val totalPending: Double,
     val totalCompleted: Double,
     val availableBalance: Double,
+    val currentBalance: Double,
     val minimumWithdrawal: Double = 100.0,
 )
 
@@ -177,5 +178,6 @@ fun WithdrawalBalanceData.toDomain() = WithdrawalBalance(
     totalPending = totalPending,
     totalCompleted = totalCompleted,
     availableBalance = availableBalance,
+    currentBalance = currentBalance,
     minimumWithdrawal = minimumWithdrawal,
 )

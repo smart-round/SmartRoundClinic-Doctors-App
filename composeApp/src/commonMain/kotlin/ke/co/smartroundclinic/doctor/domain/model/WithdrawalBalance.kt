@@ -6,5 +6,6 @@ data class WithdrawalBalance(
     val totalPending: Double,
     val totalCompleted: Double,
     val availableBalance: Double,
+    val currentBalance: Double,
     val minimumWithdrawal: Double,
 )

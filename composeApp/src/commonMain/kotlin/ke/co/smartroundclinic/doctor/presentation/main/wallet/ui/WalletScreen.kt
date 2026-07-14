@@ -364,9 +364,7 @@ private fun BalanceCard(
             )
             Spacer(Modifier.height(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                BalanceStat("Net Earned", balance?.totalNetEarnings)
-                BalanceStat("Withdrawn", balance?.totalWithdrawn)
-                BalanceStat("Pending", balance?.totalPending)
+                BalanceStat("Current Balance", balance?.currentBalance)
             }
             Spacer(Modifier.height(20.dp))
             Button(
