@@ -15,7 +15,7 @@ data class DoctorSignUpData(
     val branchName: String,
     val accountName: String,
     val accountNumber: String,
-    val profilePicture: ByteArray? = null,
+    val profilePicture: ByteArray,
     val kmpdcRegNumber: String? = null,
     val title: String? = null,
     val bio: String? = null,
@@ -65,7 +65,7 @@ data class DoctorSignUpData(
         result = 31 * result + branchName.hashCode()
         result = 31 * result + accountName.hashCode()
         result = 31 * result + accountNumber.hashCode()
-        result = 31 * result + (profilePicture?.contentHashCode() ?: 0)
+        result = 31 * result + profilePicture.contentHashCode()
         result = 31 * result + (kmpdcRegNumber?.hashCode() ?: 0)
         result = 31 * result + (title?.hashCode() ?: 0)
         result = 31 * result + (bio?.hashCode() ?: 0)

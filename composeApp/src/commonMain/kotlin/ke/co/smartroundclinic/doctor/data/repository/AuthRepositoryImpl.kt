@@ -73,19 +73,17 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
                                         )
                                     },
                                 )
-                                data.profilePicture?.let { photo ->
-                                    append(
-                                        key = "profilePicture",
-                                        value = photo,
-                                        headers = Headers.build {
-                                            append(
-                                                HttpHeaders.ContentDisposition,
-                                                "form-data; name=\"profilePicture\"; filename=\"profile.jpg\""
-                                            )
-                                            append(HttpHeaders.ContentType, "image/jpeg")
-                                        },
-                                    )
-                                }
+                                append(
+                                    key = "profilePicture",
+                                    value = data.profilePicture,
+                                    headers = Headers.build {
+                                        append(
+                                            HttpHeaders.ContentDisposition,
+                                            "form-data; name=\"profilePicture\"; filename=\"profile.jpg\""
+                                        )
+                                        append(HttpHeaders.ContentType, "image/jpeg")
+                                    },
+                                )
                             }
                         )
                     )

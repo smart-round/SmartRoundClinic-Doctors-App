@@ -90,7 +90,8 @@ fun SignUpScreen(
 
     val isFormValid = formViewModel.fullName.isNotBlank() &&
         formViewModel.email.isValidEmail() &&
-        formViewModel.password.length >= 8
+        formViewModel.password.length >= 8 &&
+        filesViewModel.profilePictureBytes != null
 
     val galleryLauncher = rememberFilePickerLauncher(type = FileKitType.Image) { file ->
         scope.launch { filesViewModel.profilePictureBytes = file?.readBytes() }
@@ -142,7 +143,12 @@ fun SignUpScreen(
                     .size(80.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    .border(
+                        1.dp,
+                        if (filesViewModel.profilePictureBytes == null) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.outline,
+                        CircleShape,
+                    )
                     .clickable { showPhotoPicker = true },
             ) {
                 if (filesViewModel.profilePictureBytes != null) {
@@ -180,7 +186,7 @@ fun SignUpScreen(
 
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Upload Photo",
+            text = "Upload Photo *",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

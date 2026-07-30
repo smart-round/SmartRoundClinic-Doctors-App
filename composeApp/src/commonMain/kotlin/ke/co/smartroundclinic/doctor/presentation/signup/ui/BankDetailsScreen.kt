@@ -322,7 +322,7 @@ fun BankDetailsScreen(
                     licenseFileBytes = filesViewModel.licenseFileBytes!!,
                     licenseFileName = filesViewModel.licenseFileName,
                     licenseFileMimeType = filesViewModel.licenseFileMimeType,
-                    profilePictureBytes = filesViewModel.profilePictureBytes,
+                    profilePictureBytes = filesViewModel.profilePictureBytes!!,
                     bankName = bank.bankName,
                     bankCode = bank.bankCode,
                     branchCode = branch.branchCode,

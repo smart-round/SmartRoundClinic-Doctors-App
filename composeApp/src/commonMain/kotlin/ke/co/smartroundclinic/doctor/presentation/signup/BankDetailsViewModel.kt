@@ -55,7 +55,7 @@ class BankDetailsViewModel(
         licenseFileBytes: ByteArray,
         licenseFileName: String,
         licenseFileMimeType: String,
-        profilePictureBytes: ByteArray?,
+        profilePictureBytes: ByteArray,
         bankName: String,
         bankCode: String,
         branchCode: String,
