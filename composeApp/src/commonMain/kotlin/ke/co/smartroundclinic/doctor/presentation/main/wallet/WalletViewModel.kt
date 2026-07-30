@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
+import ke.co.smartroundclinic.doctor.domain.model.InsufficientBalance
 import ke.co.smartroundclinic.doctor.domain.model.PaymentSummary
 import ke.co.smartroundclinic.doctor.domain.model.WalletTransaction
 import ke.co.smartroundclinic.doctor.domain.model.Withdrawal
@@ -45,6 +46,12 @@ class WalletViewModel(
         private set
 
     var isWithdrawing by mutableStateOf(false)
+        private set
+
+    var withdrawError by mutableStateOf<String?>(null)
+        private set
+
+    var insufficientBalance by mutableStateOf<InsufficientBalance?>(null)
         private set
 
     var withdrawalDetail by mutableStateOf<Withdrawal?>(null)
@@ -99,6 +106,8 @@ class WalletViewModel(
     fun withdraw(idNumber: String, amount: Double, onSuccess: () -> Unit) {
         viewModelScope.launch {
             isWithdrawing = true
+            withdrawError = null
+            insufficientBalance = null
             val result = withdrawUseCase(idNumber, amount)
             isWithdrawing = false
             when (result) {
@@ -107,9 +116,19 @@ class WalletViewModel(
                     load()
                     onSuccess()
                 }
-                is Resource.Error -> snackbarController.show(result.message ?: "Withdrawal failed", isError = true)
+                is Resource.Error -> {
+                    // Shown inline in the withdraw bottom sheet, not as a snackbar, so the
+                    // insufficient-balance breakdown stays visible next to the amount field.
+                    insufficientBalance = result.data?.insufficientBalance
+                    withdrawError = result.message ?: "Withdrawal failed"
+                }
                 else -> Unit
             }
         }
+    }
+
+    fun clearWithdrawError() {
+        withdrawError = null
+        insufficientBalance = null
     }
 }

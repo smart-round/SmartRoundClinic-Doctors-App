@@ -29,6 +29,7 @@ import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.ConsultationMessage
 import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
 import ke.co.smartroundclinic.doctor.domain.model.NextAppointment
+import ke.co.smartroundclinic.doctor.core.notification.ActiveCallNotifier
 import ke.co.smartroundclinic.doctor.core.notification.IncomingCallHandler
 import ke.co.smartroundclinic.doctor.core.notification.OutgoingCallState
 import ke.co.smartroundclinic.doctor.domain.repository.AppointmentLocalRepository
@@ -491,6 +492,7 @@ class ConsultationViewModel(
     }
 
     fun endCall() {
+        ActiveCallNotifier.notifyCallEnded()
         val otherUserId = currentOtherUserId ?: run { clearCallState(); return }
         viewModelScope.launch {
             consultationRepository.endCall(otherUserId)

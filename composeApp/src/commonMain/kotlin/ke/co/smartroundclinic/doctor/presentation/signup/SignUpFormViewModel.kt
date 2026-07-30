@@ -14,14 +14,7 @@ class SignUpFormViewModel : ViewModel() {
 
     // ── Step 1 — Personal Info ──────────────────────────────────────────────────
     var fullName by mutableStateOf("")
-    var gender by mutableStateOf("")
-    var dob by mutableStateOf("")
     var email by mutableStateOf("")
-    var phoneNumber by mutableStateOf("")
-    var countryDialCode by mutableStateOf("+254")
-    var countryFlag by mutableStateOf("🇰🇪")
-    var countryName by mutableStateOf("Kenya")
-    var kraPin by mutableStateOf("")
     var password by mutableStateOf("")
 
     // ── Step 2 — Specialization & Compliance ───────────────────────────────────

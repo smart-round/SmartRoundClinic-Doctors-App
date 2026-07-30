@@ -1,9 +1,11 @@
 package ke.co.smartroundclinic.doctor.data.remote.dto.response
 
+import ke.co.smartroundclinic.doctor.domain.model.InsufficientBalance
 import ke.co.smartroundclinic.doctor.domain.model.PaymentSummary
 import ke.co.smartroundclinic.doctor.domain.model.WalletTransaction
 import ke.co.smartroundclinic.doctor.domain.model.Withdrawal
 import ke.co.smartroundclinic.doctor.domain.model.WithdrawalBalance
+import ke.co.smartroundclinic.doctor.domain.model.WithdrawResult
 import kotlinx.serialization.Serializable
 
 // ── GET /doctor/payments — wallet transaction ledger, live from IntaSend ────────
@@ -85,6 +87,44 @@ fun PaymentSummaryData.toDomain() = PaymentSummary(
     totalTransactions = totalTransactions,
     totalWithdrawn = totalWithdrawn,
     totalPendingWithdrawals = totalPendingWithdrawals,
+    availableBalance = availableBalance,
+)
+
+// ── POST /doctor/payments/withdraw ────────────────────────────────────────────
+
+@Serializable
+data class WithdrawRes(
+    val httpStatusCode: Int,
+    val status: Boolean,
+    val message: String,
+    val data: WithdrawData? = null,
+)
+
+@Serializable
+data class WithdrawData(
+    val trackingId: String? = null,
+    val status: String? = null,
+    val insufficientBalance: InsufficientBalanceRes? = null,
+)
+
+@Serializable
+data class InsufficientBalanceRes(
+    val requestedAmount: Double,
+    val feeEstimate: Double,
+    val totalRequired: Double,
+    val availableBalance: Double,
+)
+
+fun WithdrawData.toDomain() = WithdrawResult(
+    trackingId = trackingId,
+    status = status,
+    insufficientBalance = insufficientBalance?.toDomain(),
+)
+
+fun InsufficientBalanceRes.toDomain() = InsufficientBalance(
+    requestedAmount = requestedAmount,
+    feeEstimate = feeEstimate,
+    totalRequired = totalRequired,
     availableBalance = availableBalance,
 )
 

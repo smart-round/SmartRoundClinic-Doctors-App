@@ -4,10 +4,6 @@ data class DoctorSignUpData(
     val fullName: String,
     val email: String,
     val password: String,
-    val gender: String,
-    val dateOfBirth: String? = null,
-    val phoneNumber: String,
-    val kraPin: String,
     val specializationId: String,
     val licenceName: String,
     val licenceFileName: String,
@@ -34,10 +30,6 @@ data class DoctorSignUpData(
         return fullName == other.fullName &&
             email == other.email &&
             password == other.password &&
-            gender == other.gender &&
-            dateOfBirth == other.dateOfBirth &&
-            phoneNumber == other.phoneNumber &&
-            kraPin == other.kraPin &&
             specializationId == other.specializationId &&
             licenceName == other.licenceName &&
             licenceFileName == other.licenceFileName &&
@@ -62,10 +54,6 @@ data class DoctorSignUpData(
         var result = fullName.hashCode()
         result = 31 * result + email.hashCode()
         result = 31 * result + password.hashCode()
-        result = 31 * result + gender.hashCode()
-        result = 31 * result + (dateOfBirth?.hashCode() ?: 0)
-        result = 31 * result + phoneNumber.hashCode()
-        result = 31 * result + kraPin.hashCode()
         result = 31 * result + specializationId.hashCode()
         result = 31 * result + licenceName.hashCode()
         result = 31 * result + licenceFileName.hashCode()

@@ -32,9 +32,27 @@ class AccountVerificationViewModel(
 
     private var cooldownJob: Job? = null
 
+    private var hasSentInitialOtp = false
+
     init {
         // OTP was sent during sign-up; start cooldown immediately.
         startCooldown()
+    }
+
+    // For entry points (e.g. an unverified sign-in) where no OTP has been sent yet.
+    // Bypasses the resend cooldown since this is the first send, not a resend.
+    fun sendInitialOtp(email: String) {
+        if (hasSentInitialOtp) return
+        hasSentInitialOtp = true
+        viewModelScope.launch {
+            _isResending.value = true
+            when (val result = resendAccountUseCase(email)) {
+                is Resource.Success -> snackbarController.show(result.data?.message ?: "OTP sent to your email")
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to send code")
+                is Resource.Loading -> Unit
+            }
+            _isResending.value = false
+        }
     }
 
     fun verify(email: String, otpCode: String, onSuccess: () -> Unit) {

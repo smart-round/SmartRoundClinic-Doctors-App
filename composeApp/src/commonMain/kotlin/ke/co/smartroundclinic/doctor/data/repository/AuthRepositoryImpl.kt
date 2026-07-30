@@ -45,10 +45,6 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
                                 append("fullName", data.fullName)
                                 append("email", data.email)
                                 append("password", data.password)
-                                append("gender", data.gender)
-                                data.dateOfBirth?.let { append("dateOfBirth", it) }
-                                append("phoneNumber", data.phoneNumber)
-                                append("kraPin", data.kraPin)
                                 append("specializationId", data.specializationId)
                                 append("licenceName", data.licenceName)
                                 append("bankName", data.bankName)
@@ -143,7 +139,7 @@ class AuthRepositoryImpl(private val client: HttpClient) : AuthRepository {
             val response = client.post("/auth/user/sign-in") {
                 setBody(SignInReq(email = email, password = password))
             }.body<SignInRes>()
-            if (!response.status) return@withContext Resource.Error(message = response.message, data = null)
+            if (!response.status) return@withContext Resource.Error(message = response.message, data = response.toDomain())
             Resource.Success(data = response.toDomain(), message = response.message)
         } catch (e: Exception) {
             Resource.Error("An unknown error occurred")

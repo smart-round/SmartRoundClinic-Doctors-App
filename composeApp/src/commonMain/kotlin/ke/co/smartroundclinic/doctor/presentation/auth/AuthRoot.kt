@@ -106,6 +106,7 @@ fun AuthRoot(
                             backStack.clear()
                             backStack.add(SignIn)
                         },
+                        autoSendOtp = true,
                     )
                 }
                 entry<ForgotPassword> {

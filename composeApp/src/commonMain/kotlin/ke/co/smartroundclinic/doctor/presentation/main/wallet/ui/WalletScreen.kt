@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
@@ -71,6 +72,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
+import ke.co.smartroundclinic.doctor.domain.model.InsufficientBalance
 import ke.co.smartroundclinic.doctor.domain.model.PaymentSummary
 import ke.co.smartroundclinic.doctor.domain.model.WalletTransaction
 import ke.co.smartroundclinic.doctor.domain.model.Withdrawal
@@ -171,7 +173,7 @@ internal fun WalletScreen(
                         balance = vm.balance,
                         summary = vm.summary,
                         isLoading = vm.isLoading,
-                        onWithdraw = { showWithdrawSheet = true },
+                        onWithdraw = { vm.clearWithdrawError(); showWithdrawSheet = true },
                     )
                     WalletTab.TRANSACTIONS -> TransactionsTab(
                         transactions = vm.transactions,
@@ -191,7 +193,7 @@ internal fun WalletScreen(
     // ── Withdraw bottom sheet ─────────────────────────────────────────────────
     if (showWithdrawSheet) {
         ModalBottomSheet(
-            onDismissRequest = { if (!vm.isWithdrawing) showWithdrawSheet = false },
+            onDismissRequest = { if (!vm.isWithdrawing) { vm.clearWithdrawError(); showWithdrawSheet = false } },
             sheetState = withdrawSheetState,
             containerColor = MaterialTheme.colorScheme.background,
         ) {
@@ -199,8 +201,13 @@ internal fun WalletScreen(
                 availableBalance = vm.balance?.availableBalance ?: 0.0,
                 minimumWithdrawal = vm.balance?.minimumWithdrawal ?: 100.0,
                 isWithdrawing = vm.isWithdrawing,
+                withdrawError = vm.withdrawError,
+                insufficientBalance = vm.insufficientBalance,
                 onDismiss = {
-                    scope.launch { withdrawSheetState.hide() }.invokeOnCompletion { showWithdrawSheet = false }
+                    scope.launch { withdrawSheetState.hide() }.invokeOnCompletion {
+                        vm.clearWithdrawError()
+                        showWithdrawSheet = false
+                    }
                 },
                 onConfirm = { idNumber, amount ->
                     vm.withdraw(idNumber, amount) {
@@ -341,60 +348,84 @@ private fun BalanceCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(ShapeCard)
-            .background(Brush.horizontalGradient(listOf(GradientStart, GradientEnd)))
-            .padding(20.dp),
+            .background(Brush.horizontalGradient(listOf(GradientStart, GradientEnd))),
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Text("Available Balance", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
-            Spacer(Modifier.height(8.dp))
+        // Decorative depth — soft translucent circles bleeding off the card edges.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 36.dp, y = (-48).dp)
+                .size(160.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.06f)),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .offset(x = (-30).dp, y = 30.dp)
+                .size(100.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.05f)),
+        )
+
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.16f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.AccountBalanceWallet, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Text("Available Balance", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
+            }
+            Spacer(Modifier.height(16.dp))
             if (isLoading && balance == null) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(32.dp), strokeWidth = 2.dp)
             } else {
                 Text(
                     "KES ${formatAmount(balance?.availableBalance ?: 0.0)}",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold, fontSize = 32.sp),
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold, fontSize = 36.sp),
                     color = Color.White,
                 )
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Min. withdrawal: KES ${formatAmount(balance?.minimumWithdrawal ?: 100.0)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.7f),
-            )
             Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                BalanceStat("Current Balance", balance?.currentBalance)
+            HorizontalDivider(color = Color.White.copy(alpha = 0.15f), thickness = 0.5.dp)
+            Spacer(Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                BalanceStat(label = "Current Balance", value = balance?.currentBalance)
+                BalanceStat(label = "Min. Withdrawal", value = balance?.minimumWithdrawal ?: 100.0, alignEnd = true)
             }
             Spacer(Modifier.height(20.dp))
             Button(
                 onClick = onWithdraw,
                 enabled = (balance?.availableBalance ?: 0.0) >= (balance?.minimumWithdrawal ?: 100.0),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
                     contentColor = GradientStart,
                     disabledContentColor = Color.White.copy(0.6f)
                 ),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
             ) {
-                Icon(Icons.Outlined.ArrowUpward, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("Withdraw", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
                 Spacer(Modifier.width(6.dp))
-                Text("Withdraw", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.padding(vertical = 4.dp))
+                Icon(Icons.Outlined.ArrowUpward, contentDescription = null, modifier = Modifier.size(18.dp))
             }
         }
     }
 }
 
 @Composable
-private fun BalanceStat(label: String, value: Double?) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun BalanceStat(label: String, value: Double?, alignEnd: Boolean = false) {
+    Column(horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start) {
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
+        Spacer(Modifier.height(2.dp))
         Text(
             text = if (value != null) "KES ${formatAmount(value)}" else "—",
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
             color = Color.White,
         )
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
     }
 }
 
@@ -695,6 +726,8 @@ private fun WithdrawSheetContent(
     availableBalance: Double,
     minimumWithdrawal: Double,
     isWithdrawing: Boolean,
+    withdrawError: String?,
+    insufficientBalance: InsufficientBalance?,
     onDismiss: () -> Unit,
     onConfirm: (idNumber: String, amount: Double) -> Unit,
 ) {
@@ -722,6 +755,11 @@ private fun WithdrawSheetContent(
                 Text("KES ${formatAmount(availableBalance)}", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Primary40)
             }
         }
+        Text(
+            "IntaSend charges a flat KES 100 transfer fee per withdrawal, deducted from your balance in addition to the amount withdrawn.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         OutlinedTextField(value = idNumber, onValueChange = { idNumber = it }, label = { Text("National ID Number") }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
         OutlinedTextField(
             value = amountText,
@@ -733,6 +771,23 @@ private fun WithdrawSheetContent(
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         )
+        if (withdrawError != null) {
+            Box(modifier = Modifier.fillMaxWidth().clip(ShapeCard).background(Error40.copy(alpha = 0.08f)).padding(12.dp)) {
+                if (insufficientBalance != null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Insufficient balance", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = Error40)
+                        Text(
+                            "Withdrawal: KES ${formatAmount(insufficientBalance.requestedAmount)} + Transfer fee: KES ${formatAmount(insufficientBalance.feeEstimate)} " +
+                                "= KES ${formatAmount(insufficientBalance.totalRequired)} needed, but your balance is KES ${formatAmount(insufficientBalance.availableBalance)}.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    Text(withdrawError, style = MaterialTheme.typography.bodySmall, color = Error40)
+                }
+            }
+        }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TextButton(onClick = onDismiss, enabled = !isWithdrawing, modifier = Modifier.weight(1f)) { Text("Cancel") }
             Button(
@@ -783,7 +838,7 @@ private fun walletTransactionStatusStyle(status: String): Pair<Color, String> = 
 
 @Composable
 private fun withdrawalStatusStyle(status: String): Pair<Color, String> = when {
-    status.contains("complete", ignoreCase = true) -> Tertiary40 to "Completed"
+    status.contains("complete", ignoreCase = true) || status.contains("success", ignoreCase = true) -> Tertiary40 to "Completed"
     status.contains("fail", ignoreCase = true) || status.contains("reject", ignoreCase = true) -> Error40 to "Failed"
     else -> Primary40 to "Processing"
 }

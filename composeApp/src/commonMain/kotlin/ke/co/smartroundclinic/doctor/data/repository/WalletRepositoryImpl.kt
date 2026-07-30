@@ -9,16 +9,17 @@ import io.ktor.client.request.setBody
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.data.remote.dto.request.WithdrawReq
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetWalletTransactionsRes
-import ke.co.smartroundclinic.doctor.data.remote.dto.response.SuccessRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetPaymentSummaryRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetWithdrawalBalanceRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetWithdrawalByIdRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.GetWithdrawalHistoryRes
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.WithdrawRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.toDomain
 import ke.co.smartroundclinic.doctor.domain.model.PaymentSummary
 import ke.co.smartroundclinic.doctor.domain.model.WalletTransaction
 import ke.co.smartroundclinic.doctor.domain.model.Withdrawal
 import ke.co.smartroundclinic.doctor.domain.model.WithdrawalBalance
+import ke.co.smartroundclinic.doctor.domain.model.WithdrawResult
 import ke.co.smartroundclinic.doctor.domain.repository.WalletRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -85,14 +86,14 @@ class WalletRepositoryImpl(private val client: HttpClient) : WalletRepository {
             }
         }
 
-    override suspend fun withdraw(idNumber: String, amount: Double): Resource<Unit> =
+    override suspend fun withdraw(idNumber: String, amount: Double): Resource<WithdrawResult> =
         withContext(Dispatchers.IO) {
             try {
                 val res = client.post("doctor/payments/withdraw") {
                     setBody(WithdrawReq(idNumber = idNumber, amount = amount))
-                }.body<SuccessRes>()
-                if (res.status) Resource.Success(Unit, res.message)
-                else Resource.Error(res.message)
+                }.body<WithdrawRes>()
+                if (res.status) Resource.Success(res.data?.toDomain(), res.message)
+                else Resource.Error(res.message, data = res.data?.toDomain())
             } catch (e: Exception) {
                 Resource.Error(e.message ?: "Withdrawal failed")
             }

@@ -14,8 +14,6 @@ data class SignUpReq(
     val branchCode: String,
     val accountName: String,
     val accountNumber: String,
-    val gender:String,
-    val kraPin: String,
     val profilePicture: ByteArray? = null,
 ) {
     override fun equals(other: Any?): Boolean {
@@ -34,8 +32,6 @@ data class SignUpReq(
         if (branchCode != other.branchCode) return false
         if (accountName != other.accountName) return false
         if (accountNumber != other.accountNumber) return false
-        if (gender != other.gender) return false
-        if (kraPin != other.kraPin) return false
         if (!profilePicture.contentEquals(other.profilePicture)) return false
 
         return true
@@ -52,8 +48,6 @@ data class SignUpReq(
         result = 31 * result + branchCode.hashCode()
         result = 31 * result + accountName.hashCode()
         result = 31 * result + accountNumber.hashCode()
-        result = 31 * result + gender.hashCode()
-        result = 31 * result + kraPin.hashCode()
         result = 31 * result + (profilePicture?.contentHashCode() ?: 0)
         return result
     }

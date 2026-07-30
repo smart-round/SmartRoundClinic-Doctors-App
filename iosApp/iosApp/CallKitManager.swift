@@ -3,6 +3,44 @@ import CallKit
 import Foundation
 import PushKit
 import ComposeApp
+import RTKWebRTC
+
+/// Configures AVAudioSession the way WebRTC needs and activates it, in one locked operation —
+/// necessary now that RTCAudioSession is in manual mode (see CallKitManager.init): WebRTC no
+/// longer applies its own category/mode/activation automatically, so whatever bare-bones session
+/// CallKit (or nothing, for outgoing calls) set up is all there is unless we configure it
+/// ourselves. `.videoChat` mode + `.defaultToSpeaker` is what actually gets audio routed to the
+/// loudspeaker instead of the earpiece — the earpiece route is real audio, just inaudible once
+/// the phone isn't held to the caller's ear, which it normally isn't during a video call. This is
+/// the fix for "video connects but I can't hear the other person talk."
+func configureAndActivateWebRTCAudioSession(isVideo: Bool) {
+    NSLog("SRC-AUDIO: configureAndActivateWebRTCAudioSession start, isVideo=\(isVideo)")
+    let rtcAudioSession = RTKRTCAudioSession.sharedInstance()
+    let configuration = RTKRTCAudioSessionConfiguration.webRTC()
+    configuration.category = AVAudioSession.Category.playAndRecord.rawValue
+    configuration.mode = (isVideo ? AVAudioSession.Mode.videoChat : AVAudioSession.Mode.voiceChat).rawValue
+    configuration.categoryOptions = isVideo ? [.allowBluetooth, .defaultToSpeaker] : [.allowBluetooth]
+
+    rtcAudioSession.lockForConfiguration()
+    do {
+        try rtcAudioSession.setConfiguration(configuration, active: true)
+        NSLog("SRC-AUDIO: setConfiguration succeeded")
+    } catch {
+        NSLog("SRC-AUDIO: setConfiguration FAILED — \(error.localizedDescription)")
+    }
+    rtcAudioSession.unlockForConfiguration()
+    rtcAudioSession.isAudioEnabled = true
+    let session = AVAudioSession.sharedInstance()
+    NSLog("SRC-AUDIO: isAudioEnabled set true, sampleRate=\(session.sampleRate), category=\(session.category.rawValue), route=\(session.currentRoute.outputs.map { $0.portName })")
+}
+
+func deactivateWebRTCAudioSession() {
+    let rtcAudioSession = RTKRTCAudioSession.sharedInstance()
+    rtcAudioSession.isAudioEnabled = false
+    rtcAudioSession.lockForConfiguration()
+    try? rtcAudioSession.setActive(false)
+    rtcAudioSession.unlockForConfiguration()
+}
 
 /// Handles incoming VoIP pushes via PushKit and reports them to CallKit (CXProvider), which
 /// shows the native system incoming-call UI even when the app is backgrounded or killed — the
@@ -17,6 +55,15 @@ final class CallKitManager: NSObject {
     private var uuidByCallId: [String: UUID] = [:]
     private var callIdByUuid: [UUID: String] = [:]
     private var callerInfoByCallId: [String: (callerId: String, callerName: String?)] = [:]
+    // The call this device has actually answered and is now in, if any — lets
+    // endActiveCall() (called from Kotlin once the in-app Call screen ends, see
+    // ActiveCallNotifier/CallKitBridge.onEndActiveCall) tell CallKit the call is over
+    // without the Kotlin side needing to plumb callId through the whole call-screen stack.
+    private var activeCallId: String?
+    private var isVideoByCallId: [String: Bool] = [:]
+    // Set from isVideoByCallId when the call is answered — read by didActivate below, which has
+    // no other way to know whether this call needs .videoChat (speaker-routed) audio mode.
+    private var activeCallIsVideo = true
     // Only calls CallKit actually confirmed presenting to the user land here. iOS can silently
     // filter/reject a reported call — Focus Mode, Do Not Disturb, "Silence Unknown Callers"
     // screening our generic (non-phone-number) CXHandle — with no UI ever shown, yet still tear
@@ -24,6 +71,12 @@ final class CallKitManager: NSObject {
     // uses. Without this guard, that silent system rejection was being forwarded to the backend
     // as if the callee had explicitly declined.
     private var reportedCallIds: Set<String> = []
+
+    /// True while a CallKit-answered call is ongoing — lets RtkCallSessionImpl (iOSApp.swift)
+    /// tell whether *it* needs to drive RTCAudioSession activation itself (outgoing calls, which
+    /// never go through CallKit in this app) or whether CallKit already owns that job (incoming,
+    /// answered via CXAnswerCallAction below).
+    var isCallKitCallActive: Bool { activeCallId != nil }
 
     private override init() {
         let config = CXProviderConfiguration()
@@ -33,7 +86,28 @@ final class CallKitManager: NSObject {
         config.supportedHandleTypes = [.generic]
         provider = CXProvider(configuration: config)
         super.init()
-        provider.setDelegate(self, queue: nil)
+        // `queue: nil` would have CallKit invoke every delegate method — including didActivate,
+        // where we bring up RTCAudioSession — on a private background queue it manages internally.
+        // On a process freshly launched from killed/suspended by a VoIP push, doing that
+        // entitlement-sensitive audio activation off the main thread this early in the process's
+        // lifecycle is what's been triggering audiomxd's "SecTask is NULL / Missing entitlement"
+        // failure on AURemoteIO (confirmed via device console — see CallKitManager doc comment
+        // above configureAndActivateWebRTCAudioSession). Forcing the delegate onto the main queue
+        // keeps that activation on the same thread the rest of the app's audio/UI work runs on.
+        provider.setDelegate(self, queue: .main)
+
+        // WebRTC's *automatic* audio-session mode (the default) races CallKit for control of
+        // AVAudioSession the moment a call is reported: CallKit activates/deactivates the session
+        // externally, and WebRTC's own activation attempts against that externally-held session
+        // can silently no-op, leaving its audio unit never actually started even though signaling
+        // succeeds (matches the "video connects, audio stays silent" symptom exactly — video
+        // doesn't touch AVAudioSession at all). Manual mode hands control of *when* WebRTC's audio
+        // unit turns on entirely to us: didActivate/didDeactivate below drive it for CallKit-
+        // mediated (incoming) calls, RtkCallSessionImpl's init/dispose in iOSApp.swift drives it
+        // directly for outgoing calls, which never go through CallKit in this app at all.
+        let rtcAudioSession = RTKRTCAudioSession.sharedInstance()
+        rtcAudioSession.useManualAudio = true
+        rtcAudioSession.isAudioEnabled = false
     }
 
     /// Call once at app launch (see iOSApp.swift's AppDelegate).
@@ -48,6 +122,7 @@ final class CallKitManager: NSObject {
         let uuid = UUID()
         uuidByCallId[callId] = uuid
         callIdByUuid[uuid] = callId
+        isVideoByCallId[callId] = isVideo
 
         let update = CXCallUpdate()
         update.remoteHandle = CXHandle(type: .generic, value: callerName ?? "Patient")
@@ -78,11 +153,22 @@ final class CallKitManager: NSObject {
         cleanup(callId: callId, uuid: uuid)
     }
 
+    /// Called once the in-app Call screen tears down (hangup tap, remote leaving, connection
+    /// ending — see ConsultationViewModel.endCall() / ActiveCallNotifier). Without this, CallKit
+    /// still thinks the call it reported is ongoing even after our own UI has moved on, so its
+    /// call state (status bar indicator, Recents entry, Dynamic Island) never clears.
+    func endActiveCall() {
+        guard let callId = activeCallId else { return }
+        endCall(callId: callId)
+    }
+
     private func cleanup(callId: String, uuid: UUID) {
         uuidByCallId.removeValue(forKey: callId)
         callIdByUuid.removeValue(forKey: uuid)
         callerInfoByCallId.removeValue(forKey: callId)
+        isVideoByCallId.removeValue(forKey: callId)
         reportedCallIds.remove(callId)
+        if activeCallId == callId { activeCallId = nil }
     }
 }
 
@@ -163,20 +249,26 @@ extension CallKitManager: CXProviderDelegate {
         uuidByCallId.removeAll()
         callIdByUuid.removeAll()
         callerInfoByCallId.removeAll()
+        isVideoByCallId.removeAll()
         reportedCallIds.removeAll()
+        activeCallId = nil
     }
 
     func provider(_ provider: CXProvider, perform action: CXAnswerCallAction) {
+        NSLog("SRC-AUDIO: CXAnswerCallAction perform")
         guard let callId = callIdByUuid[action.callUUID], let info = callerInfoByCallId[callId] else {
             action.fail()
             return
         }
+        activeCallId = callId
+        activeCallIsVideo = isVideoByCallId[callId] ?? true
         // Same deep-link the tap-to-join notification flow already uses — lands the user in
         // Conversation/Call once MainRoot picks up the pending event.
         NotificationDeepLink.shared.signal(
             event: NotificationEvent.ToCall(patientId: info.callerId, patientName: info.callerName ?? "Patient", appointmentId: "")
         )
         action.fulfill()
+        NSLog("SRC-AUDIO: CXAnswerCallAction fulfilled")
     }
 
     func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
@@ -194,6 +286,18 @@ extension CallKitManager: CXProviderDelegate {
         action.fulfill()
     }
 
-    func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) {}
-    func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) {}
+    // CallKit activates AVAudioSession itself once the call is answered, but with whatever bare
+    // category/mode it defaults to — not necessarily one that routes audio anywhere audible. We
+    // take over here and apply the actual WebRTC-appropriate configuration (see
+    // configureAndActivateWebRTCAudioSession above) on top of it, which is also what actually
+    // turns RTCAudioSession's audio unit on now that it's in manual mode (see CallKitManager.init).
+    func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) {
+        NSLog("SRC-AUDIO: CXProvider didActivate — sampleRate=\(audioSession.sampleRate), category=\(audioSession.category.rawValue)")
+        configureAndActivateWebRTCAudioSession(isVideo: activeCallIsVideo)
+    }
+
+    func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) {
+        NSLog("SRC-AUDIO: CXProvider didDeactivate")
+        deactivateWebRTCAudioSession()
+    }
 }

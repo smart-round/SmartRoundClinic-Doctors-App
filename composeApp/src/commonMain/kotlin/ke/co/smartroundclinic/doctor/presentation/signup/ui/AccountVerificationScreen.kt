@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +50,7 @@ fun AccountVerificationScreen(
     onBack: () -> Unit,
     onResendCode: () -> Unit,
     onGoToLogin: (() -> Unit)? = null,
+    autoSendOtp: Boolean = false,
     viewModel: AccountVerificationViewModel = koinViewModel(),
 ) {
     var otp by remember { mutableStateOf("") }
@@ -56,6 +58,10 @@ fun AccountVerificationScreen(
     val isVerifying by viewModel.isVerifying.collectAsStateWithLifecycle()
     val isResending by viewModel.isResending.collectAsStateWithLifecycle()
     val resendCooldown by viewModel.resendCooldown.collectAsStateWithLifecycle()
+
+    LaunchedEffect(email) {
+        if (autoSendOtp) viewModel.sendInitialOtp(email)
+    }
 
     Column(
         modifier = Modifier

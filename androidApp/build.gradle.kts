@@ -13,7 +13,7 @@ android {
         applicationId = "ke.co.smartroundclinic.doctor"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 12
+        versionCode = 20
         versionName = "1.0"
     }
     packaging {
@@ -43,3 +43,4 @@ dependencies {
     implementation(libs.ktor.serialization.json)
     debugImplementation(libs.compose.uiTooling)
 }
+
