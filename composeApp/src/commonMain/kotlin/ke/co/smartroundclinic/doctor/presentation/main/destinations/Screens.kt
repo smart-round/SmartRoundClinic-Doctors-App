@@ -13,6 +13,9 @@ data object Home : NavKey
 data object Bookings : NavKey
 
 @Serializable
+data object Services : NavKey
+
+@Serializable
 data object Articles : NavKey
 
 @Serializable

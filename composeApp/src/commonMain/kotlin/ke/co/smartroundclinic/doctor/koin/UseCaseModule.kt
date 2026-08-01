@@ -87,6 +87,8 @@ import ke.co.smartroundclinic.doctor.domain.usecase.speciality.AddDoctorSpeciali
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetDoctorSpecializationUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetSpecialitiesUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.UpdateDoctorSpecializationUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.directory.GetRecommendedDoctorsUseCase
+import ke.co.smartroundclinic.doctor.presentation.main.services.ServicesViewModel
 import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.ComplianceViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.articles.ArticlesViewModel
@@ -120,6 +122,7 @@ val useCaseModule = module {
     single { GetDoctorSpecializationUseCase(get(), get()) }
     single { AddDoctorSpecializationUseCase(get()) }
     single { UpdateDoctorSpecializationUseCase(get()) }
+    single { GetRecommendedDoctorsUseCase(get()) }
     single { SignUpUseCase(get()) }
     single { VerifyAccountUseCase(get()) }
     single { ResendAccountUseCase(get()) }
@@ -213,6 +216,7 @@ val useCaseModule = module {
     viewModel { RatingViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { NotificationsViewModel(get(), get()) }
     viewModel { WalletViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ServicesViewModel(get(), get()) }
 
     // Support
     single { GetIssueCategoriesUseCase(get()) }

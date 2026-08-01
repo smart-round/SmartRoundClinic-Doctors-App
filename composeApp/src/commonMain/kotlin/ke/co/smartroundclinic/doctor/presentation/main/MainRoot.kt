@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.HourglassTop
+import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -75,18 +76,24 @@ import ke.co.smartroundclinic.doctor.presentation.main.destinations.Articles
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Bookings
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Chat
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Home
+import ke.co.smartroundclinic.doctor.presentation.main.destinations.Services
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Wallet
 import ke.co.smartroundclinic.doctor.presentation.main.home.HomeRoot
 import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.Notifications
+import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.services.ServicesRoot
 import ke.co.smartroundclinic.doctor.presentation.main.wallet.WalletRoot
 import ke.co.smartroundclinic.doctor.presentation.rememberSvgPainter
+import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientStart
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.runtime.collectAsState
 import smartroundclinic.composeapp.generated.resources.Res
 import smartroundclinic.composeapp.generated.resources.bottom_bar_bookings
 import smartroundclinic.composeapp.generated.resources.bottom_bar_chat
@@ -106,6 +113,7 @@ private data class BottomTab(
 
 private val tabs = listOf(
     BottomTab(Home, "Home", TabIcon.Drawable(Res.drawable.bottom_bar_home)),
+    BottomTab(Services, "Services", TabIcon.Vector(Icons.Outlined.MedicalServices)),
     BottomTab(Bookings, "Bookings", TabIcon.Drawable(Res.drawable.bottom_bar_bookings)),
     BottomTab(Articles, "Articles", TabIcon.Drawable(Res.drawable.bottom_bar_cost_articles)),
     BottomTab(Chat, "Chat", TabIcon.Drawable(Res.drawable.bottom_bar_chat)),
@@ -223,6 +231,20 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                         onPendingNavigated = { pendingHomeDestinations = emptyList() },
                         pendingSupportTicketId = pendingSupportTicketId,
                         onPendingSupportTicketNavigated = { pendingSupportTicketId = null },
+                    )
+                }
+                entry<Services> {
+                    val personalInfoViewModel: PersonalInfoViewModel = koinViewModel()
+                    val user by personalInfoViewModel.user.collectAsState()
+                    val snackbarController: SnackbarController = koinInject()
+                    ServicesRoot(
+                        selfDoctorId = user?.id,
+                        onAtRootChanged = { isAtRoot = it },
+                        onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
+                        onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
+                        // Doctor-to-doctor chat lands in a follow-up change (CR-SMRC-0001 round 1,
+                        // Flow 4) — until then, Connect just confirms the doctor was found.
+                        onPrimaryAction = { doctor -> snackbarController.show("Doctor-to-doctor chat is coming soon") },
                     )
                 }
                 entry<Bookings> {
