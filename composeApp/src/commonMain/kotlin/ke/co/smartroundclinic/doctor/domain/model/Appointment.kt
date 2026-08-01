@@ -12,6 +12,10 @@ data class Appointment(
     val status: AppointmentStatus,
     val notes: String?,
     val cancellationReason: String?,
+    /** Set when this appointment resulted from an accepted referral. */
+    val referralId: String? = null,
+    val referredByDoctorName: String? = null,
+    val referredByDoctorPicture: String? = null,
 )
 
 enum class AppointmentStatus { BOOKED, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW }

@@ -18,6 +18,9 @@ data class AppointmentEntity(
     val status: String,
     val notes: String?,
     val cancellationReason: String?,
+    val referralId: String? = null,
+    val referredByDoctorName: String? = null,
+    val referredByDoctorPicture: String? = null,
 )
 
 fun AppointmentEntity.toDomain() = Appointment(
@@ -39,6 +42,9 @@ fun AppointmentEntity.toDomain() = Appointment(
     },
     notes = notes,
     cancellationReason = cancellationReason,
+    referralId = referralId,
+    referredByDoctorName = referredByDoctorName,
+    referredByDoctorPicture = referredByDoctorPicture,
 )
 
 fun Appointment.toEntity() = AppointmentEntity(
@@ -53,4 +59,7 @@ fun Appointment.toEntity() = AppointmentEntity(
     status = status.name,
     notes = notes,
     cancellationReason = cancellationReason,
+    referralId = referralId,
+    referredByDoctorName = referredByDoctorName,
+    referredByDoctorPicture = referredByDoctorPicture,
 )

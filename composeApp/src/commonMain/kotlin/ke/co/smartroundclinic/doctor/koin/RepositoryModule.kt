@@ -53,6 +53,8 @@ import ke.co.smartroundclinic.doctor.data.repository.PatientRatingRepositoryImpl
 import ke.co.smartroundclinic.doctor.domain.repository.PatientRatingRepository
 import ke.co.smartroundclinic.doctor.data.repository.DoctorDirectoryRepositoryImpl
 import ke.co.smartroundclinic.doctor.domain.repository.DoctorDirectoryRepository
+import ke.co.smartroundclinic.doctor.data.repository.ReferralRepositoryImpl
+import ke.co.smartroundclinic.doctor.domain.repository.ReferralRepository
 import org.koin.dsl.module
 
 val repositoryModule = module {
@@ -82,4 +84,5 @@ val repositoryModule = module {
     single<PatientBioRepository> { PatientBioRepositoryImpl(get()) }
     single<PatientRatingRepository> { PatientRatingRepositoryImpl(get()) }
     single<DoctorDirectoryRepository> { DoctorDirectoryRepositoryImpl(get()) }
+    single<ReferralRepository> { ReferralRepositoryImpl(get()) }
 }
