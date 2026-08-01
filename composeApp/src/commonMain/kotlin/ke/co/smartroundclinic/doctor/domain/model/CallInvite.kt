@@ -16,3 +16,13 @@ data class IncomingCall(
     val isVideo: Boolean,
     val ringTimeoutSeconds: Long,
 )
+
+/** Same shape as [IncomingCall] but for a doctor-to-doctor thread (threadId instead of doctorId/patientId). */
+data class IncomingDoctorCall(
+    val callId: String,
+    val callerId: String,
+    val callerName: String?,
+    val threadId: String,
+    val isVideo: Boolean,
+    val ringTimeoutSeconds: Long,
+)

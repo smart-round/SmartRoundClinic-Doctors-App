@@ -1,6 +1,7 @@
 package ke.co.smartroundclinic.doctor.core.notification
 
 import ke.co.smartroundclinic.doctor.domain.model.IncomingCall
+import ke.co.smartroundclinic.doctor.domain.model.IncomingDoctorCall
 
 /**
  * iOS's reliable incoming-call path is a genuine VoIP push delivered via PushKit, which
@@ -50,6 +51,42 @@ actual object IncomingCallHandler {
     // before this device answered. Ends the CallKit incoming-call session.
     actual fun onCallCancelled(callId: String) {
         IncomingCallState.clear(callId)
+        CallKitBridge.onEndCall?.invoke(callId)
+    }
+
+    // Doctor-to-doctor equivalents — see CallKitBridge.onIncomingDoctorCall for why this reports
+    // through a separate bridge callback rather than a nullable param on onIncomingCall above.
+    actual fun onDoctorCallInvite(
+        callId: String,
+        callerId: String,
+        callerName: String?,
+        threadId: String,
+        isVideo: Boolean,
+        ringTimeoutSeconds: Long,
+    ) {
+        IncomingDoctorCallState.ring(
+            IncomingDoctorCall(
+                callId = callId,
+                callerId = callerId,
+                callerName = callerName,
+                threadId = threadId,
+                isVideo = isVideo,
+                ringTimeoutSeconds = ringTimeoutSeconds,
+            )
+        )
+        CallKitBridge.onIncomingDoctorCall?.invoke(callId, callerName, isVideo, threadId)
+    }
+
+    actual fun onDoctorCallAnswered(callId: String) {
+        OutgoingDoctorCallState.answered(callId)
+    }
+
+    actual fun onDoctorCallDeclined(callId: String) {
+        OutgoingDoctorCallState.declined(callId)
+    }
+
+    actual fun onDoctorCallCancelled(callId: String) {
+        IncomingDoctorCallState.clear(callId)
         CallKitBridge.onEndCall?.invoke(callId)
     }
 }

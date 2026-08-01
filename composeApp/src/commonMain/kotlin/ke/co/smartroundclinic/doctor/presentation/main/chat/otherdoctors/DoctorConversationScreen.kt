@@ -56,7 +56,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -69,7 +68,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -123,14 +121,12 @@ import kotlinx.datetime.toLocalDateTime
  * Deliberate near-duplicate of [ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ConversationScreen]
  * (message bubbles, date dividers, attach-menu sheet, file viewer, scroll-to-bottom, input bar,
  * typing indicator, and header presence label are all ported as-is) per the "exactly the same as
- * consultations" UI requirement. Two things do differ, because there's genuinely no appointment
- * concept here rather than by choice: no appointment-gated "locked call" state — calls are always
- * available once connected — so only a single video-call action is shown, same as ConversationScreen
- * itself only wires up a video button despite accepting an onVoiceCall param. The incoming-call
- * dialog is a real, necessary addition: patient-side incoming calls are handled by the global
- * IncomingCallHandler/CallKit pipeline outside this screen entirely, but doctor-to-doctor calls were
- * deliberately kept foreground-only/local to this screen's ViewModel (no CallKit/VoIP-push
- * integration this round), so this is the only place they can be answered from.
+ * consultations" UI requirement. The only deliberate difference is that there's genuinely no
+ * appointment concept here — calls are always available once connected — so only a single
+ * video-call action is shown, same as ConversationScreen itself only wires up a video button
+ * despite accepting an onVoiceCall param. Incoming calls are handled entirely outside this screen
+ * now (native full-screen/CallKit ringing via IncomingCallHandler, same as patient calls) — no
+ * in-app dialog here, matching ConversationScreen exactly.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -150,9 +146,6 @@ internal fun DoctorConversationScreen(
     otherPartyOnline: Boolean = false,
     otherPartyLastSeenAt: String? = null,
     onTyping: (Boolean) -> Unit = {},
-    incomingCall: DoctorIncomingCall?,
-    onAcceptIncomingCall: () -> Unit,
-    onDeclineIncomingCall: () -> Unit,
     onBack: () -> Unit,
     onVoiceCall: () -> Unit = {},
     onVideoCall: () -> Unit,
@@ -211,16 +204,6 @@ internal fun DoctorConversationScreen(
     }
     val fileLauncher = rememberFilePickerLauncher(mode = FileKitMode.Single, type = FileKitType.File()) { file ->
         file?.let { scope.launch { sendPickedFile(it.name.ifBlank { "file" }, it.readBytes()) } }
-    }
-
-    if (incomingCall != null) {
-        AlertDialog(
-            onDismissRequest = onDeclineIncomingCall,
-            title = { Text(if (incomingCall.isVideo) "Incoming video call" else "Incoming voice call") },
-            text = { Text("Dr. ${incomingCall.callerName ?: counterpartName} is calling you") },
-            confirmButton = { TextButton(onClick = onAcceptIncomingCall) { Text("Accept") } },
-            dismissButton = { TextButton(onClick = onDeclineIncomingCall) { Text("Decline", color = MaterialTheme.colorScheme.error) } },
-        )
     }
 
     Scaffold(

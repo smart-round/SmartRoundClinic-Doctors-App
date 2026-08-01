@@ -82,6 +82,9 @@ struct iOSApp: App {
         CallKitBridge.shared.onIncomingCall = { callId, callerName, isVideo in
             CallKitManager.shared.reportIncomingCall(callId: callId, callerName: callerName, isVideo: isVideo.boolValue)
         }
+        CallKitBridge.shared.onIncomingDoctorCall = { callId, callerName, isVideo, threadId in
+            CallKitManager.shared.reportIncomingCall(callId: callId, callerName: callerName, isVideo: isVideo.boolValue, threadId: threadId)
+        }
         CallKitBridge.shared.onEndCall = { callId in
             CallKitManager.shared.endCall(callId: callId)
         }

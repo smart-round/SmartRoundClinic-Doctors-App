@@ -16,6 +16,8 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import ke.co.smartroundclinic.doctor.core.notification.OutgoingCallState
 import ke.co.smartroundclinic.doctor.core.notification.OutgoingCallStatus
+import ke.co.smartroundclinic.doctor.core.notification.OutgoingDoctorCallState
+import ke.co.smartroundclinic.doctor.core.notification.OutgoingDoctorCallStatus
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.MedicalRecordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Call
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.ChatList
@@ -23,7 +25,6 @@ import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Convers
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.OutgoingCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorChatViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorConversationScreen
-import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorOutgoingCallStatus
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorConversation
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.OutgoingDoctorCall
@@ -45,6 +46,10 @@ fun ChatRoot(
     onPendingCallNavigated: () -> Unit = {},
     pendingDoctorChatDoctorId: String? = null,
     onPendingDoctorChatNavigated: () -> Unit = {},
+    pendingDoctorConversation: DoctorConversation? = null,
+    onPendingDoctorConversationNavigated: () -> Unit = {},
+    pendingDoctorCall: DoctorCall? = null,
+    onPendingDoctorCallNavigated: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
 ) {
@@ -101,6 +106,26 @@ fun ChatRoot(
             backStack.removeAll { it is Call }
             backStack.add(pendingCall)
             onPendingCallNavigated()
+        }
+    }
+
+    LaunchedEffect(pendingDoctorConversation) {
+        if (pendingDoctorConversation != null) {
+            chatTopTab = ChatTopTab.OTHER_DOCTORS
+            backStack.removeAll { it is DoctorConversation }
+            backStack.add(pendingDoctorConversation)
+            onPendingDoctorConversationNavigated()
+        }
+    }
+
+    // Fires after the pendingDoctorConversation effect above (both are set together from the same
+    // notification event, see MainRoot's ToDoctorCall handling), so DoctorConversation is already
+    // on the stack for DoctorCall's entry to read the counterpart name/picture off of.
+    LaunchedEffect(pendingDoctorCall) {
+        if (pendingDoctorCall != null) {
+            backStack.removeAll { it is DoctorCall }
+            backStack.add(pendingDoctorCall)
+            onPendingDoctorCallNavigated()
         }
     }
 
@@ -164,13 +189,6 @@ fun ChatRoot(
                     otherPartyOnline = doctorChatVm.otherPartyOnline,
                     otherPartyLastSeenAt = doctorChatVm.otherPartyLastSeenAt,
                     onTyping = doctorChatVm::sendTypingEvent,
-                    incomingCall = doctorChatVm.incomingCall,
-                    onAcceptIncomingCall = {
-                        val call = doctorChatVm.incomingCall ?: return@DoctorConversationScreen
-                        doctorChatVm.clearIncomingCall()
-                        backStack.add(DoctorCall(dest.threadId, isVideo = call.isVideo))
-                    },
-                    onDeclineIncomingCall = { doctorChatVm.declineIncomingCall(dest.threadId) },
                     onBack = {
                         doctorChatVm.disconnect()
                         backStack.removeLastOrNull()
@@ -183,33 +201,33 @@ fun ChatRoot(
             }
             entry<OutgoingDoctorCall> { dest ->
                 LaunchedEffect(dest.threadId) {
-                    doctorChatVm.startCall(dest.threadId, dest.isVideo)
+                    doctorChatVm.startCall(dest.threadId, dest.isVideo, dest.calleeName)
                 }
                 DisposableEffect(dest.threadId) {
                     onDispose {
-                        val status = doctorChatVm.outgoingCallStatus
-                        if (status is DoctorOutgoingCallStatus.Calling) {
+                        val status = OutgoingDoctorCallState.current.value
+                        if (status is OutgoingDoctorCallStatus.Calling && status.threadId == dest.threadId) {
                             doctorChatVm.cancelOutgoingCall(dest.threadId, status.callId)
                         }
                     }
                 }
 
-                val status = doctorChatVm.outgoingCallStatus
+                val status by OutgoingDoctorCallState.current.collectAsState()
                 LaunchedEffect(status) {
                     when (val s = status) {
-                        is DoctorOutgoingCallStatus.Answered -> {
-                            doctorChatVm.clearOutgoingCallStatus()
+                        is OutgoingDoctorCallStatus.Answered -> {
+                            OutgoingDoctorCallState.clear()
                             backStack.removeLastOrNull()
                             backStack.add(DoctorCall(dest.threadId, isVideo = dest.isVideo))
                         }
-                        is DoctorOutgoingCallStatus.Declined -> {
-                            doctorChatVm.clearOutgoingCallStatus()
+                        is OutgoingDoctorCallStatus.Declined -> {
+                            OutgoingDoctorCallState.clear()
                             backStack.removeLastOrNull()
                         }
-                        is DoctorOutgoingCallStatus.Calling -> {
+                        is OutgoingDoctorCallStatus.Calling -> {
                             // Mirrors the backend's RedisKeys.CALL_INVITE_TTL_SECONDS ring timeout.
                             delay(45_000L)
-                            if (doctorChatVm.outgoingCallStatus == s) {
+                            if (OutgoingDoctorCallState.current.value == s) {
                                 doctorChatVm.cancelOutgoingCall(dest.threadId, s.callId)
                                 backStack.removeLastOrNull()
                             }
@@ -221,13 +239,13 @@ fun ChatRoot(
                 OutgoingCallScreen(
                     calleeName = dest.calleeName,
                     statusText = when (status) {
-                        is DoctorOutgoingCallStatus.Declined -> "Call declined"
+                        is OutgoingDoctorCallStatus.Declined -> "Call declined"
                         else -> "Calling…"
                     },
                     onCancel = {
-                        val s = doctorChatVm.outgoingCallStatus
-                        if (s is DoctorOutgoingCallStatus.Calling) doctorChatVm.cancelOutgoingCall(dest.threadId, s.callId)
-                        else doctorChatVm.clearOutgoingCallStatus()
+                        val s = OutgoingDoctorCallState.current.value
+                        if (s is OutgoingDoctorCallStatus.Calling) doctorChatVm.cancelOutgoingCall(dest.threadId, s.callId)
+                        else OutgoingDoctorCallState.clear()
                         backStack.removeLastOrNull()
                     },
                 )

@@ -71,6 +71,8 @@ import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingsRoot
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ChatRoot
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Call
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Conversation
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorCall
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorConversation
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Articles
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Bookings
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Chat
@@ -124,6 +126,8 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
     var pendingChatConversation by remember { mutableStateOf<Conversation?>(null) }
     var pendingCall by remember { mutableStateOf<Call?>(null) }
     var pendingDoctorChatDoctorId by remember { mutableStateOf<String?>(null) }
+    var pendingDoctorConversation by remember { mutableStateOf<DoctorConversation?>(null) }
+    var pendingDoctorCall by remember { mutableStateOf<DoctorCall?>(null) }
     var pendingBookingId by remember { mutableStateOf<String?>(null) }
     var pendingSupportTicketId by remember { mutableStateOf<String?>(null) }
     var inComplianceFixMode by remember { mutableStateOf(false) }
@@ -163,6 +167,15 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                     selectTab(Chat)
                     pendingChatConversation = Conversation(event.patientId, event.patientName, event.appointmentId)
                     pendingCall = Call(event.patientId, isVideo = true)
+                }
+                is NotificationEvent.ToDoctorConversation -> {
+                    selectTab(Chat)
+                    pendingDoctorConversation = DoctorConversation(event.threadId, event.counterpartName, null)
+                }
+                is NotificationEvent.ToDoctorCall -> {
+                    selectTab(Chat)
+                    pendingDoctorConversation = DoctorConversation(event.threadId, event.counterpartName, null)
+                    pendingDoctorCall = DoctorCall(event.threadId, isVideo = event.isVideo)
                 }
                 is NotificationEvent.ToArticles -> selectTab(Articles)
                 is NotificationEvent.ToSupportTicket -> {
@@ -267,6 +280,10 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                         onPendingCallNavigated = { pendingCall = null },
                         pendingDoctorChatDoctorId = pendingDoctorChatDoctorId,
                         onPendingDoctorChatNavigated = { pendingDoctorChatDoctorId = null },
+                        pendingDoctorConversation = pendingDoctorConversation,
+                        onPendingDoctorConversationNavigated = { pendingDoctorConversation = null },
+                        pendingDoctorCall = pendingDoctorCall,
+                        onPendingDoctorCallNavigated = { pendingDoctorCall = null },
                         onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
                         onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
                     )

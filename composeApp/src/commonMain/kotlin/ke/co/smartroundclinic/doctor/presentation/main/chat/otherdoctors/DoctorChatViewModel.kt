@@ -14,6 +14,8 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import ke.co.smartroundclinic.doctor.common.Constants
 import ke.co.smartroundclinic.doctor.common.Resource
+import ke.co.smartroundclinic.doctor.core.notification.IncomingCallHandler
+import ke.co.smartroundclinic.doctor.core.notification.OutgoingDoctorCallState
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.DoctorCallAnsweredEventData
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.DoctorCallCancelledEventData
@@ -48,30 +50,14 @@ private val wsJson = Json { ignoreUnknownKeys = true; isLenient = true; explicit
 private const val HISTORY_PAGE_SIZE = 20
 private const val DOCTORS_PAGE_SIZE = 20
 
-/** Local, ChatRoot-scoped ringing state — see this feature's scope notes: unlike consultation's
- * calls, doctor-chat calling doesn't integrate with CallKit/background push this round, so a
- * plain ViewModel-owned state (instead of a global singleton) is enough — navigation between the
- * conversation, outgoing-call, and in-call screens all happens within one ChatRoot composition
- * sharing this same instance. */
-sealed class DoctorOutgoingCallStatus {
-    data class Calling(val callId: String) : DoctorOutgoingCallStatus()
-    data object Answered : DoctorOutgoingCallStatus()
-    data object Declined : DoctorOutgoingCallStatus()
-}
-
-data class DoctorIncomingCall(
-    val callId: String,
-    val callerId: String,
-    val callerName: String?,
-    val isVideo: Boolean,
-    val ringTimeoutSeconds: Long,
-)
-
 /**
  * Mirrors [ke.co.smartroundclinic.doctor.presentation.main.chat.ConsultationViewModel]'s
- * message-send/receive/typing/presence slice — the one deliberate difference is that calling
- * state is local rather than routed through the global OutgoingCallState/IncomingCallHandler
- * singletons, which stay patient-call-only.
+ * message-send/receive/typing/presence/calling slice. Calling now goes through the same
+ * IncomingCallHandler / IncomingDoctorCallState / OutgoingDoctorCallState singletons the
+ * push-notification path uses (see IncomingCallHandler.onDoctorCallInvite and friends) —
+ * whichever channel (this WS connection, or a push while backgrounded/killed) the signal
+ * arrives on, it ends up in the same place, and the native full-screen/CallKit ringing UI
+ * fires either way, exactly like patient calls.
  */
 class DoctorChatViewModel(
     private val repository: DoctorChatRepository,
@@ -193,10 +179,6 @@ class DoctorChatViewModel(
 
     var callJoinState by mutableStateOf<Resource<CallJoinInfo>?>(null)
         private set
-    var outgoingCallStatus by mutableStateOf<DoctorOutgoingCallStatus?>(null)
-        private set
-    var incomingCall by mutableStateOf<DoctorIncomingCall?>(null)
-        private set
 
     var otherPartyTyping by mutableStateOf(false)
         private set
@@ -300,20 +282,27 @@ class DoctorChatViewModel(
                                         "CALL_INVITE" -> {
                                             val event = wsJson.decodeFromString<DoctorCallInviteEventData>(raw)
                                             withContext(Dispatchers.Main) {
-                                                incomingCall = DoctorIncomingCall(event.callId, event.callerId, event.callerName, event.isVideo, event.ringTimeoutSeconds)
+                                                IncomingCallHandler.onDoctorCallInvite(
+                                                    callId = event.callId,
+                                                    callerId = event.callerId,
+                                                    callerName = event.callerName,
+                                                    threadId = threadId,
+                                                    isVideo = event.isVideo,
+                                                    ringTimeoutSeconds = event.ringTimeoutSeconds,
+                                                )
                                             }
                                         }
                                         "CALL_ANSWERED" -> {
-                                            wsJson.decodeFromString<DoctorCallAnsweredEventData>(raw)
-                                            withContext(Dispatchers.Main) { outgoingCallStatus = DoctorOutgoingCallStatus.Answered }
+                                            val event = wsJson.decodeFromString<DoctorCallAnsweredEventData>(raw)
+                                            withContext(Dispatchers.Main) { IncomingCallHandler.onDoctorCallAnswered(event.callId) }
                                         }
                                         "CALL_DECLINED" -> {
-                                            wsJson.decodeFromString<DoctorCallDeclinedEventData>(raw)
-                                            withContext(Dispatchers.Main) { outgoingCallStatus = DoctorOutgoingCallStatus.Declined }
+                                            val event = wsJson.decodeFromString<DoctorCallDeclinedEventData>(raw)
+                                            withContext(Dispatchers.Main) { IncomingCallHandler.onDoctorCallDeclined(event.callId) }
                                         }
                                         "CALL_CANCELLED" -> {
-                                            wsJson.decodeFromString<DoctorCallCancelledEventData>(raw)
-                                            withContext(Dispatchers.Main) { incomingCall = null }
+                                            val event = wsJson.decodeFromString<DoctorCallCancelledEventData>(raw)
+                                            withContext(Dispatchers.Main) { IncomingCallHandler.onDoctorCallCancelled(event.callId) }
                                         }
                                         else -> {
                                             val msg = wsJson.decodeFromString<DoctorChatMessageData>(raw).toDomain()
@@ -428,17 +417,17 @@ class DoctorChatViewModel(
         }
     }
 
-    fun startCall(threadId: String, isVideo: Boolean) {
-        outgoingCallStatus = null
+    fun startCall(threadId: String, isVideo: Boolean, calleeName: String?) {
+        OutgoingDoctorCallState.clear()
         viewModelScope.launch {
             when (val result = repository.inviteToCall(threadId, isVideo)) {
                 is Resource.Success -> {
                     val invite = result.data
-                    if (invite != null) outgoingCallStatus = DoctorOutgoingCallStatus.Calling(invite.callId)
+                    if (invite != null) OutgoingDoctorCallState.calling(invite.callId, threadId, calleeName, isVideo)
                 }
                 is Resource.Error -> {
                     snackbarController.show(result.message ?: "Failed to start call", isError = true)
-                    outgoingCallStatus = null
+                    OutgoingDoctorCallState.clear()
                 }
                 else -> {}
             }
@@ -446,22 +435,8 @@ class DoctorChatViewModel(
     }
 
     fun cancelOutgoingCall(threadId: String, callId: String) {
+        OutgoingDoctorCallState.clear()
         viewModelScope.launch { repository.cancelCall(threadId, callId) }
-        outgoingCallStatus = null
-    }
-
-    fun clearOutgoingCallStatus() {
-        outgoingCallStatus = null
-    }
-
-    fun declineIncomingCall(threadId: String) {
-        val call = incomingCall ?: return
-        incomingCall = null
-        viewModelScope.launch { repository.declineCall(threadId, call.callId) }
-    }
-
-    fun clearIncomingCall() {
-        incomingCall = null
     }
 
     fun joinCall(threadId: String) {

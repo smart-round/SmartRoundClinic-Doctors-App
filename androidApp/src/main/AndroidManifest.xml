@@ -61,6 +61,20 @@
         <receiver
             android:name="ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingCallActionReceiver"
             android:exported="false" />
+
+        <!-- Doctor-to-doctor equivalents of the two above — separate components so a doctor call
+             never collides with (or gets dismissed by) a concurrent patient call. -->
+        <activity
+            android:name="ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingDoctorCallActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:showOnLockScreen="true"
+            android:theme="@style/Theme.SmartRoundClinic" />
+
+        <receiver
+            android:name="ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingDoctorCallActionReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

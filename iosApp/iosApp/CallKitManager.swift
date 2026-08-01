@@ -55,6 +55,10 @@ final class CallKitManager: NSObject {
     private var uuidByCallId: [String: UUID] = [:]
     private var callIdByUuid: [UUID: String] = [:]
     private var callerInfoByCallId: [String: (callerId: String, callerName: String?)] = [:]
+    // Present only for doctor-to-doctor calls — its presence is what CXAnswerCallAction/
+    // CXEndCallAction below use to tell a doctor call apart from a patient call sharing this
+    // same CXProvider, since iOS only supports one provider per app.
+    private var threadIdByCallId: [String: String] = [:]
     // The call this device has actually answered and is now in, if any — lets
     // endActiveCall() (called from Kotlin once the in-app Call screen ends, see
     // ActiveCallNotifier/CallKitBridge.onEndActiveCall) tell CallKit the call is over
@@ -118,15 +122,17 @@ final class CallKitManager: NSObject {
 
     // MARK: - Called from Kotlin's IncomingCallHandler via CallKitBridge (see wireCallKitBridge())
 
-    func reportIncomingCall(callId: String, callerName: String?, isVideo: Bool) {
+    func reportIncomingCall(callId: String, callerName: String?, isVideo: Bool, threadId: String? = nil) {
         let uuid = UUID()
         uuidByCallId[callId] = uuid
         callIdByUuid[uuid] = callId
         isVideoByCallId[callId] = isVideo
+        if let threadId = threadId { threadIdByCallId[callId] = threadId }
 
         let update = CXCallUpdate()
-        update.remoteHandle = CXHandle(type: .generic, value: callerName ?? "Patient")
-        update.localizedCallerName = callerName ?? "Patient"
+        let defaultName = threadId != nil ? "Doctor" : "Patient"
+        update.remoteHandle = CXHandle(type: .generic, value: callerName ?? defaultName)
+        update.localizedCallerName = callerName ?? defaultName
         update.hasVideo = isVideo
         update.supportsHolding = false
         update.supportsGrouping = false
@@ -167,6 +173,7 @@ final class CallKitManager: NSObject {
         callIdByUuid.removeValue(forKey: uuid)
         callerInfoByCallId.removeValue(forKey: callId)
         isVideoByCallId.removeValue(forKey: callId)
+        threadIdByCallId.removeValue(forKey: callId)
         reportedCallIds.remove(callId)
         if activeCallId == callId { activeCallId = nil }
     }
@@ -236,6 +243,34 @@ extension CallKitManager: PKPushRegistryDelegate {
         // ringing screen via IncomingCallHandler.onCallCancelled -> CallKitBridge.onEndCall -> endCall(callId:).
         case "Call Cancelled":
             IncomingCallHandler.shared.onCallCancelled(callId: callId)
+        // Doctor-to-doctor equivalents — same shapes as above except threadId in place of
+        // doctorId/patientId. See InviteToDoctorCallUseCase (backend) for the payload.
+        case "Incoming Doctor Call":
+            guard
+                let callerId = data["callerId"] as? String,
+                let threadId = data["threadId"] as? String
+            else { return }
+
+            let callerName = data["callerName"] as? String
+            let isVideo = (data["isVideo"] as? String) == "true"
+            let ringTimeoutSeconds = Int64((data["ringTimeoutSeconds"] as? String) ?? "") ?? 45
+
+            callerInfoByCallId[callId] = (callerId: callerId, callerName: callerName)
+
+            IncomingCallHandler.shared.onDoctorCallInvite(
+                callId: callId,
+                callerId: callerId,
+                callerName: callerName,
+                threadId: threadId,
+                isVideo: isVideo,
+                ringTimeoutSeconds: ringTimeoutSeconds
+            )
+        case "Doctor Call Answered":
+            IncomingCallHandler.shared.onDoctorCallAnswered(callId: callId)
+        case "Doctor Call Declined":
+            IncomingCallHandler.shared.onDoctorCallDeclined(callId: callId)
+        case "Doctor Call Cancelled":
+            IncomingCallHandler.shared.onDoctorCallCancelled(callId: callId)
         default:
             break
         }
@@ -250,6 +285,7 @@ extension CallKitManager: CXProviderDelegate {
         callIdByUuid.removeAll()
         callerInfoByCallId.removeAll()
         isVideoByCallId.removeAll()
+        threadIdByCallId.removeAll()
         reportedCallIds.removeAll()
         activeCallId = nil
     }
@@ -263,10 +299,18 @@ extension CallKitManager: CXProviderDelegate {
         activeCallId = callId
         activeCallIsVideo = isVideoByCallId[callId] ?? true
         // Same deep-link the tap-to-join notification flow already uses — lands the user in
-        // Conversation/Call once MainRoot picks up the pending event.
-        NotificationDeepLink.shared.signal(
-            event: NotificationEvent.ToCall(patientId: info.callerId, patientName: info.callerName ?? "Patient", appointmentId: "")
-        )
+        // Conversation/Call (or DoctorConversation/DoctorCall) once MainRoot picks up the pending
+        // event. threadIdByCallId is only populated for doctor-to-doctor calls (see
+        // reportIncomingCall) — its presence is how this tells the two kinds apart.
+        if let threadId = threadIdByCallId[callId] {
+            NotificationDeepLink.shared.signal(
+                event: NotificationEvent.ToDoctorCall(threadId: threadId, counterpartName: info.callerName ?? "Doctor", isVideo: activeCallIsVideo)
+            )
+        } else {
+            NotificationDeepLink.shared.signal(
+                event: NotificationEvent.ToCall(patientId: info.callerId, patientName: info.callerName ?? "Patient", appointmentId: "")
+            )
+        }
         action.fulfill()
         NSLog("SRC-AUDIO: CXAnswerCallAction fulfilled")
     }
@@ -279,8 +323,12 @@ extension CallKitManager: CXProviderDelegate {
         // Only forward as a real decline if CallKit actually confirmed presenting this call to
         // the user — otherwise this is the system tearing down a call it silently filtered
         // (see reportedCallIds), and the backend/caller should never hear about it as a decline.
-        if reportedCallIds.contains(callId), let info = callerInfoByCallId[callId] {
-            CallActionDispatcher.shared.decline(otherUserId: info.callerId, callId: callId)
+        if reportedCallIds.contains(callId) {
+            if let threadId = threadIdByCallId[callId] {
+                CallActionDispatcher.shared.declineDoctorCall(threadId: threadId, callId: callId)
+            } else if let info = callerInfoByCallId[callId] {
+                CallActionDispatcher.shared.decline(otherUserId: info.callerId, callId: callId)
+            }
         }
         cleanup(callId: callId, uuid: action.callUUID)
         action.fulfill()

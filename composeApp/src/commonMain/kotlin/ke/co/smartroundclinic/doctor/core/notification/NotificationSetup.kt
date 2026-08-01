@@ -54,6 +54,20 @@ fun setupNotificationListener() {
                 "Call Answered" -> IncomingCallHandler.onCallAnswered(callId)
                 "Call Declined" -> IncomingCallHandler.onCallDeclined(callId)
                 "Call Cancelled" -> IncomingCallHandler.onCallCancelled(callId)
+                "Incoming Doctor Call" -> {
+                    val threadId = data["threadId"]?.toString() ?: return
+                    IncomingCallHandler.onDoctorCallInvite(
+                        callId = callId,
+                        callerId = data["callerId"]?.toString() ?: return,
+                        callerName = data["callerName"]?.toString(),
+                        threadId = threadId,
+                        isVideo = data["isVideo"]?.toString()?.toBooleanStrictOrNull() ?: true,
+                        ringTimeoutSeconds = data["ringTimeoutSeconds"]?.toString()?.toLongOrNull() ?: 45L,
+                    )
+                }
+                "Doctor Call Answered" -> IncomingCallHandler.onDoctorCallAnswered(callId)
+                "Doctor Call Declined" -> IncomingCallHandler.onDoctorCallDeclined(callId)
+                "Doctor Call Cancelled" -> IncomingCallHandler.onDoctorCallCancelled(callId)
             }
         }
 
