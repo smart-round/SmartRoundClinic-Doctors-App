@@ -91,6 +91,8 @@ import ke.co.smartroundclinic.doctor.domain.usecase.speciality.UpdateDoctorSpeci
 import ke.co.smartroundclinic.doctor.domain.usecase.directory.GetRecommendedDoctorsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.referral.CheckReferralEligibilityUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.referral.CreateReferralUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.doctorchat.InitiateDoctorChatUseCase
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorChatViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.services.ServicesViewModel
 import ke.co.smartroundclinic.doctor.presentation.auth.ForgotPasswordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.ComplianceViewModel
@@ -128,6 +130,7 @@ val useCaseModule = module {
     single { GetRecommendedDoctorsUseCase(get()) }
     single { CheckReferralEligibilityUseCase(get()) }
     single { CreateReferralUseCase(get()) }
+    single { InitiateDoctorChatUseCase(get()) }
     single { SignUpUseCase(get()) }
     single { VerifyAccountUseCase(get()) }
     single { ResendAccountUseCase(get()) }
@@ -223,6 +226,7 @@ val useCaseModule = module {
     viewModel { NotificationsViewModel(get(), get()) }
     viewModel { WalletViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ServicesViewModel(get(), get()) }
+    viewModel { DoctorChatViewModel(get(), get(), get(), get(), get(), get()) }
 
     // Support
     single { GetIssueCategoriesUseCase(get()) }

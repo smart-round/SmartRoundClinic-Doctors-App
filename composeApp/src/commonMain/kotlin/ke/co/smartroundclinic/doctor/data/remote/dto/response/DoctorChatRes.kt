@@ -1,0 +1,152 @@
+package ke.co.smartroundclinic.doctor.data.remote.dto.response
+
+import ke.co.smartroundclinic.doctor.domain.model.CallJoinInfo
+import ke.co.smartroundclinic.doctor.domain.model.DoctorCallInvite
+import ke.co.smartroundclinic.doctor.domain.model.DoctorChatFileAttachment
+import ke.co.smartroundclinic.doctor.domain.model.DoctorChatMessage
+import ke.co.smartroundclinic.doctor.domain.model.DoctorChatThread
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class DoctorChatMessageData(
+    val id: String,
+    val threadId: String,
+    val senderId: String,
+    val senderName: String,
+    val messageType: String,
+    val message: String? = null,
+    val files: List<DoctorChatFileData> = emptyList(),
+    val createdAt: String,
+)
+
+@Serializable
+data class DoctorChatFileData(
+    val fileName: String,
+    val url: String,
+    val contentType: String,
+    val sizeBytes: Long,
+)
+
+fun DoctorChatMessageData.toDomain() = DoctorChatMessage(
+    id = id, threadId = threadId, senderId = senderId, senderName = senderName,
+    messageType = messageType, message = message, files = files.map { it.toDomain() }, createdAt = createdAt,
+)
+
+fun DoctorChatFileData.toDomain() = DoctorChatFileAttachment(fileName, url, contentType, sizeBytes)
+
+/** Outgoing WS text-frame envelope — same shape as consultation's, minus the fields this module doesn't use. */
+@Serializable
+data class DoctorChatWsOutgoing(val type: String, val message: String? = null)
+
+@Serializable
+data class DoctorChatWsEventPeek(val type: String? = null)
+
+@Serializable
+data class DoctorCallInviteEventData(
+    val type: String = "CALL_INVITE",
+    val callId: String,
+    val callerId: String,
+    val callerName: String? = null,
+    val isVideo: Boolean,
+    val ringTimeoutSeconds: Long,
+)
+
+@Serializable
+data class DoctorCallAnsweredEventData(val type: String = "CALL_ANSWERED", val callId: String)
+
+@Serializable
+data class DoctorCallDeclinedEventData(val type: String = "CALL_DECLINED", val callId: String)
+
+@Serializable
+data class DoctorCallCancelledEventData(val type: String = "CALL_CANCELLED", val callId: String)
+
+@Serializable
+data class DoctorChatFileUploadResponse(
+    val data: DoctorChatMessageData? = null,
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+)
+
+@Serializable
+data class JoinDoctorCallData(
+    val meetingId: String,
+    val participantId: String,
+    val authToken: String,
+    val presetName: String,
+)
+
+@Serializable
+data class JoinDoctorCallResponse(
+    val data: JoinDoctorCallData? = null,
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+)
+
+fun JoinDoctorCallData.toDomain() = CallJoinInfo(meetingId, participantId, authToken, presetName)
+
+@Serializable
+data class InviteToDoctorCallData(val callId: String, val ringTimeoutSeconds: Long)
+
+@Serializable
+data class InviteToDoctorCallResponse(
+    val data: InviteToDoctorCallData? = null,
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+)
+
+fun InviteToDoctorCallData.toDomain() = DoctorCallInvite(callId, ringTimeoutSeconds)
+
+@Serializable
+data class DoctorChatThreadData(
+    val threadId: String,
+    val counterpartId: String,
+    val counterpartName: String,
+    val counterpartPicture: String? = null,
+    val lastMessagePreview: String? = null,
+    val lastMessageAt: String? = null,
+)
+
+@Serializable
+data class DoctorChatThreadResponse(
+    val data: DoctorChatThreadData? = null,
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+)
+
+@Serializable
+data class DoctorChatThreadsResponse(
+    val data: List<DoctorChatThreadData>? = null,
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+)
+
+@Serializable
+data class DoctorCallActionRes(
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+)
+
+fun DoctorChatThreadData.toDomain() = DoctorChatThread(
+    threadId = threadId, counterpartId = counterpartId, counterpartName = counterpartName,
+    counterpartPicture = counterpartPicture, lastMessagePreview = lastMessagePreview, lastMessageAt = lastMessageAt,
+)
+
+@Serializable
+data class DoctorChatMessagesData(
+    val items: List<DoctorChatMessageData> = emptyList(),
+    val nextCursor: String? = null,
+)
+
+@Serializable
+data class DoctorChatMessagesResponse(
+    val data: DoctorChatMessagesData? = null,
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+)

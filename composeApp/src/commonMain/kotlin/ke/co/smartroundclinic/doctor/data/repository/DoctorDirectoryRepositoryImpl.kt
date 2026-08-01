@@ -8,6 +8,7 @@ import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.directory.GetRecommendedDoctorsRes
 import ke.co.smartroundclinic.doctor.domain.repository.DoctorDirectoryRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 
 class DoctorDirectoryRepositoryImpl(private val client: HttpClient) : DoctorDirectoryRepository {

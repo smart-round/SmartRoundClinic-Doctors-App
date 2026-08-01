@@ -7,7 +7,9 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.retain.retain
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -19,8 +21,15 @@ import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Call
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.ChatList
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Conversation
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.OutgoingCall
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorChatViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorConversationScreen
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorOutgoingCallStatus
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorCall
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorConversation
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.OutgoingDoctorCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.CallScreen
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatListScreen
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatTopTab
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ConversationScreen
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.OutgoingCallScreen
 import kotlinx.coroutines.delay
@@ -34,6 +43,8 @@ fun ChatRoot(
     onPendingNavigated: () -> Unit = {},
     pendingCall: Call? = null,
     onPendingCallNavigated: () -> Unit = {},
+    pendingDoctorChatDoctorId: String? = null,
+    onPendingDoctorChatNavigated: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
 ) {
@@ -41,8 +52,25 @@ fun ChatRoot(
     val isAtRoot = backStack.size == 1
     val vm: ConsultationViewModel = koinViewModel()
     val medicalRecordVm: MedicalRecordViewModel = koinViewModel()
+    val doctorChatVm: DoctorChatViewModel = koinViewModel()
+
+    var chatTopTab by retain { mutableStateOf(ChatTopTab.CONSULTATIONS) }
+    var isSearchingDoctors by retain { mutableStateOf(false) }
+    var doctorSearchQuery by retain { mutableStateOf("") }
 
     SideEffect { onAtRootChanged(isAtRoot) }
+
+    // Services tab's "Chat" CTA (Flow 3) lands here — find-or-create the thread then jump straight
+    // into it, same funnel as starting a chat from the Other Doctors search box.
+    LaunchedEffect(pendingDoctorChatDoctorId) {
+        val doctorId = pendingDoctorChatDoctorId ?: return@LaunchedEffect
+        chatTopTab = ChatTopTab.OTHER_DOCTORS
+        backStack.removeAll { it is DoctorConversation }
+        doctorChatVm.startChatWith(doctorId) { thread ->
+            backStack.add(DoctorConversation(thread.threadId, thread.counterpartName, thread.counterpartPicture))
+        }
+        onPendingDoctorChatNavigated()
+    }
 
     // The chat list has no socket of its own — keep its online/last-seen previews live by polling
     // only while it's the visible screen (stop once a specific conversation is opened).
@@ -81,8 +109,130 @@ fun ChatRoot(
                         backStack.add(Conversation(thread.patientId, thread.counterpartName, thread.latestAppointmentId))
                     },
                     onDeleteThread = { thread -> vm.deleteThread(thread.doctorId, thread.patientId) },
+                    selectedTopTab = chatTopTab,
+                    onTopTabSelected = { chatTopTab = it },
+                    doctorThreads = doctorChatVm.threads,
+                    isSearchingDoctors = isSearchingDoctors,
+                    onToggleDoctorSearch = {
+                        isSearchingDoctors = !isSearchingDoctors
+                        if (isSearchingDoctors) doctorChatVm.loadSearchableDoctors() else doctorSearchQuery = ""
+                    },
+                    doctorSearchQuery = doctorSearchQuery,
+                    onDoctorSearchQueryChange = { doctorSearchQuery = it },
+                    doctorSearchResults = doctorChatVm.searchableDoctors,
+                    isLoadingDoctorSearch = doctorChatVm.isLoadingSearchableDoctors,
+                    onDoctorThreadClick = { thread ->
+                        backStack.add(DoctorConversation(thread.threadId, thread.counterpartName, thread.counterpartPicture))
+                    },
+                    onDoctorResultClick = { doctor ->
+                        doctorChatVm.startChatWith(doctor.id) { thread ->
+                            backStack.add(DoctorConversation(thread.threadId, thread.counterpartName, thread.counterpartPicture))
+                        }
+                    },
                     onProfileClick = onProfileClick,
                     onNotificationsClick = onNotificationsClick,
+                )
+            }
+            entry<DoctorConversation> { dest ->
+                LaunchedEffect(dest.threadId) {
+                    doctorChatVm.connectToThread(dest.threadId)
+                    doctorChatVm.loadHistory(dest.threadId)
+                }
+                DoctorConversationScreen(
+                    counterpartName = dest.counterpartName,
+                    counterpartPicture = dest.counterpartPicture,
+                    messages = doctorChatVm.messages,
+                    isLoadingHistory = doctorChatVm.isLoadingHistory,
+                    isLoadingMoreHistory = doctorChatVm.isLoadingMoreHistory,
+                    hasMoreHistory = doctorChatVm.hasMoreHistory,
+                    onLoadMoreHistory = { doctorChatVm.loadMoreHistory(dest.threadId) },
+                    isConnected = doctorChatVm.isConnected,
+                    isUploadingFile = doctorChatVm.isUploadingFile,
+                    pendingFiles = doctorChatVm.pendingFiles,
+                    currentUserId = doctorChatVm.currentUserId,
+                    incomingCall = doctorChatVm.incomingCall,
+                    onAcceptIncomingCall = {
+                        val call = doctorChatVm.incomingCall ?: return@DoctorConversationScreen
+                        doctorChatVm.clearIncomingCall()
+                        backStack.add(DoctorCall(dest.threadId, isVideo = call.isVideo))
+                    },
+                    onDeclineIncomingCall = { doctorChatVm.declineIncomingCall(dest.threadId) },
+                    onBack = {
+                        doctorChatVm.disconnect()
+                        backStack.removeLastOrNull()
+                    },
+                    onVoiceCall = { backStack.add(OutgoingDoctorCall(dest.threadId, dest.counterpartName, isVideo = false)) },
+                    onVideoCall = { backStack.add(OutgoingDoctorCall(dest.threadId, dest.counterpartName, isVideo = true)) },
+                    onSendText = doctorChatVm::sendText,
+                    onSendFile = { fileName, contentType, bytes -> doctorChatVm.sendFile(dest.threadId, fileName, contentType, bytes) },
+                )
+            }
+            entry<OutgoingDoctorCall> { dest ->
+                LaunchedEffect(dest.threadId) {
+                    doctorChatVm.startCall(dest.threadId, dest.isVideo)
+                }
+                DisposableEffect(dest.threadId) {
+                    onDispose {
+                        val status = doctorChatVm.outgoingCallStatus
+                        if (status is DoctorOutgoingCallStatus.Calling) {
+                            doctorChatVm.cancelOutgoingCall(dest.threadId, status.callId)
+                        }
+                    }
+                }
+
+                val status = doctorChatVm.outgoingCallStatus
+                LaunchedEffect(status) {
+                    when (val s = status) {
+                        is DoctorOutgoingCallStatus.Answered -> {
+                            doctorChatVm.clearOutgoingCallStatus()
+                            backStack.removeLastOrNull()
+                            backStack.add(DoctorCall(dest.threadId, isVideo = dest.isVideo))
+                        }
+                        is DoctorOutgoingCallStatus.Declined -> {
+                            doctorChatVm.clearOutgoingCallStatus()
+                            backStack.removeLastOrNull()
+                        }
+                        is DoctorOutgoingCallStatus.Calling -> {
+                            // Mirrors the backend's RedisKeys.CALL_INVITE_TTL_SECONDS ring timeout.
+                            delay(45_000L)
+                            if (doctorChatVm.outgoingCallStatus == s) {
+                                doctorChatVm.cancelOutgoingCall(dest.threadId, s.callId)
+                                backStack.removeLastOrNull()
+                            }
+                        }
+                        null -> Unit
+                    }
+                }
+
+                OutgoingCallScreen(
+                    calleeName = dest.calleeName,
+                    statusText = when (status) {
+                        is DoctorOutgoingCallStatus.Declined -> "Call declined"
+                        else -> "Calling…"
+                    },
+                    onCancel = {
+                        val s = doctorChatVm.outgoingCallStatus
+                        if (s is DoctorOutgoingCallStatus.Calling) doctorChatVm.cancelOutgoingCall(dest.threadId, s.callId)
+                        else doctorChatVm.clearOutgoingCallStatus()
+                        backStack.removeLastOrNull()
+                    },
+                )
+            }
+            entry<DoctorCall> { dest ->
+                val callConversation = backStack.filterIsInstance<DoctorConversation>().firstOrNull()
+                val counterpartName = callConversation?.counterpartName ?: "Doctor"
+                val counterpartPicture = callConversation?.counterpartPicture
+                CallScreen(
+                    participantName = counterpartName,
+                    participantPicture = counterpartPicture,
+                    selfPicture = doctorChatVm.currentUserProfilePicture,
+                    isVideo = dest.isVideo,
+                    joinState = doctorChatVm.callJoinState,
+                    onJoin = { doctorChatVm.joinCall(dest.threadId) },
+                    onEnd = {
+                        doctorChatVm.endCall(dest.threadId)
+                        backStack.removeLastOrNull()
+                    },
                 )
             }
             entry<Conversation> { dest ->

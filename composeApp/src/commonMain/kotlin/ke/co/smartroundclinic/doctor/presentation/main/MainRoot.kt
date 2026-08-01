@@ -81,14 +81,12 @@ import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.Notific
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.services.ServicesRoot
 import ke.co.smartroundclinic.doctor.presentation.rememberSvgPainter
-import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientStart
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.runtime.collectAsState
 import smartroundclinic.composeapp.generated.resources.Res
@@ -125,6 +123,7 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
     var pendingHomeDestinations by remember { mutableStateOf<List<NavKey>>(emptyList()) }
     var pendingChatConversation by remember { mutableStateOf<Conversation?>(null) }
     var pendingCall by remember { mutableStateOf<Call?>(null) }
+    var pendingDoctorChatDoctorId by remember { mutableStateOf<String?>(null) }
     var pendingBookingId by remember { mutableStateOf<String?>(null) }
     var pendingSupportTicketId by remember { mutableStateOf<String?>(null) }
     var inComplianceFixMode by remember { mutableStateOf(false) }
@@ -232,15 +231,15 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                 entry<Services> {
                     val personalInfoViewModel: PersonalInfoViewModel = koinViewModel()
                     val user by personalInfoViewModel.user.collectAsState()
-                    val snackbarController: SnackbarController = koinInject()
                     ServicesRoot(
                         selfDoctorId = user?.id,
                         onAtRootChanged = { isAtRoot = it },
                         onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
                         onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
-                        // Doctor-to-doctor chat lands in a follow-up change (CR-SMRC-0001 round 1,
-                        // Flow 4) — until then, Connect just confirms the doctor was found.
-                        onPrimaryAction = { doctor -> snackbarController.show("Doctor-to-doctor chat is coming soon") },
+                        onPrimaryAction = { doctor ->
+                            selectTab(Chat)
+                            pendingDoctorChatDoctorId = doctor.id
+                        },
                     )
                 }
                 entry<Bookings> {
@@ -266,6 +265,8 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                         onPendingNavigated = { pendingChatConversation = null },
                         pendingCall = pendingCall,
                         onPendingCallNavigated = { pendingCall = null },
+                        pendingDoctorChatDoctorId = pendingDoctorChatDoctorId,
+                        onPendingDoctorChatNavigated = { pendingDoctorChatDoctorId = null },
                         onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
                         onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
                     )

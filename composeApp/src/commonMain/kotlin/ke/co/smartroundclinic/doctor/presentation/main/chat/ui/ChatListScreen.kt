@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -38,19 +39,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
+import ke.co.smartroundclinic.doctor.domain.model.Doctor
+import ke.co.smartroundclinic.doctor.domain.model.DoctorChatThread
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorThreadListScreen
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
+import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+
+/** Mirrors bookings' BookingTopTab pattern: Consultations is the existing patient-chat list,
+ * unchanged; Other Doctors is the new doctor-to-doctor chat list (see :doctor-chat backend). */
+internal enum class ChatTopTab(val label: String) {
+    CONSULTATIONS("Consultations"),
+    OTHER_DOCTORS("Other Doctors"),
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +71,17 @@ internal fun ChatListScreen(
     threads: List<ConversationThread>,
     onThreadClick: (ConversationThread) -> Unit,
     onDeleteThread: (ConversationThread) -> Unit = {},
+    selectedTopTab: ChatTopTab,
+    onTopTabSelected: (ChatTopTab) -> Unit,
+    doctorThreads: List<DoctorChatThread> = emptyList(),
+    isSearchingDoctors: Boolean = false,
+    onToggleDoctorSearch: () -> Unit = {},
+    doctorSearchQuery: String = "",
+    onDoctorSearchQueryChange: (String) -> Unit = {},
+    doctorSearchResults: List<Doctor> = emptyList(),
+    isLoadingDoctorSearch: Boolean = false,
+    onDoctorThreadClick: (DoctorChatThread) -> Unit = {},
+    onDoctorResultClick: (Doctor) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -66,22 +90,42 @@ internal fun ChatListScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { DashboardHeader(title = "Consultations", onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick) },
+        topBar = { DashboardHeader(title = "Chat", onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick) },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (threads.isEmpty()) {
-                EmptyView(modifier = Modifier.weight(1f))
-            } else {
-                LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(threads, key = { it.threadId }) { thread ->
-                        ThreadRow(
-                            thread = thread,
-                            onClick = { onThreadClick(thread) },
-                            onLongClick = { threadPendingDelete = thread },
-                        )
-                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(start = 76.dp))
+            ChatTopTabRow(selectedTab = selectedTopTab, onTabSelected = onTopTabSelected)
+
+            when (selectedTopTab) {
+                ChatTopTab.CONSULTATIONS -> {
+                    if (threads.isEmpty()) {
+                        EmptyView(modifier = Modifier.weight(1f))
+                    } else {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
+                            items(threads, key = { it.threadId }) { thread ->
+                                ThreadRow(
+                                    thread = thread,
+                                    onClick = { onThreadClick(thread) },
+                                    onLongClick = { threadPendingDelete = thread },
+                                )
+                                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(start = 76.dp))
+                            }
+                        }
                     }
+                }
+                ChatTopTab.OTHER_DOCTORS -> {
+                    DoctorThreadListScreen(
+                        threads = doctorThreads,
+                        isSearching = isSearchingDoctors,
+                        onToggleSearch = onToggleDoctorSearch,
+                        searchQuery = doctorSearchQuery,
+                        onSearchQueryChange = onDoctorSearchQueryChange,
+                        searchResults = doctorSearchResults,
+                        isLoadingSearch = isLoadingDoctorSearch,
+                        onThreadClick = onDoctorThreadClick,
+                        onDoctorResultClick = onDoctorResultClick,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
@@ -101,6 +145,47 @@ internal fun ChatListScreen(
                 TextButton(onClick = { threadPendingDelete = null }) { Text("Cancel") }
             },
         )
+    }
+}
+
+@Composable
+private fun ChatTopTabRow(
+    selectedTab: ChatTopTab,
+    onTabSelected: (ChatTopTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        ChatTopTab.entries.forEach { tab ->
+            val isSelected = selectedTab == tab
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = { onTabSelected(tab) },
+                    )
+                    .padding(vertical = 4.dp),
+            ) {
+                Text(
+                    text = tab.label,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) Primary40 else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .height(3.dp)
+                        .width(28.dp)
+                        .clip(ShapePill)
+                        .background(if (isSelected) Primary40 else Color.Transparent),
+                )
+            }
+        }
     }
 }
 
