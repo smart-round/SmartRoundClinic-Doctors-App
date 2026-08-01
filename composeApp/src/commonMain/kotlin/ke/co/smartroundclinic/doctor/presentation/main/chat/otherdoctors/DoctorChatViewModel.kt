@@ -22,6 +22,8 @@ import ke.co.smartroundclinic.doctor.data.remote.dto.response.DoctorCallInviteEv
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.DoctorChatMessageData
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.DoctorChatWsEventPeek
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.DoctorChatWsOutgoing
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.DoctorPresenceEventData
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.DoctorTypingEventData
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.toDomain
 import ke.co.smartroundclinic.doctor.domain.model.CallJoinInfo
 import ke.co.smartroundclinic.doctor.domain.model.Doctor
@@ -44,6 +46,7 @@ import kotlinx.serialization.json.Json
 
 private val wsJson = Json { ignoreUnknownKeys = true; isLenient = true; explicitNulls = false }
 private const val HISTORY_PAGE_SIZE = 20
+private const val DOCTORS_PAGE_SIZE = 20
 
 /** Local, ChatRoot-scoped ringing state — see this feature's scope notes: unlike consultation's
  * calls, doctor-chat calling doesn't integrate with CallKit/background push this round, so a
@@ -65,8 +68,8 @@ data class DoctorIncomingCall(
 )
 
 /**
- * Mirrors the message-send/receive slice of [ke.co.smartroundclinic.doctor.presentation.main.chat.ConsultationViewModel],
- * simplified: no typing/presence relay (see :doctor-chat backend's own scope notes) and calling
+ * Mirrors [ke.co.smartroundclinic.doctor.presentation.main.chat.ConsultationViewModel]'s
+ * message-send/receive/typing/presence slice — the one deliberate difference is that calling
  * state is local rather than routed through the global OutgoingCallState/IncomingCallHandler
  * singletons, which stay patient-call-only.
  */
@@ -79,27 +82,80 @@ class DoctorChatViewModel(
     private val snackbarController: SnackbarController,
 ) : ViewModel() {
 
+    // Existing conversations, newest-message-first (server-sorted) — rendered above the directory
+    // in DoctorDirectoryScreen so recent chats always surface at the top, with online status and
+    // last-message timestamp, mirroring the Consultations tab's thread list.
     var threads by mutableStateOf<List<DoctorChatThread>>(emptyList())
         private set
     var isLoadingThreads by mutableStateOf(false)
         private set
 
-    // A general-purpose pool fetched once for the "search any doctor by name" box — filters
-    // client-side rather than hitting a dedicated name-search endpoint, which doesn't exist yet.
-    var searchableDoctors by mutableStateOf<List<Doctor>>(emptyList())
-        private set
-    var isLoadingSearchableDoctors by mutableStateOf(false)
-        private set
-
-    fun loadSearchableDoctors() {
-        if (searchableDoctors.isNotEmpty() || isLoadingSearchableDoctors) return
+    fun loadThreads() {
         viewModelScope.launch {
-            isLoadingSearchableDoctors = true
-            when (val result = getRecommendedDoctorsUseCase(null, 1, 50, currentUserId.ifBlank { null })) {
-                is Resource.Success -> searchableDoctors = result.data?.doctors ?: emptyList()
+            isLoadingThreads = true
+            when (val result = repository.listThreads()) {
+                is Resource.Success -> threads = result.data ?: emptyList()
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to load conversations", isError = true)
                 else -> {}
             }
-            isLoadingSearchableDoctors = false
+            isLoadingThreads = false
+        }
+    }
+
+    // The tab's secondary content: a paginated, always-populated directory of verified doctors (not
+    // gated behind search — search only filters what's already loaded, see onSearchQueryChange
+    // usage in DoctorDirectoryScreen). Fetched immediately on open and infinite-scrolled.
+    var doctors by mutableStateOf<List<Doctor>>(emptyList())
+        private set
+    var isLoadingDoctors by mutableStateOf(false)
+        private set
+    var isLoadingMoreDoctors by mutableStateOf(false)
+        private set
+    var hasMoreDoctors by mutableStateOf(false)
+        private set
+    private var doctorsPage = 0
+    private var doctorsTotalPages = 1
+
+    fun loadDoctors() {
+        if (doctors.isNotEmpty() || isLoadingDoctors) return
+        viewModelScope.launch {
+            isLoadingDoctors = true
+            when (val result = getRecommendedDoctorsUseCase(null, 1, DOCTORS_PAGE_SIZE, currentUserId.ifBlank { null })) {
+                is Resource.Success -> {
+                    val page = result.data
+                    // Defensive filter in addition to the backend's excludeDoctorId param — this
+                    // call can fire before currentUserId finishes loading from Room (see init{}),
+                    // in which case excludeDoctorId is sent as null and the backend can't exclude
+                    // us; filtering here guarantees self never shows regardless of that race.
+                    doctors = page?.doctors.orEmpty().filterNot { it.id == currentUserId }
+                    doctorsPage = page?.page ?: 1
+                    doctorsTotalPages = page?.totalPages ?: 1
+                    hasMoreDoctors = doctorsPage < doctorsTotalPages
+                }
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to load doctors", isError = true)
+                else -> {}
+            }
+            isLoadingDoctors = false
+        }
+    }
+
+    fun loadMoreDoctors() {
+        if (!hasMoreDoctors || isLoadingMoreDoctors || isLoadingDoctors) return
+        viewModelScope.launch {
+            isLoadingMoreDoctors = true
+            when (val result = getRecommendedDoctorsUseCase(null, doctorsPage + 1, DOCTORS_PAGE_SIZE, currentUserId.ifBlank { null })) {
+                is Resource.Success -> {
+                    val page = result.data
+                    val existingIds = doctors.map { it.id }.toSet()
+                    doctors = doctors + page?.doctors.orEmpty().filterNot { it.id in existingIds || it.id == currentUserId }
+                    doctorsPage = page?.page ?: doctorsPage
+                    doctorsTotalPages = page?.totalPages ?: doctorsTotalPages
+                    hasMoreDoctors = doctorsPage < doctorsTotalPages
+                }
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to load more doctors", isError = true)
+                else -> {}
+            }
+            isLoadingMoreDoctors = false
         }
     }
 
@@ -142,6 +198,15 @@ class DoctorChatViewModel(
     var incomingCall by mutableStateOf<DoctorIncomingCall?>(null)
         private set
 
+    var otherPartyTyping by mutableStateOf(false)
+        private set
+    var otherPartyOnline by mutableStateOf(false)
+        private set
+    var otherPartyLastSeenAt by mutableStateOf<String?>(null)
+        private set
+    private var typingClearJob: Job? = null
+    private var lastTypingSentTrue = false
+
     private var wsJob: Job? = null
     private var wsSession: DefaultWebSocketSession? = null
 
@@ -153,21 +218,16 @@ class DoctorChatViewModel(
             }
         }
         loadThreads()
-    }
-
-    fun loadThreads() {
-        viewModelScope.launch {
-            isLoadingThreads = true
-            when (val result = repository.listThreads()) {
-                is Resource.Success -> threads = result.data ?: emptyList()
-                is Resource.Error -> snackbarController.show(result.message ?: "Failed to load conversations", isError = true)
-                else -> {}
-            }
-            isLoadingThreads = false
-        }
+        loadDoctors()
     }
 
     fun loadHistory(threadId: String) {
+        // Seed presence from the already-fetched thread list — PRESENCE frames on the live socket
+        // will keep it fresh from here.
+        threads.firstOrNull { it.threadId == threadId }?.let {
+            otherPartyOnline = it.isOnline
+            otherPartyLastSeenAt = it.lastSeenAt
+        }
         viewModelScope.launch {
             isLoadingHistory = true
             messages.clear()
@@ -226,6 +286,17 @@ class DoctorChatViewModel(
                                 val raw = frame.readText()
                                 try {
                                     when (wsJson.decodeFromString<DoctorChatWsEventPeek>(raw).type) {
+                                        "TYPING" -> {
+                                            val event = wsJson.decodeFromString<DoctorTypingEventData>(raw)
+                                            withContext(Dispatchers.Main) { handleTypingEvent(event.isTyping) }
+                                        }
+                                        "PRESENCE" -> {
+                                            val event = wsJson.decodeFromString<DoctorPresenceEventData>(raw)
+                                            withContext(Dispatchers.Main) {
+                                                otherPartyOnline = event.isOnline
+                                                otherPartyLastSeenAt = event.lastSeenAt
+                                            }
+                                        }
                                         "CALL_INVITE" -> {
                                             val event = wsJson.decodeFromString<DoctorCallInviteEventData>(raw)
                                             withContext(Dispatchers.Main) {
@@ -283,6 +354,40 @@ class DoctorChatViewModel(
         wsJob = null
         currentThreadId = null
         isConnected = false
+        typingClearJob?.cancel()
+        otherPartyTyping = false
+        otherPartyOnline = false
+        otherPartyLastSeenAt = null
+        lastTypingSentTrue = false
+    }
+
+    private fun handleTypingEvent(isTyping: Boolean) {
+        typingClearJob?.cancel()
+        otherPartyTyping = isTyping
+        if (isTyping) {
+            typingClearJob = viewModelScope.launch {
+                delay(6_000L)
+                otherPartyTyping = false
+            }
+        }
+    }
+
+    /** Debounced — only sends isTyping=true once per burst of typing; isTyping=false always sends immediately. */
+    fun sendTypingEvent(isTyping: Boolean) {
+        val session = wsSession
+        if (session == null) {
+            Napier.w(tag = "DoctorChatTyping", message = "sendTypingEvent(isTyping=$isTyping) dropped — no open wsSession (isConnected=$isConnected)")
+            return
+        }
+        if (isTyping && lastTypingSentTrue) return
+        lastTypingSentTrue = isTyping
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                session.send(Frame.Text(wsJson.encodeToString(DoctorChatWsOutgoing(type = "TYPING", isTyping = isTyping))))
+            } catch (e: Exception) {
+                Napier.w(tag = "DoctorChatTyping", message = "Failed to send TYPING isTyping=$isTyping: ${e.message}")
+            }
+        }
     }
 
     fun sendText(text: String) {

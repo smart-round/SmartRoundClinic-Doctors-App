@@ -2,9 +2,7 @@ package ke.co.smartroundclinic.doctor.presentation.main.chat.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +26,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,10 +49,9 @@ import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
 import ke.co.smartroundclinic.doctor.domain.model.Doctor
 import ke.co.smartroundclinic.doctor.domain.model.DoctorChatThread
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
-import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorThreadListScreen
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorDirectoryScreen
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
-import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -59,7 +59,9 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
 /** Mirrors bookings' BookingTopTab pattern: Consultations is the existing patient-chat list,
- * unchanged; Other Doctors is the new doctor-to-doctor chat list (see :doctor-chat backend). */
+ * unchanged; Other Doctors is the doctor directory + doctor-to-doctor chat (see :doctor-chat
+ * backend). Rendered in the header itself (bottomContent), same idiom as WalletScreen's tabs —
+ * each tab fills half the header width via the default (non-scrollable) TabRow layout. */
 internal enum class ChatTopTab(val label: String) {
     CONSULTATIONS("Consultations"),
     OTHER_DOCTORS("Other Doctors"),
@@ -74,28 +76,64 @@ internal fun ChatListScreen(
     selectedTopTab: ChatTopTab,
     onTopTabSelected: (ChatTopTab) -> Unit,
     doctorThreads: List<DoctorChatThread> = emptyList(),
+    doctors: List<Doctor> = emptyList(),
+    isLoadingDoctors: Boolean = false,
+    isLoadingMoreDoctors: Boolean = false,
+    hasMoreDoctors: Boolean = false,
+    onLoadMoreDoctors: () -> Unit = {},
     isSearchingDoctors: Boolean = false,
     onToggleDoctorSearch: () -> Unit = {},
     doctorSearchQuery: String = "",
     onDoctorSearchQueryChange: (String) -> Unit = {},
-    doctorSearchResults: List<Doctor> = emptyList(),
-    isLoadingDoctorSearch: Boolean = false,
     onDoctorThreadClick: (DoctorChatThread) -> Unit = {},
-    onDoctorResultClick: (Doctor) -> Unit = {},
+    onDoctorClick: (Doctor) -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var threadPendingDelete by remember { mutableStateOf<ConversationThread?>(null) }
+    val selectedIndex = ChatTopTab.entries.indexOf(selectedTopTab)
 
     Scaffold(
         modifier = modifier,
-        topBar = { DashboardHeader(title = "Chat", onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick) },
+        topBar = {
+            DashboardHeader(
+                title = "Chat",
+                onProfileClick = onProfileClick,
+                onNotificationsClick = onNotificationsClick,
+                bottomContent = {
+                    TabRow(
+                        selectedTabIndex = selectedIndex,
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White,
+                        indicator = { tabPositions ->
+                            SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
+                                color = Color.White,
+                            )
+                        },
+                        divider = {},
+                    ) {
+                        ChatTopTab.entries.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = selectedIndex == index,
+                                onClick = { onTopTabSelected(tab) },
+                                text = {
+                                    Text(
+                                        text = tab.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (selectedIndex == index) Color.White else Color.White.copy(alpha = 0.65f),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                },
+            )
+        },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            ChatTopTabRow(selectedTab = selectedTopTab, onTabSelected = onTopTabSelected)
-
             when (selectedTopTab) {
                 ChatTopTab.CONSULTATIONS -> {
                     if (threads.isEmpty()) {
@@ -114,16 +152,19 @@ internal fun ChatListScreen(
                     }
                 }
                 ChatTopTab.OTHER_DOCTORS -> {
-                    DoctorThreadListScreen(
+                    DoctorDirectoryScreen(
                         threads = doctorThreads,
+                        doctors = doctors,
+                        isLoadingDoctors = isLoadingDoctors,
+                        isLoadingMoreDoctors = isLoadingMoreDoctors,
+                        hasMoreDoctors = hasMoreDoctors,
+                        onLoadMoreDoctors = onLoadMoreDoctors,
                         isSearching = isSearchingDoctors,
                         onToggleSearch = onToggleDoctorSearch,
                         searchQuery = doctorSearchQuery,
                         onSearchQueryChange = onDoctorSearchQueryChange,
-                        searchResults = doctorSearchResults,
-                        isLoadingSearch = isLoadingDoctorSearch,
                         onThreadClick = onDoctorThreadClick,
-                        onDoctorResultClick = onDoctorResultClick,
+                        onDoctorClick = onDoctorClick,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -145,47 +186,6 @@ internal fun ChatListScreen(
                 TextButton(onClick = { threadPendingDelete = null }) { Text("Cancel") }
             },
         )
-    }
-}
-
-@Composable
-private fun ChatTopTabRow(
-    selectedTab: ChatTopTab,
-    onTabSelected: (ChatTopTab) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        ChatTopTab.entries.forEach { tab ->
-            val isSelected = selectedTab == tab
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        onClick = { onTabSelected(tab) },
-                    )
-                    .padding(vertical = 4.dp),
-            ) {
-                Text(
-                    text = tab.label,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected) Primary40 else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .height(3.dp)
-                        .width(28.dp)
-                        .clip(ShapePill)
-                        .background(if (isSelected) Primary40 else Color.Transparent),
-                )
-            }
-        }
     }
 }
 

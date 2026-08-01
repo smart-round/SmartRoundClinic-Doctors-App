@@ -75,7 +75,14 @@ fun ChatRoot(
     // The chat list has no socket of its own — keep its online/last-seen previews live by polling
     // only while it's the visible screen (stop once a specific conversation is opened).
     LaunchedEffect(isAtRoot) {
-        if (isAtRoot) vm.startThreadsPolling() else vm.stopThreadsPolling()
+        if (isAtRoot) {
+            vm.startThreadsPolling()
+            // Refreshes recency/last-message-preview/online-status for the Other Doctors tab's
+            // "Recent" section every time the doctor returns to the chat list root.
+            doctorChatVm.loadThreads()
+        } else {
+            vm.stopThreadsPolling()
+        }
     }
 
     LaunchedEffect(pendingConversation) {
@@ -112,19 +119,22 @@ fun ChatRoot(
                     selectedTopTab = chatTopTab,
                     onTopTabSelected = { chatTopTab = it },
                     doctorThreads = doctorChatVm.threads,
+                    doctors = doctorChatVm.doctors,
+                    isLoadingDoctors = doctorChatVm.isLoadingDoctors,
+                    isLoadingMoreDoctors = doctorChatVm.isLoadingMoreDoctors,
+                    hasMoreDoctors = doctorChatVm.hasMoreDoctors,
+                    onLoadMoreDoctors = { doctorChatVm.loadMoreDoctors() },
                     isSearchingDoctors = isSearchingDoctors,
                     onToggleDoctorSearch = {
                         isSearchingDoctors = !isSearchingDoctors
-                        if (isSearchingDoctors) doctorChatVm.loadSearchableDoctors() else doctorSearchQuery = ""
+                        if (!isSearchingDoctors) doctorSearchQuery = ""
                     },
                     doctorSearchQuery = doctorSearchQuery,
                     onDoctorSearchQueryChange = { doctorSearchQuery = it },
-                    doctorSearchResults = doctorChatVm.searchableDoctors,
-                    isLoadingDoctorSearch = doctorChatVm.isLoadingSearchableDoctors,
                     onDoctorThreadClick = { thread ->
                         backStack.add(DoctorConversation(thread.threadId, thread.counterpartName, thread.counterpartPicture))
                     },
-                    onDoctorResultClick = { doctor ->
+                    onDoctorClick = { doctor ->
                         doctorChatVm.startChatWith(doctor.id) { thread ->
                             backStack.add(DoctorConversation(thread.threadId, thread.counterpartName, thread.counterpartPicture))
                         }
@@ -150,6 +160,10 @@ fun ChatRoot(
                     isUploadingFile = doctorChatVm.isUploadingFile,
                     pendingFiles = doctorChatVm.pendingFiles,
                     currentUserId = doctorChatVm.currentUserId,
+                    otherPartyTyping = doctorChatVm.otherPartyTyping,
+                    otherPartyOnline = doctorChatVm.otherPartyOnline,
+                    otherPartyLastSeenAt = doctorChatVm.otherPartyLastSeenAt,
+                    onTyping = doctorChatVm::sendTypingEvent,
                     incomingCall = doctorChatVm.incomingCall,
                     onAcceptIncomingCall = {
                         val call = doctorChatVm.incomingCall ?: return@DoctorConversationScreen

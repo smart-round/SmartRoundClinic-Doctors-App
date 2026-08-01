@@ -36,10 +36,25 @@ fun DoctorChatFileData.toDomain() = DoctorChatFileAttachment(fileName, url, cont
 
 /** Outgoing WS text-frame envelope — same shape as consultation's, minus the fields this module doesn't use. */
 @Serializable
-data class DoctorChatWsOutgoing(val type: String, val message: String? = null)
+data class DoctorChatWsOutgoing(val type: String, val message: String? = null, val isTyping: Boolean? = null)
 
 @Serializable
 data class DoctorChatWsEventPeek(val type: String? = null)
+
+@Serializable
+data class DoctorTypingEventData(
+    val type: String = "TYPING",
+    val senderId: String,
+    val isTyping: Boolean,
+)
+
+@Serializable
+data class DoctorPresenceEventData(
+    val type: String = "PRESENCE",
+    val userId: String,
+    val isOnline: Boolean,
+    val lastSeenAt: String? = null,
+)
 
 @Serializable
 data class DoctorCallInviteEventData(
@@ -107,6 +122,8 @@ data class DoctorChatThreadData(
     val counterpartPicture: String? = null,
     val lastMessagePreview: String? = null,
     val lastMessageAt: String? = null,
+    val isOnline: Boolean = false,
+    val lastSeenAt: String? = null,
 )
 
 @Serializable
@@ -135,6 +152,7 @@ data class DoctorCallActionRes(
 fun DoctorChatThreadData.toDomain() = DoctorChatThread(
     threadId = threadId, counterpartId = counterpartId, counterpartName = counterpartName,
     counterpartPicture = counterpartPicture, lastMessagePreview = lastMessagePreview, lastMessageAt = lastMessageAt,
+    isOnline = isOnline, lastSeenAt = lastSeenAt,
 )
 
 @Serializable
