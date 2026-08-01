@@ -25,8 +25,10 @@ import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Convers
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.OutgoingCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorChatViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorConversationScreen
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorDirectoryScreen
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorConversation
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.OtherDoctorsList
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.OutgoingDoctorCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.CallScreen
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatListScreen
@@ -60,8 +62,6 @@ fun ChatRoot(
     val doctorChatVm: DoctorChatViewModel = koinViewModel()
 
     var chatTopTab by retain { mutableStateOf(ChatTopTab.CONSULTATIONS) }
-    var isSearchingDoctors by retain { mutableStateOf(false) }
-    var doctorSearchQuery by retain { mutableStateOf("") }
 
     SideEffect { onAtRootChanged(isAtRoot) }
 
@@ -148,28 +148,28 @@ fun ChatRoot(
                     selectedTopTab = chatTopTab,
                     onTopTabSelected = { chatTopTab = it },
                     doctorThreads = doctorChatVm.threads,
+                    onDoctorThreadClick = { thread ->
+                        backStack.add(DoctorConversation(thread.threadId, thread.counterpartName, thread.counterpartPicture))
+                    },
+                    onOpenAllDoctors = { backStack.add(OtherDoctorsList) },
+                    onProfileClick = onProfileClick,
+                    onNotificationsClick = onNotificationsClick,
+                )
+            }
+            entry<OtherDoctorsList> {
+                DoctorDirectoryScreen(
                     doctors = doctorChatVm.doctors,
                     isLoadingDoctors = doctorChatVm.isLoadingDoctors,
                     isLoadingMoreDoctors = doctorChatVm.isLoadingMoreDoctors,
                     hasMoreDoctors = doctorChatVm.hasMoreDoctors,
                     onLoadMoreDoctors = { doctorChatVm.loadMoreDoctors() },
-                    isSearchingDoctors = isSearchingDoctors,
-                    onToggleDoctorSearch = {
-                        isSearchingDoctors = !isSearchingDoctors
-                        if (!isSearchingDoctors) doctorSearchQuery = ""
-                    },
-                    doctorSearchQuery = doctorSearchQuery,
-                    onDoctorSearchQueryChange = { doctorSearchQuery = it },
-                    onDoctorThreadClick = { thread ->
-                        backStack.add(DoctorConversation(thread.threadId, thread.counterpartName, thread.counterpartPicture))
-                    },
+                    onBack = { backStack.removeLastOrNull() },
                     onDoctorClick = { doctor ->
                         doctorChatVm.startChatWith(doctor.id) { thread ->
+                            backStack.removeAll { it is OtherDoctorsList }
                             backStack.add(DoctorConversation(thread.threadId, thread.counterpartName, thread.counterpartPicture))
                         }
                     },
-                    onProfileClick = onProfileClick,
-                    onNotificationsClick = onNotificationsClick,
                 )
             }
             entry<DoctorConversation> { dest ->

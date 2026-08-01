@@ -46,10 +46,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
-import ke.co.smartroundclinic.doctor.domain.model.Doctor
 import ke.co.smartroundclinic.doctor.domain.model.DoctorChatThread
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
-import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorDirectoryScreen
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorChatsListScreen
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
@@ -76,17 +75,8 @@ internal fun ChatListScreen(
     selectedTopTab: ChatTopTab,
     onTopTabSelected: (ChatTopTab) -> Unit,
     doctorThreads: List<DoctorChatThread> = emptyList(),
-    doctors: List<Doctor> = emptyList(),
-    isLoadingDoctors: Boolean = false,
-    isLoadingMoreDoctors: Boolean = false,
-    hasMoreDoctors: Boolean = false,
-    onLoadMoreDoctors: () -> Unit = {},
-    isSearchingDoctors: Boolean = false,
-    onToggleDoctorSearch: () -> Unit = {},
-    doctorSearchQuery: String = "",
-    onDoctorSearchQueryChange: (String) -> Unit = {},
     onDoctorThreadClick: (DoctorChatThread) -> Unit = {},
-    onDoctorClick: (Doctor) -> Unit = {},
+    onOpenAllDoctors: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -152,19 +142,10 @@ internal fun ChatListScreen(
                     }
                 }
                 ChatTopTab.OTHER_DOCTORS -> {
-                    DoctorDirectoryScreen(
+                    DoctorChatsListScreen(
                         threads = doctorThreads,
-                        doctors = doctors,
-                        isLoadingDoctors = isLoadingDoctors,
-                        isLoadingMoreDoctors = isLoadingMoreDoctors,
-                        hasMoreDoctors = hasMoreDoctors,
-                        onLoadMoreDoctors = onLoadMoreDoctors,
-                        isSearching = isSearchingDoctors,
-                        onToggleSearch = onToggleDoctorSearch,
-                        searchQuery = doctorSearchQuery,
-                        onSearchQueryChange = onDoctorSearchQueryChange,
                         onThreadClick = onDoctorThreadClick,
-                        onDoctorClick = onDoctorClick,
+                        onOpenAllDoctors = onOpenAllDoctors,
                         modifier = Modifier.weight(1f),
                     )
                 }
