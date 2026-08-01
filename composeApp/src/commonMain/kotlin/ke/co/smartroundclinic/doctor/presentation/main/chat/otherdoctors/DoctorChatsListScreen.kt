@@ -61,10 +61,13 @@ internal fun DoctorChatsListScreen(
     var isSearching by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
+    // A thread exists as soon as either side hits "Connect", before any message is actually
+    // sent — only show it here once there's something to actually show a preview/timestamp for.
+    val threadsWithMessages = threads.filter { it.lastMessageAt != null }
     val visibleThreads = if (searchQuery.isNotBlank()) {
-        threads.filter { it.counterpartName.contains(searchQuery, ignoreCase = true) }
+        threadsWithMessages.filter { it.counterpartName.contains(searchQuery, ignoreCase = true) }
     } else {
-        threads
+        threadsWithMessages
     }
 
     Box(modifier = modifier.fillMaxSize()) {
