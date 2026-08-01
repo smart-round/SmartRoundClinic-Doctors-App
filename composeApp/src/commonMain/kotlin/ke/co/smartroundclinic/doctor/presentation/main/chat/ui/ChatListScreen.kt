@@ -49,6 +49,7 @@ import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
 import ke.co.smartroundclinic.doctor.domain.model.DoctorChatThread
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorChatsListScreen
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.SearchHeaderRow
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
@@ -82,7 +83,15 @@ internal fun ChatListScreen(
     modifier: Modifier = Modifier,
 ) {
     var threadPendingDelete by remember { mutableStateOf<ConversationThread?>(null) }
+    var isSearching by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val selectedIndex = ChatTopTab.entries.indexOf(selectedTopTab)
+
+    val visibleThreads = if (searchQuery.isNotBlank()) {
+        threads.filter { it.counterpartName.contains(searchQuery, ignoreCase = true) }
+    } else {
+        threads
+    }
 
     Scaffold(
         modifier = modifier,
@@ -126,11 +135,20 @@ internal fun ChatListScreen(
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             when (selectedTopTab) {
                 ChatTopTab.CONSULTATIONS -> {
-                    if (threads.isEmpty()) {
-                        EmptyView(modifier = Modifier.weight(1f))
+                    SearchHeaderRow(
+                        isSearching = isSearching,
+                        onToggleSearch = { isSearching = !isSearching; if (!isSearching) searchQuery = "" },
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        hintText = "Your conversations with patients",
+                    )
+                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+                    if (visibleThreads.isEmpty()) {
+                        EmptyView(hasQuery = searchQuery.isNotBlank(), modifier = Modifier.weight(1f))
                     } else {
                         LazyColumn(modifier = Modifier.weight(1f)) {
-                            items(threads, key = { it.threadId }) { thread ->
+                            items(visibleThreads, key = { it.threadId }) { thread ->
                                 ThreadRow(
                                     thread = thread,
                                     onClick = { onThreadClick(thread) },
@@ -171,7 +189,7 @@ internal fun ChatListScreen(
 }
 
 @Composable
-private fun EmptyView(modifier: Modifier = Modifier) {
+private fun EmptyView(hasQuery: Boolean = false, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -181,14 +199,19 @@ private fun EmptyView(modifier: Modifier = Modifier) {
             Icon(imageVector = Icons.Filled.ChatBubbleOutline, contentDescription = null, tint = Primary40, modifier = Modifier.size(40.dp))
         }
         Spacer(Modifier.height(16.dp))
-        Text(text = "No Conversations Yet", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        Spacer(Modifier.height(8.dp))
         Text(
-            text = "Conversations with your patients will appear here\nonce you have a confirmed appointment.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
+            text = if (hasQuery) "No conversations found" else "No Conversations Yet",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
         )
+        if (!hasQuery) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Conversations with your patients will appear here\nonce you have a confirmed appointment.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
