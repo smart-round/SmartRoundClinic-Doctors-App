@@ -88,6 +88,29 @@ class DoctorChatViewModel(
         }
     }
 
+    private var threadsPollJob: Job? = null
+
+    // Mirrors ConsultationViewModel's startThreadsPolling/stopThreadsPolling — the Other Doctors
+    // list has no socket of its own to keep online dots/last-seen live, so this is what notices a
+    // doctor going offline (or coming back online) while the doctor is looking at that list.
+    fun startThreadsPolling() {
+        if (threadsPollJob?.isActive == true) return
+        threadsPollJob = viewModelScope.launch {
+            while (isActive) {
+                delay(10_000L)
+                when (val result = repository.listThreads()) {
+                    is Resource.Success -> threads = result.data ?: threads
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    fun stopThreadsPolling() {
+        threadsPollJob?.cancel()
+        threadsPollJob = null
+    }
+
     // The tab's secondary content: a paginated, always-populated directory of verified doctors (not
     // gated behind search — search only filters what's already loaded, see onSearchQueryChange
     // usage in DoctorDirectoryScreen). Fetched immediately on open and infinite-scrolled.

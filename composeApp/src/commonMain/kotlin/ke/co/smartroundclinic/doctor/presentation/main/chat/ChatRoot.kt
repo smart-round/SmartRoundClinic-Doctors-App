@@ -83,10 +83,14 @@ fun ChatRoot(
         if (isAtRoot) {
             vm.startThreadsPolling()
             // Refreshes recency/last-message-preview/online-status for the Other Doctors tab's
-            // "Recent" section every time the doctor returns to the chat list root.
+            // "Recent" section every time the doctor returns to the chat list root, then keeps it
+            // live (10s poll) so a doctor going offline/backgrounding the app updates the green
+            // dot without the viewer needing to leave and re-enter the screen.
             doctorChatVm.loadThreads()
+            doctorChatVm.startThreadsPolling()
         } else {
             vm.stopThreadsPolling()
+            doctorChatVm.stopThreadsPolling()
         }
     }
 
@@ -173,9 +177,15 @@ fun ChatRoot(
                     doctorChatVm.connectToThread(dest.threadId)
                     doctorChatVm.loadHistory(dest.threadId)
                 }
+                // dest.counterpartPicture is null when this was pushed from the native-ringing
+                // accept path (the push payload only carries callerId/callerName, no photo URL —
+                // see MainRoot's ToDoctorCall handling) — fall back to the already-loaded thread
+                // list, same pattern as the patient Conversation entry below.
+                val counterpartPicture = dest.counterpartPicture
+                    ?: doctorChatVm.threads.firstOrNull { it.threadId == dest.threadId }?.counterpartPicture
                 DoctorConversationScreen(
                     counterpartName = dest.counterpartName,
-                    counterpartPicture = dest.counterpartPicture,
+                    counterpartPicture = counterpartPicture,
                     messages = doctorChatVm.messages,
                     isLoadingHistory = doctorChatVm.isLoadingHistory,
                     isLoadingMoreHistory = doctorChatVm.isLoadingMoreHistory,
@@ -254,6 +264,7 @@ fun ChatRoot(
                 val callConversation = backStack.filterIsInstance<DoctorConversation>().firstOrNull()
                 val counterpartName = callConversation?.counterpartName ?: "Doctor"
                 val counterpartPicture = callConversation?.counterpartPicture
+                    ?: doctorChatVm.threads.firstOrNull { it.threadId == dest.threadId }?.counterpartPicture
                 CallScreen(
                     participantName = counterpartName,
                     participantPicture = counterpartPicture,
