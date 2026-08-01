@@ -14,6 +14,7 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import ke.co.smartroundclinic.doctor.common.Constants
 import ke.co.smartroundclinic.doctor.common.Resource
+import ke.co.smartroundclinic.doctor.core.notification.ActiveCallNotifier
 import ke.co.smartroundclinic.doctor.core.notification.IncomingCallHandler
 import ke.co.smartroundclinic.doctor.core.notification.OutgoingDoctorCallState
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
@@ -471,6 +472,12 @@ class DoctorChatViewModel(
     }
 
     fun endCall(threadId: String) {
+        // Tells iOS's CallKit the call is actually over — without this, doctor-to-doctor calls
+        // left CallKit's system call UI (status bar pill / Dynamic Island / lock screen banner)
+        // thinking a call was still active after the in-app screen was already gone, and could
+        // block CallKit from reporting the doctor's next call at all (single CXProvider, max 1
+        // call). See ConsultationViewModel.endCall(), which already does this for patient calls.
+        ActiveCallNotifier.notifyCallEnded()
         callJoinState = null
         viewModelScope.launch { repository.endCall(threadId) }
     }
