@@ -36,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -95,6 +96,7 @@ internal fun ProfileListScreen(
     onBack: () -> Unit  = {},
     onPersonalInfo: () -> Unit  = {},
     onBankingDetails: () -> Unit = {},
+    onWallet: () -> Unit = {},
     onSecuritySettings: () -> Unit = {},
     onSupport: () -> Unit  = {},
     onAbout: () -> Unit = {},
@@ -153,6 +155,12 @@ internal fun ProfileListScreen(
                     icon = Icons.Outlined.AccountBalance,
                     label = "Banking Details",
                     onClick = onBankingDetails,
+                )
+                HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                ProfileMenuItem(
+                    icon = Icons.Outlined.AccountBalanceWallet,
+                    label = "Wallet",
+                    onClick = onWallet,
                 )
                 HorizontalDivider(modifier = Modifier.padding(start = 56.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                 ProfileMenuItem(

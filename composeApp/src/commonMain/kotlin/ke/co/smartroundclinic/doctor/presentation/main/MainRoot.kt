@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material3.Button
@@ -77,12 +76,10 @@ import ke.co.smartroundclinic.doctor.presentation.main.destinations.Bookings
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Chat
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Home
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Services
-import ke.co.smartroundclinic.doctor.presentation.main.destinations.Wallet
 import ke.co.smartroundclinic.doctor.presentation.main.home.HomeRoot
 import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.Notifications
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.services.ServicesRoot
-import ke.co.smartroundclinic.doctor.presentation.main.wallet.WalletRoot
 import ke.co.smartroundclinic.doctor.presentation.rememberSvgPainter
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
@@ -117,7 +114,6 @@ private val tabs = listOf(
     BottomTab(Bookings, "Bookings", TabIcon.Drawable(Res.drawable.bottom_bar_bookings)),
     BottomTab(Articles, "Articles", TabIcon.Drawable(Res.drawable.bottom_bar_cost_articles)),
     BottomTab(Chat, "Chat", TabIcon.Drawable(Res.drawable.bottom_bar_chat)),
-    BottomTab(Wallet, "Wallet", TabIcon.Vector(Icons.Outlined.AccountBalanceWallet))
 )
 
 @Composable
@@ -258,13 +254,6 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                 }
                 entry<Articles> {
                     ArticlesRoot(
-                        onAtRootChanged = { isAtRoot = it },
-                        onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
-                        onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
-                    )
-                }
-                entry<Wallet> {
-                    WalletRoot(
                         onAtRootChanged = { isAtRoot = it },
                         onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
                         onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
