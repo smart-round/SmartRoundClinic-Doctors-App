@@ -22,6 +22,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.AppointmentDe
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingListScreen
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingTab
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingTopTab
+import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.ReferralSubTab
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.MedicalRecordScreen
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.ReferralDoctorPickerScreen
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.ReferralReasonScreen
@@ -40,6 +41,7 @@ fun BookingsRoot(
     val backStack = retain { mutableStateListOf<NavKey>(BookingList) }
     var selectedTopTab by retain { mutableStateOf(BookingTopTab.CONSULTATION) }
     var selectedTab by retain { mutableStateOf(BookingTab.UPCOMING) }
+    var selectedReferralSubTab by retain { mutableStateOf(ReferralSubTab.RECEIVED) }
     val isAtRoot = backStack.size == 1
     val viewModel: BookingsViewModel = koinViewModel()
     val medicalRecordViewModel: MedicalRecordViewModel = koinViewModel()
@@ -52,6 +54,10 @@ fun BookingsRoot(
     SideEffect { onAtRootChanged(isAtRoot) }
 
     LaunchedEffect(Unit) { viewModel.loadAppointments() }
+    LaunchedEffect(Unit) {
+        referralViewModel.loadReceivedReferrals()
+        referralViewModel.loadSentReferrals()
+    }
 
     LaunchedEffect(pendingBookingId) {
         if (!pendingBookingId.isNullOrBlank()) {
@@ -76,6 +82,26 @@ fun BookingsRoot(
                     onTopTabSelected = { selectedTopTab = it },
                     selectedTab = selectedTab,
                     onTabSelected = { selectedTab = it },
+                    receivedReferrals = referralViewModel.receivedReferrals,
+                    sentReferrals = referralViewModel.sentReferrals,
+                    isLoadingReceivedReferrals = referralViewModel.isLoadingReceivedReferrals,
+                    isLoadingSentReferrals = referralViewModel.isLoadingSentReferrals,
+                    selectedReferralSubTab = selectedReferralSubTab,
+                    onReferralSubTabSelected = { selectedReferralSubTab = it },
+                    onReferralClick = { referral ->
+                        val resultingAppointmentId = referral.resultingAppointmentId
+                        if (resultingAppointmentId != null) {
+                            viewModel.loadAppointments()
+                            backStack.removeAll { it is BookingDetail }
+                            backStack.add(BookingDetail(resultingAppointmentId))
+                        }
+                    },
+                    onRefreshReferrals = {
+                        when (selectedReferralSubTab) {
+                            ReferralSubTab.RECEIVED -> referralViewModel.loadReceivedReferrals()
+                            ReferralSubTab.SENT -> referralViewModel.loadSentReferrals()
+                        }
+                    },
                     onProfileClick = onProfileClick,
                     onNotificationsClick = onNotificationsClick,
                 )

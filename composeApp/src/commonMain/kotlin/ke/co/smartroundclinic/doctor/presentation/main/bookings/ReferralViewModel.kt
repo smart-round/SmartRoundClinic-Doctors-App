@@ -8,8 +8,11 @@ import androidx.lifecycle.viewModelScope
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.core.snackbar.SnackbarController
 import ke.co.smartroundclinic.doctor.domain.model.Doctor
+import ke.co.smartroundclinic.doctor.domain.model.Referral
 import ke.co.smartroundclinic.doctor.domain.usecase.directory.GetRecommendedDoctorsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.referral.CreateReferralUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.referral.GetReceivedReferralsUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.referral.GetSentReferralsUseCase
 import kotlinx.coroutines.launch
 
 private const val DOCTORS_PAGE_SIZE = 20
@@ -17,11 +20,49 @@ private const val DOCTORS_PAGE_SIZE = 20
 class ReferralViewModel(
     private val createReferralUseCase: CreateReferralUseCase,
     private val getRecommendedDoctorsUseCase: GetRecommendedDoctorsUseCase,
+    private val getReceivedReferralsUseCase: GetReceivedReferralsUseCase,
+    private val getSentReferralsUseCase: GetSentReferralsUseCase,
     private val snackbarController: SnackbarController,
 ) : ViewModel() {
 
     var isSubmitting by mutableStateOf(false)
         private set
+
+    // Received/sent referral lists — fetched directly from the referral collection so a doctor
+    // can see who's been referred to them (and their own sent referrals) independent of whether
+    // the patient has responded or booked yet, rather than inferring it from the appointments list.
+    var receivedReferrals by mutableStateOf<List<Referral>>(emptyList())
+        private set
+    var sentReferrals by mutableStateOf<List<Referral>>(emptyList())
+        private set
+    var isLoadingReceivedReferrals by mutableStateOf(false)
+        private set
+    var isLoadingSentReferrals by mutableStateOf(false)
+        private set
+
+    fun loadReceivedReferrals() {
+        viewModelScope.launch {
+            isLoadingReceivedReferrals = true
+            when (val result = getReceivedReferralsUseCase()) {
+                is Resource.Success -> receivedReferrals = result.data ?: emptyList()
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to load received referrals", isError = true)
+                else -> {}
+            }
+            isLoadingReceivedReferrals = false
+        }
+    }
+
+    fun loadSentReferrals() {
+        viewModelScope.launch {
+            isLoadingSentReferrals = true
+            when (val result = getSentReferralsUseCase()) {
+                is Resource.Success -> sentReferrals = result.data ?: emptyList()
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to load sent referrals", isError = true)
+                else -> {}
+            }
+            isLoadingSentReferrals = false
+        }
+    }
 
     fun createReferral(appointmentId: String, receivingDoctorId: String, reason: String, onSuccess: () -> Unit) {
         if (isSubmitting) return
@@ -30,6 +71,7 @@ class ReferralViewModel(
             when (val result = createReferralUseCase(appointmentId, receivingDoctorId, reason)) {
                 is Resource.Success -> {
                     snackbarController.show("Referral sent successfully")
+                    loadSentReferrals()
                     onSuccess()
                 }
                 is Resource.Error -> snackbarController.show(result.message ?: "Failed to send referral", isError = true)

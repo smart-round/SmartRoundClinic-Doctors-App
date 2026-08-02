@@ -8,4 +8,6 @@ import ke.co.smartroundclinic.doctor.data.remote.dto.response.ReferralData
 interface ReferralRepository {
     suspend fun checkEligibility(appointmentId: String): Resource<ReferralEligibilityData>
     suspend fun createReferral(req: CreateReferralReq): Resource<ReferralData>
+    suspend fun getMyReferrals(): Resource<List<ReferralData>>
+    suspend fun getReceivedReferrals(): Resource<List<ReferralData>>
 }
