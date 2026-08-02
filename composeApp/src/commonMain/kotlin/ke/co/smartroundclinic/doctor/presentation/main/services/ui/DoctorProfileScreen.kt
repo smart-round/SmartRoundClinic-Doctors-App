@@ -99,13 +99,12 @@ fun DoctorProfileScreen(
 
 @Composable
 private fun DoctorProfileHeader(doctor: Doctor, onBack: () -> Unit) {
-    Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.4f)) {
+    Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.3f)) {
         if (doctor.profilePicture != null) {
             AsyncImage(
                 model = doctor.profilePicture,
                 contentDescription = doctor.name,
-                contentScale = ContentScale.FillHeight,
-                alignment = Alignment.Center,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
