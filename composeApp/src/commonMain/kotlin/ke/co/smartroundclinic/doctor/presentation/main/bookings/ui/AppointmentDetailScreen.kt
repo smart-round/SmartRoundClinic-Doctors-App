@@ -367,24 +367,18 @@ internal fun AppointmentDetailScreen(
                                 patientTotalReviews = patientTotalReviews,
                                 onViewAllReviews = { showReviewsSheet = true },
                             )
-                            // Refer eligibility: rating + medical summary + prescription all
-                            // submitted for this appointment — see CR-SMRC-0001 §5.1.1. This is a
-                            // client-side UX gate only; CreateReferralUseCase re-checks server-side.
-                            val canRefer = myRatingOfPatient != null &&
-                                medicalRecord != null &&
-                                medicalRecord.prescription.isNotEmpty() &&
-                                !medicalRecord.summary.isNullOrBlank()
-                            if (canRefer) {
-                                Spacer(Modifier.height(4.dp))
-                                OutlinedButton(
-                                    onClick = onRefer,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = ShapePill,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Primary40),
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
-                                ) {
-                                    Text("Refer to Another Doctor", style = MaterialTheme.typography.labelLarge, color = Primary40)
-                                }
+                            // Referring only requires the appointment to be COMPLETED — see
+                            // CR-SMRC-0001 §5.1.1 (the rating/prescription/summary prerequisites
+                            // originally specified there were dropped per user direction).
+                            Spacer(Modifier.height(4.dp))
+                            OutlinedButton(
+                                onClick = onRefer,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = ShapePill,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Primary40),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
+                            ) {
+                                Text("Refer to Another Doctor", style = MaterialTheme.typography.labelLarge, color = Primary40)
                             }
                         }
                         AppointmentStatus.CANCELLED -> {
