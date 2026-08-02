@@ -34,6 +34,7 @@ import ke.co.smartroundclinic.doctor.domain.model.DoctorChatMessage
 import ke.co.smartroundclinic.doctor.domain.model.DoctorChatThread
 import ke.co.smartroundclinic.doctor.domain.repository.DoctorChatRepository
 import ke.co.smartroundclinic.doctor.domain.repository.UserLocalRepository
+import ke.co.smartroundclinic.doctor.domain.usecase.directory.GetDoctorByIdUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.directory.GetRecommendedDoctorsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.doctorchat.InitiateDoctorChatUseCase
 import ke.co.smartroundclinic.doctor.presentation.main.chat.PendingFile
@@ -64,6 +65,7 @@ class DoctorChatViewModel(
     private val repository: DoctorChatRepository,
     private val initiateDoctorChatUseCase: InitiateDoctorChatUseCase,
     private val getRecommendedDoctorsUseCase: GetRecommendedDoctorsUseCase,
+    private val getDoctorByIdUseCase: GetDoctorByIdUseCase,
     private val userLocalRepository: UserLocalRepository,
     private val httpClient: HttpClient,
     private val snackbarController: SnackbarController,
@@ -87,6 +89,30 @@ class DoctorChatViewModel(
             }
             isLoadingThreads = false
         }
+    }
+
+    // Full profile for the "view profile" action off a doctor-chat thread's info sheet — reused
+    // from Services' DoctorProfileScreen, which needs a full Doctor (bio, specialization, rating,
+    // etc.) that the thread/info-sheet only carry a name+picture slice of.
+    var viewedDoctorProfile by mutableStateOf<Doctor?>(null)
+        private set
+    var isLoadingViewedDoctorProfile by mutableStateOf(false)
+        private set
+
+    fun loadDoctorProfile(doctorId: String) {
+        viewModelScope.launch {
+            isLoadingViewedDoctorProfile = true
+            when (val result = getDoctorByIdUseCase(doctorId)) {
+                is Resource.Success -> viewedDoctorProfile = result.data
+                is Resource.Error -> snackbarController.show(result.message ?: "Failed to load doctor profile", isError = true)
+                else -> {}
+            }
+            isLoadingViewedDoctorProfile = false
+        }
+    }
+
+    fun clearViewedDoctorProfile() {
+        viewedDoctorProfile = null
     }
 
     private var threadsPollJob: Job? = null

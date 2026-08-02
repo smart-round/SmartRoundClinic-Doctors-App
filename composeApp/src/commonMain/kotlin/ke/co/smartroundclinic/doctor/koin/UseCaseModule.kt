@@ -88,6 +88,7 @@ import ke.co.smartroundclinic.doctor.domain.usecase.speciality.AddDoctorSpeciali
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetDoctorSpecializationUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.GetSpecialitiesUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.speciality.UpdateDoctorSpecializationUseCase
+import ke.co.smartroundclinic.doctor.domain.usecase.directory.GetDoctorByIdUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.directory.GetRecommendedDoctorsUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.referral.CheckReferralEligibilityUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.referral.CreateReferralUseCase
@@ -128,6 +129,7 @@ val useCaseModule = module {
     single { AddDoctorSpecializationUseCase(get()) }
     single { UpdateDoctorSpecializationUseCase(get()) }
     single { GetRecommendedDoctorsUseCase(get()) }
+    single { GetDoctorByIdUseCase(get()) }
     single { CheckReferralEligibilityUseCase(get()) }
     single { CreateReferralUseCase(get()) }
     single { InitiateDoctorChatUseCase(get()) }
@@ -226,7 +228,7 @@ val useCaseModule = module {
     viewModel { NotificationsViewModel(get(), get()) }
     viewModel { WalletViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ServicesViewModel(get(), get()) }
-    viewModel { DoctorChatViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { DoctorChatViewModel(get(), get(), get(), get(), get(), get(), get()) }
 
     // Support
     single { GetIssueCategoriesUseCase(get()) }

@@ -27,3 +27,11 @@ class GetRecommendedDoctorsUseCase(private val repository: DoctorDirectoryReposi
         )
     }
 }
+
+class GetDoctorByIdUseCase(private val repository: DoctorDirectoryRepository) {
+    suspend operator fun invoke(doctorId: String): Resource<Doctor?> {
+        val result = repository.getDoctorById(doctorId)
+        val response = result.data ?: return Resource.Error(result.message ?: "Failed to fetch doctor")
+        return Resource.Success(response.data?.toDomain())
+    }
+}

@@ -18,6 +18,7 @@ import ke.co.smartroundclinic.doctor.core.notification.OutgoingCallState
 import ke.co.smartroundclinic.doctor.core.notification.OutgoingCallStatus
 import ke.co.smartroundclinic.doctor.core.notification.OutgoingDoctorCallState
 import ke.co.smartroundclinic.doctor.core.notification.OutgoingDoctorCallStatus
+import ke.co.smartroundclinic.doctor.domain.model.Doctor
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.MedicalRecordViewModel
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Call
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.ChatList
@@ -28,6 +29,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorC
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorDirectoryScreen
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorConversation
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorProfileView
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.OtherDoctorsList
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.OutgoingDoctorCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.CallScreen
@@ -35,6 +37,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatListScreen
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatTopTab
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ConversationScreen
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.OutgoingCallScreen
+import ke.co.smartroundclinic.doctor.presentation.main.services.ui.DoctorProfileScreen
 import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -203,10 +206,38 @@ fun ChatRoot(
                         doctorChatVm.disconnect()
                         backStack.removeLastOrNull()
                     },
+                    onViewProfile = {
+                        val counterpartId = doctorChatVm.threads.firstOrNull { it.threadId == dest.threadId }?.counterpartId
+                        if (counterpartId != null) {
+                            backStack.add(DoctorProfileView(counterpartId, dest.counterpartName, counterpartPicture))
+                        }
+                    },
                     onVoiceCall = { backStack.add(OutgoingDoctorCall(dest.threadId, dest.counterpartName, isVideo = false)) },
                     onVideoCall = { backStack.add(OutgoingDoctorCall(dest.threadId, dest.counterpartName, isVideo = true)) },
                     onSendText = doctorChatVm::sendText,
                     onSendFile = { fileName, contentType, bytes -> doctorChatVm.sendFile(dest.threadId, fileName, contentType, bytes) },
+                )
+            }
+            entry<DoctorProfileView> { dest ->
+                LaunchedEffect(dest.doctorId) { doctorChatVm.loadDoctorProfile(dest.doctorId) }
+                val doctor = doctorChatVm.viewedDoctorProfile ?: Doctor(
+                    id = dest.doctorId,
+                    profileId = "",
+                    name = dest.name,
+                    profilePicture = dest.picture,
+                    specialization = null,
+                    facilityName = null,
+                    averageRating = 0.0,
+                    totalReviews = 0,
+                )
+                DoctorProfileScreen(
+                    doctor = doctor,
+                    primaryActionLabel = "Message",
+                    onPrimaryAction = { backStack.removeLastOrNull() },
+                    onBack = {
+                        doctorChatVm.clearViewedDoctorProfile()
+                        backStack.removeLastOrNull()
+                    },
                 )
             }
             entry<OutgoingDoctorCall> { dest ->

@@ -5,6 +5,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import ke.co.smartroundclinic.doctor.common.Resource
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.directory.GetDoctorByIdRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.directory.GetRecommendedDoctorsRes
 import ke.co.smartroundclinic.doctor.domain.repository.DoctorDirectoryRepository
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,15 @@ class DoctorDirectoryRepositoryImpl(private val client: HttpClient) : DoctorDire
                 parameter("size", size)
             }.body<GetRecommendedDoctorsRes>()
             Resource.Success(response.data, response.message)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "An unknown error occurred")
+        }
+    }
+
+    override suspend fun getDoctorById(doctorId: String) = withContext(Dispatchers.IO) {
+        try {
+            val response = client.get("doctor/recommendations/$doctorId").body<GetDoctorByIdRes>()
+            Resource.Success(response, response.message)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "An unknown error occurred")
         }

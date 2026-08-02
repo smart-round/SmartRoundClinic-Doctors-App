@@ -12,6 +12,14 @@ data class GetRecommendedDoctorsRes(
 )
 
 @Serializable
+data class GetDoctorByIdRes(
+    val data: RecommendedDoctorData?,
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+)
+
+@Serializable
 data class RecommendedDoctorsPageData(
     val items: List<RecommendedDoctorData>,
     val total: Long,

@@ -44,6 +44,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CameraAlt
@@ -147,6 +148,7 @@ internal fun DoctorConversationScreen(
     otherPartyLastSeenAt: String? = null,
     onTyping: (Boolean) -> Unit = {},
     onBack: () -> Unit,
+    onViewProfile: () -> Unit = {},
     onVoiceCall: () -> Unit = {},
     onVideoCall: () -> Unit,
     onSendText: (String) -> Unit,
@@ -396,6 +398,10 @@ internal fun DoctorConversationScreen(
             counterpartName = counterpartName,
             counterpartPicture = counterpartPicture,
             onDismiss = { showInfoSheet = false },
+            onViewProfile = {
+                showInfoSheet = false
+                onViewProfile()
+            },
         )
     }
 }
@@ -1119,6 +1125,7 @@ private fun DoctorInfoSheet(
     counterpartName: String,
     counterpartPicture: String?,
     onDismiss: () -> Unit,
+    onViewProfile: () -> Unit,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1133,7 +1140,16 @@ private fun DoctorInfoSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = onViewProfile,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(
                     modifier = Modifier.size(48.dp).clip(CircleShape).background(Secondary90),
                     contentAlignment = Alignment.Center,
@@ -1145,10 +1161,11 @@ private fun DoctorInfoSheet(
                     }
                 }
                 Spacer(Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text("Dr. $counterpartName", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
                     Text("Verified doctor on SmartRound Clinic", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "View profile", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
             Card(
