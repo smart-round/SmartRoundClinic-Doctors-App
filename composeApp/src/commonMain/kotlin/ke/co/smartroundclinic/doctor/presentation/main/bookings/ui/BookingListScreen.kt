@@ -34,6 +34,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -124,14 +128,48 @@ internal fun BookingListScreen(
         .filter { it.referralId != null }
         .sortedByDescending { it.date }
 
+    val selectedIndex = BookingTopTab.entries.indexOf(selectedTopTab)
+
     Scaffold(
         modifier = modifier,
-        topBar = { DashboardHeader(title = "Bookings", onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick) },
+        topBar = {
+            DashboardHeader(
+                title = "Bookings",
+                onProfileClick = onProfileClick,
+                onNotificationsClick = onNotificationsClick,
+                bottomContent = {
+                    TabRow(
+                        selectedTabIndex = selectedIndex,
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White,
+                        indicator = { tabPositions ->
+                            SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
+                                color = Color.White,
+                            )
+                        },
+                        divider = {},
+                    ) {
+                        BookingTopTab.entries.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = selectedIndex == index,
+                                onClick = { onTopTabSelected(tab) },
+                                text = {
+                                    Text(
+                                        text = tab.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (selectedIndex == index) Color.White else Color.White.copy(alpha = 0.65f),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                },
+            )
+        },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            BookingTopTabRow(selectedTab = selectedTopTab, onTabSelected = onTopTabSelected)
-
             if (selectedTopTab == BookingTopTab.CONSULTATION) {
                 BookingTabRow(selectedTab = selectedTab, onTabSelected = onTabSelected)
             }
@@ -163,47 +201,6 @@ internal fun BookingListScreen(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BookingTopTabRow(
-    selectedTab: BookingTopTab,
-    onTabSelected: (BookingTopTab) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        BookingTopTab.entries.forEach { tab ->
-            val isSelected = selectedTab == tab
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        onClick = { onTabSelected(tab) },
-                    )
-                    .padding(vertical = 4.dp),
-            ) {
-                Text(
-                    text = tab.label,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected) Primary40 else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .height(3.dp)
-                        .width(28.dp)
-                        .clip(ShapePill)
-                        .background(if (isSelected) Primary40 else Color.Transparent),
-                )
             }
         }
     }
