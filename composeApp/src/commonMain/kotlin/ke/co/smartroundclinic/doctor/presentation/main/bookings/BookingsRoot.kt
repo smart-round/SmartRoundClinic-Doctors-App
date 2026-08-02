@@ -23,9 +23,9 @@ import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingListSc
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingTab
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingTopTab
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.MedicalRecordScreen
+import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.ReferralDoctorPickerScreen
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.ReferralReasonScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
-import ke.co.smartroundclinic.doctor.presentation.main.services.ServicesRoot
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -136,13 +136,16 @@ fun BookingsRoot(
                 )
             }
             entry<ReferralDoctorPicker> { dest ->
-                ServicesRoot(
-                    selfDoctorId = currentUser?.id,
-                    headerTitle = "Refer to a Doctor",
-                    primaryActionLabel = "Refer to this doctor",
-                    onProfileClick = {},
-                    onNotificationsClick = {},
-                    onPrimaryAction = { doctor ->
+                LaunchedEffect(Unit) { referralViewModel.loadDoctors(currentUser?.id) }
+                ReferralDoctorPickerScreen(
+                    doctors = referralViewModel.doctors,
+                    isLoadingDoctors = referralViewModel.isLoadingDoctors,
+                    isLoadingMoreDoctors = referralViewModel.isLoadingMoreDoctors,
+                    hasMoreDoctors = referralViewModel.hasMoreDoctors,
+                    onLoadMoreDoctors = { referralViewModel.loadMoreDoctors() },
+                    isSubmitting = referralViewModel.isSubmitting,
+                    onBack = { backStack.removeLastOrNull() },
+                    onDoctorSelected = { doctor ->
                         referralViewModel.createReferral(dest.appointmentId, doctor.id, dest.reason) {
                             backStack.removeAll { it is ReferralReason || it is ReferralDoctorPicker }
                             viewModel.loadAppointments()

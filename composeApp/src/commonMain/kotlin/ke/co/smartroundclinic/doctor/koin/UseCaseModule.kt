@@ -222,7 +222,7 @@ val useCaseModule = module {
     viewModel { ConsultationViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { MedicalRecordViewModel(get(), get(), get(), get(), get()) }
     viewModel { RatingViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { ReferralViewModel(get(), get()) }
+    viewModel { ReferralViewModel(get(), get(), get()) }
     viewModel { NotificationsViewModel(get(), get()) }
     viewModel { WalletViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ServicesViewModel(get(), get()) }
