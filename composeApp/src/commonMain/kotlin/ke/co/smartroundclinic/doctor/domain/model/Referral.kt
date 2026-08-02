@@ -8,6 +8,7 @@ data class Referral(
     val referringDoctorPicture: String?,
     val patientId: String,
     val patientName: String?,
+    val patientProfilePicture: String?,
     val receivingDoctorId: String,
     val receivingDoctorName: String?,
     val receivingDoctorPicture: String?,

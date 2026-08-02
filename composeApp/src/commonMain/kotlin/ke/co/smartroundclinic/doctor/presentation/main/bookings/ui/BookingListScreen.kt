@@ -388,9 +388,9 @@ private fun EmptyReferralsView(subTab: ReferralSubTab, modifier: Modifier = Modi
 @Composable
 private fun ReferralCard(referral: Referral, direction: ReferralSubTab, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val (statusLabel, statusColor, statusBg) = when (referral.status.uppercase()) {
-        "ACCEPTED" -> Triple("Accepted", Primary40, Primary40.copy(alpha = 0.12f))
+        "ACCEPTED" -> Triple("Accepted", Tertiary40, Tertiary40.copy(alpha = 0.12f))
         "DECLINED" -> Triple("Declined", Error40, Error40.copy(alpha = 0.12f))
-        else -> Triple("Pending", Tertiary40, Tertiary40.copy(alpha = 0.12f))
+        else -> Triple("Pending", Primary40, Primary40.copy(alpha = 0.12f))
     }
     val counterpartName = if (direction == ReferralSubTab.RECEIVED) referral.referringDoctorName else referral.receivingDoctorName
     val counterpartPicture = if (direction == ReferralSubTab.RECEIVED) referral.referringDoctorPicture else referral.receivingDoctorPicture
@@ -401,7 +401,12 @@ private fun ReferralCard(referral: Referral, direction: ReferralSubTab, onClick:
         enabled = isBooked,
         modifier = modifier.fillMaxWidth(),
         shape = ShapeCard,
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        colors = CardDefaults.cardColors(
+            containerColor = CardBackground,
+            disabledContainerColor = CardBackground,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            disabledContentColor = MaterialTheme.colorScheme.onSurface,
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp, pressedElevation = 6.dp),
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
@@ -409,7 +414,7 @@ private fun ReferralCard(referral: Referral, direction: ReferralSubTab, onClick:
                 modifier = Modifier
                     .width(4.dp)
                     .fillMaxHeight()
-                    .background(if (isBooked) Primary40 else Tertiary40),
+                    .background(Primary40),
             )
             Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -458,7 +463,16 @@ private fun ReferralCard(referral: Referral, direction: ReferralSubTab, onClick:
                         modifier = Modifier.size(20.dp).clip(CircleShape).background(Secondary90),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(12.dp))
+                        if (referral.patientProfilePicture != null) {
+                            AsyncImage(
+                                model = referral.patientProfilePicture,
+                                contentDescription = referral.patientName,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            )
+                        } else {
+                            Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(12.dp))
+                        }
                     }
                     Spacer(Modifier.width(6.dp))
                     Text(
