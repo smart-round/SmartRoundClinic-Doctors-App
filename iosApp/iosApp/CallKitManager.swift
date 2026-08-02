@@ -272,7 +272,7 @@ extension CallKitManager: PKPushRegistryDelegate {
         case "Doctor Call Cancelled":
             IncomingCallHandler.shared.onDoctorCallCancelled(callId: callId)
         default:
-            break
+            print("CallKitManager: unrecognized VoIP push event '\(event)' — no handler for it")
         }
     }
 }
