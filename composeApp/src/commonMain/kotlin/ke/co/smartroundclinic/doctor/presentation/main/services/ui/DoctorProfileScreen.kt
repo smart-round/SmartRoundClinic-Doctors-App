@@ -123,6 +123,20 @@ private fun DoctorProfileHeader(doctor: Doctor, onBack: () -> Unit) {
             }
         }
 
+        // Top scrim so the back button stays visible over light photo backgrounds.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.25f)
+                .align(Alignment.TopStart)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent),
+                    ),
+                ),
+        )
+
+        // Bottom scrim so the name/specialty/rating text stays visible over light photo backgrounds.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
