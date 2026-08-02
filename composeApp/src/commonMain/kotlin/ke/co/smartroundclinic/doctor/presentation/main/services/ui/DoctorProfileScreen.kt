@@ -66,14 +66,20 @@ fun DoctorProfileScreen(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 88.dp),
-        ) {
+        // The header's fillMaxHeight(0.3f) needs a bounded parent height to resolve against, so
+        // it must sit in this outer, non-scrolling Column — nesting it inside the scrollable
+        // Column below would hand it Constraints.Infinity and break the percentage sizing.
+        Column(modifier = Modifier.fillMaxSize()) {
             DoctorProfileHeader(doctor = doctor, onBack = onBack)
-            AboutSection(doctor = doctor)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 88.dp),
+            ) {
+                AboutSection(doctor = doctor)
+            }
         }
 
         Box(
