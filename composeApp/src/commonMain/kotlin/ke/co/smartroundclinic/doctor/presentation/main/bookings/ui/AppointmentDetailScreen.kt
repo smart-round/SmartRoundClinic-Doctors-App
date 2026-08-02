@@ -295,6 +295,34 @@ internal fun AppointmentDetailScreen(
                                 }
                             }
                         }
+                        if (appointment.referralId != null) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier.size(28.dp).clip(CircleShape).background(Tertiary90),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    if (appointment.referredByDoctorPicture != null) {
+                                        AsyncImage(
+                                            model = appointment.referredByDoctorPicture,
+                                            contentDescription = appointment.referredByDoctorName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                        )
+                                    } else {
+                                        Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Tertiary40, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(text = "Referred by", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        text = "Dr. ${appointment.referredByDoctorName ?: "another doctor"}",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    )
+                                }
+                            }
+                        }
                         if (!appointment.notes.isNullOrBlank()) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             InfoRow(label = "Notes", value = appointment.notes)
