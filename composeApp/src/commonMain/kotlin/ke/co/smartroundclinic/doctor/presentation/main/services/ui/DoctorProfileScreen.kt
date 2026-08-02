@@ -125,10 +125,12 @@ private fun DoctorProfileHeader(doctor: Doctor, onBack: () -> Unit) {
 
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .fillMaxHeight(0.65f)
+                .align(Alignment.BottomStart)
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
                     ),
                 ),
         )
