@@ -131,6 +131,17 @@ val StatusConfirmed = Tertiary40          // appointment confirmed
 // Appointment card background (FEFAF8 from Figma)
 val CardBackground  = Color(0xFFFEFAF8)
 
+// ── Appointment detail screen (amended Figma spec) ───────────────────────────
+
+/** Filled primary action — "Mark As Complete" once the appointment has started. */
+val ActionEnabled  = Color(0xFF0E9800)
+/** Same action while it is still locked. */
+val ActionDisabled = Color(0xFF979797)
+/** Destructive outlined action — "Cancel Appointment". */
+val ActionDestructive = Color(0xFFEA1D25)
+/** Circular clock chip behind the date/time row, and the hairline under it. */
+val DetailIconChip = Color(0xFF393938)
+
 // Search bar overlay (rgba(0,0,0,0.21) on gradient)
 val SearchBarOverlay = Color(0xFF1C1B1B).copy(alpha = 0.21f)
 

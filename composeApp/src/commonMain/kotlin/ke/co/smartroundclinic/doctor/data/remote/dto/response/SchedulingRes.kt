@@ -56,6 +56,8 @@ data class AppointmentData(
     val referralId: String? = null,
     val referredByDoctorName: String? = null,
     val referredByDoctorPicture: String? = null,
+    val amount: Double? = null,
+    val currency: String = "KES",
 )
 
 @Serializable
@@ -112,6 +114,8 @@ fun AppointmentData.toDomain() = Appointment(
     referralId = referralId,
     referredByDoctorName = referredByDoctorName,
     referredByDoctorPicture = referredByDoctorPicture,
+    amount = amount,
+    currency = currency,
 )
 
 fun NextAppointmentData.toDomain() = NextAppointment(

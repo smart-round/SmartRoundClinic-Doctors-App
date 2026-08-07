@@ -16,6 +16,9 @@ data class Appointment(
     val referralId: String? = null,
     val referredByDoctorName: String? = null,
     val referredByDoctorPicture: String? = null,
+    /** Consultation price of the service tier this appointment was booked against. */
+    val amount: Double? = null,
+    val currency: String = "KES",
 )
 
 enum class AppointmentStatus { BOOKED, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW }

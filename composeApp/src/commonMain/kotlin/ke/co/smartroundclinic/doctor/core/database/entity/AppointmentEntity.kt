@@ -21,6 +21,8 @@ data class AppointmentEntity(
     val referralId: String? = null,
     val referredByDoctorName: String? = null,
     val referredByDoctorPicture: String? = null,
+    val amount: Double? = null,
+    val currency: String = "KES",
 )
 
 fun AppointmentEntity.toDomain() = Appointment(
@@ -45,6 +47,8 @@ fun AppointmentEntity.toDomain() = Appointment(
     referralId = referralId,
     referredByDoctorName = referredByDoctorName,
     referredByDoctorPicture = referredByDoctorPicture,
+    amount = amount,
+    currency = currency,
 )
 
 fun Appointment.toEntity() = AppointmentEntity(
@@ -62,4 +66,6 @@ fun Appointment.toEntity() = AppointmentEntity(
     referralId = referralId,
     referredByDoctorName = referredByDoctorName,
     referredByDoctorPicture = referredByDoctorPicture,
+    amount = amount,
+    currency = currency,
 )
