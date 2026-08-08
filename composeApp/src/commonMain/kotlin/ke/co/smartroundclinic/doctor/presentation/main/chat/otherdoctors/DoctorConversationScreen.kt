@@ -99,6 +99,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import chaintech.videoplayer.host.MediaPlayerHost
+import chaintech.videoplayer.ui.video.VideoPlayerComposable
 import coil3.compose.AsyncImage
 import io.github.vinceglb.filekit.dialogs.FileKitMode
 import io.github.vinceglb.filekit.dialogs.FileKitType
@@ -241,8 +243,8 @@ internal fun DoctorConversationScreen(
             sendPickedFile(it, name)
         }
     }
-    val galleryLauncher = rememberFilePickerLauncher(mode = FileKitMode.Single, type = FileKitType.Image) { file ->
-        file?.let { sendPickedFile(it, "image.jpg") }
+    val galleryLauncher = rememberFilePickerLauncher(mode = FileKitMode.Single, type = FileKitType.ImageAndVideo) { file ->
+        file?.let { sendPickedFile(it, "media") }
     }
     val fileLauncher = rememberFilePickerLauncher(mode = FileKitMode.Single, type = FileKitType.File()) { file ->
         file?.let { sendPickedFile(it, "file") }
@@ -669,6 +671,7 @@ private fun FileViewerSheet(
     val fileName = file.fileName
     val kind = attachmentKind(fileName, file.contentType)
     val isImage = kind == AttachmentKind.PHOTO
+    val isVideo = kind == AttachmentKind.VIDEO
     val label = attachmentLabel(fileName, file.contentType)
     val isPdfFile = isPdf(fileName, file.contentType)
 
@@ -676,10 +679,42 @@ private fun FileViewerSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = null,
-        containerColor = if (isImage) Color.Black else MaterialTheme.colorScheme.surface,
+        containerColor = if (isImage || isVideo) Color.Black else MaterialTheme.colorScheme.surface,
         modifier = Modifier.fillMaxHeight(0.94f).statusBarsPadding(),
     ) {
-        if (isImage) {
+        if (isVideo) {
+            // Plays in-app, same as photos open in-app, rather than handing off to the OS.
+            val playerHost = remember(file.url) { MediaPlayerHost(mediaUrl = file.url, autoPlay = true, isLooping = false) }
+            Box(modifier = Modifier.fillMaxSize()) {
+                VideoPlayerComposable(
+                    modifier = Modifier.fillMaxSize(),
+                    playerHost = playerHost,
+                )
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                    Text(
+                        text = file.fileName,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { uriHandler.openUri(file.url) }) {
+                        Icon(Icons.Filled.Download, contentDescription = "Download", tint = Color.White)
+                    }
+                }
+            }
+        } else if (isImage) {
             Box(modifier = Modifier.fillMaxSize()) {
                 AsyncImage(
                     model = file.url,
