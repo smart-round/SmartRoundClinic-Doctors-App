@@ -11,6 +11,9 @@ import android.os.VibratorManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -83,6 +86,7 @@ class IncomingDoctorCallActivity : ComponentActivity() {
             return
         }
         val callerName = intent.getStringExtra(EXTRA_CALLER_NAME)
+        val callerPicture = intent.getStringExtra(EXTRA_CALLER_PICTURE)
         val isVideo = intent.getBooleanExtra(EXTRA_IS_VIDEO, true)
 
         if (intent.getBooleanExtra(EXTRA_AUTO_ACCEPT, false)) {
@@ -100,6 +104,7 @@ class IncomingDoctorCallActivity : ComponentActivity() {
                 }
                 IncomingDoctorCallScreen(
                     callerName = callerName?.let { "Dr. $it" } ?: "Doctor",
+                    callerPicture = callerPicture,
                     isVideo = isVideo,
                     onAccept = {
                         stopRinging()
@@ -194,6 +199,7 @@ class IncomingDoctorCallActivity : ComponentActivity() {
         const val EXTRA_CALL_ID = "callId"
         const val EXTRA_CALLER_ID = "callerId"
         const val EXTRA_CALLER_NAME = "callerName"
+        const val EXTRA_CALLER_PICTURE = "callerPicture"
         const val EXTRA_THREAD_ID = "threadId"
         const val EXTRA_IS_VIDEO = "isVideo"
         const val EXTRA_AUTO_ACCEPT = "autoAccept"
@@ -203,6 +209,7 @@ class IncomingDoctorCallActivity : ComponentActivity() {
 @Composable
 private fun IncomingDoctorCallScreen(
     callerName: String,
+    callerPicture: String?,
     isVideo: Boolean,
     onAccept: () -> Unit,
     onDecline: () -> Unit,
@@ -226,15 +233,25 @@ private fun IncomingDoctorCallScreen(
         Box(
             modifier = Modifier
                 .size(120.dp)
-                .background(Color.White.copy(alpha = 0.15f), CircleShape),
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                imageVector = Icons.Filled.Person,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(64.dp),
-            )
+            if (!callerPicture.isNullOrBlank()) {
+                AsyncImage(
+                    model = callerPicture,
+                    contentDescription = callerName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.Person,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(64.dp),
+                )
+            }
         }
         Spacer(Modifier.height(24.dp))
         Text(

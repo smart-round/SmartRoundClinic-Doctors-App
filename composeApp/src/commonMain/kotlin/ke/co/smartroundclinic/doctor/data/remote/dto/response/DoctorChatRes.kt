@@ -63,6 +63,7 @@ data class DoctorCallInviteEventData(
     val callId: String,
     val callerId: String,
     val callerName: String? = null,
+    val callerPicture: String? = null,
     val isVideo: Boolean,
     val ringTimeoutSeconds: Long,
 )

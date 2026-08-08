@@ -59,6 +59,7 @@ actual object IncomingCallHandler {
         callId: String,
         callerId: String,
         callerName: String?,
+        callerPicture: String?,
         doctorId: String,
         patientId: String,
         isVideo: Boolean,
@@ -69,6 +70,7 @@ actual object IncomingCallHandler {
                 callId = callId,
                 callerId = callerId,
                 callerName = callerName,
+                callerPicture = callerPicture,
                 doctorId = doctorId,
                 patientId = patientId,
                 isVideo = isVideo,
@@ -84,6 +86,7 @@ actual object IncomingCallHandler {
             putExtra(IncomingCallActivity.EXTRA_CALL_ID, callId)
             putExtra(IncomingCallActivity.EXTRA_CALLER_ID, callerId)
             putExtra(IncomingCallActivity.EXTRA_CALLER_NAME, callerName)
+            putExtra(IncomingCallActivity.EXTRA_CALLER_PICTURE, callerPicture)
             putExtra(IncomingCallActivity.EXTRA_DOCTOR_ID, doctorId)
             putExtra(IncomingCallActivity.EXTRA_PATIENT_ID, patientId)
             putExtra(IncomingCallActivity.EXTRA_IS_VIDEO, isVideo)
@@ -104,6 +107,7 @@ actual object IncomingCallHandler {
             putExtra(IncomingCallActivity.EXTRA_CALL_ID, callId)
             putExtra(IncomingCallActivity.EXTRA_CALLER_ID, callerId)
             putExtra(IncomingCallActivity.EXTRA_CALLER_NAME, callerName)
+            putExtra(IncomingCallActivity.EXTRA_CALLER_PICTURE, callerPicture)
             putExtra(IncomingCallActivity.EXTRA_DOCTOR_ID, doctorId)
             putExtra(IncomingCallActivity.EXTRA_PATIENT_ID, patientId)
             putExtra(IncomingCallActivity.EXTRA_IS_VIDEO, isVideo)
@@ -174,6 +178,7 @@ actual object IncomingCallHandler {
         callId: String,
         callerId: String,
         callerName: String?,
+        callerPicture: String?,
         threadId: String,
         isVideo: Boolean,
         ringTimeoutSeconds: Long,
@@ -183,6 +188,7 @@ actual object IncomingCallHandler {
                 callId = callId,
                 callerId = callerId,
                 callerName = callerName,
+                callerPicture = callerPicture,
                 threadId = threadId,
                 isVideo = isVideo,
                 ringTimeoutSeconds = ringTimeoutSeconds,
@@ -197,6 +203,7 @@ actual object IncomingCallHandler {
             putExtra(IncomingDoctorCallActivity.EXTRA_CALL_ID, callId)
             putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_ID, callerId)
             putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_NAME, callerName)
+            putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_PICTURE, callerPicture)
             putExtra(IncomingDoctorCallActivity.EXTRA_THREAD_ID, threadId)
             putExtra(IncomingDoctorCallActivity.EXTRA_IS_VIDEO, isVideo)
         }
@@ -212,6 +219,7 @@ actual object IncomingCallHandler {
             putExtra(IncomingDoctorCallActivity.EXTRA_CALL_ID, callId)
             putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_ID, callerId)
             putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_NAME, callerName)
+            putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_PICTURE, callerPicture)
             putExtra(IncomingDoctorCallActivity.EXTRA_THREAD_ID, threadId)
             putExtra(IncomingDoctorCallActivity.EXTRA_IS_VIDEO, isVideo)
             putExtra(IncomingDoctorCallActivity.EXTRA_AUTO_ACCEPT, true)

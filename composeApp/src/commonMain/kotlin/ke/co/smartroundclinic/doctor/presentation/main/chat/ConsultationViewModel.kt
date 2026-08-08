@@ -355,6 +355,7 @@ class ConsultationViewModel(
                                                     callId = event.callId,
                                                     callerId = event.callerId,
                                                     callerName = event.callerName,
+                                                    callerPicture = event.callerPicture,
                                                     doctorId = currentUserId,
                                                     patientId = otherUserId,
                                                     isVideo = event.isVideo,

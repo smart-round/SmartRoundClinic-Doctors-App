@@ -337,6 +337,7 @@ class DoctorChatViewModel(
                                                     callId = event.callId,
                                                     callerId = event.callerId,
                                                     callerName = event.callerName,
+                                                    callerPicture = event.callerPicture,
                                                     threadId = threadId,
                                                     isVideo = event.isVideo,
                                                     ringTimeoutSeconds = event.ringTimeoutSeconds,
