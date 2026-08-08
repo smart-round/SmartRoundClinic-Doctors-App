@@ -446,7 +446,16 @@ class DoctorChatViewModel(
     }
 
     fun sendFile(threadId: String, fileName: String, contentType: String, bytes: ByteArray) {
-        val pending = PendingFile(localId = "p${kotlin.random.Random.nextInt()}", fileName = fileName, contentType = contentType, bytes = bytes)
+        // Doctor-to-doctor chat still proxies the upload through the API (no pre-signed
+        // route on that module yet), so the bytes are in memory here regardless — only keep
+        // them for the thumbnail when they're small.
+        val pending = PendingFile(
+            localId = "p${kotlin.random.Random.nextInt()}",
+            fileName = fileName,
+            contentType = contentType,
+            previewBytes = bytes.takeIf { it.size <= Constants.MAX_INLINE_PREVIEW_BYTES },
+            totalBytes = bytes.size.toLong(),
+        )
         pendingFiles.add(pending)
         viewModelScope.launch {
             when (val result = repository.uploadFile(threadId, fileName, contentType, bytes)) {

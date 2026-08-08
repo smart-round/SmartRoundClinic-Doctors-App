@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -47,6 +48,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
+import ke.co.smartroundclinic.doctor.domain.model.ThreadPreviewKind
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
 import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
@@ -331,6 +333,7 @@ private fun RecentMessagesSection(
                 MessageRow(
                     senderName = thread.counterpartName,
                     preview = thread.lastMessagePreview ?: "",
+                    previewKind = thread.lastMessageKind,
                     timestamp = thread.lastMessageAt?.let(::formatRecentMessageTimestamp) ?: "",
                     profilePicture = thread.counterpartPicture,
                     onClick = { onOpenConsultation(thread.latestAppointmentId, thread.patientId, thread.counterpartName) }
@@ -486,6 +489,7 @@ private fun AppointmentCard(
 private fun MessageRow(
     senderName: String,
     preview: String,
+    previewKind: ThreadPreviewKind,
     timestamp: String,
     profilePicture: String?,
     onClick: () -> Unit,
@@ -527,13 +531,24 @@ private fun MessageRow(
                     text = senderName,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
-                Text(
-                    text = preview,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (previewKind == ThreadPreviewKind.PHOTO) {
+                        Icon(
+                            imageVector = Icons.Filled.CameraAlt,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        text = preview,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             Text(
                 text = timestamp,

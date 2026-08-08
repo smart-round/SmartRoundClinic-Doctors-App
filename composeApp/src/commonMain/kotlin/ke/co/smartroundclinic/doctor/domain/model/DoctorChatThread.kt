@@ -9,4 +9,5 @@ data class DoctorChatThread(
     val lastMessageAt: String?,
     val isOnline: Boolean = false,
     val lastSeenAt: String? = null,
+    val lastMessageKind: ThreadPreviewKind = ThreadPreviewKind.TEXT,
 )

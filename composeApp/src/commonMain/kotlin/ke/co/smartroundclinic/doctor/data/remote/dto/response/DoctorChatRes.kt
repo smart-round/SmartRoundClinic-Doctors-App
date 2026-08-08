@@ -5,6 +5,7 @@ import ke.co.smartroundclinic.doctor.domain.model.DoctorCallInvite
 import ke.co.smartroundclinic.doctor.domain.model.DoctorChatFileAttachment
 import ke.co.smartroundclinic.doctor.domain.model.DoctorChatMessage
 import ke.co.smartroundclinic.doctor.domain.model.DoctorChatThread
+import ke.co.smartroundclinic.doctor.domain.model.ThreadPreviewKind
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -124,6 +125,7 @@ data class DoctorChatThreadData(
     val lastMessageAt: String? = null,
     val isOnline: Boolean = false,
     val lastSeenAt: String? = null,
+    val lastMessageKind: String? = null,
 )
 
 @Serializable
@@ -153,6 +155,12 @@ fun DoctorChatThreadData.toDomain() = DoctorChatThread(
     threadId = threadId, counterpartId = counterpartId, counterpartName = counterpartName,
     counterpartPicture = counterpartPicture, lastMessagePreview = lastMessagePreview, lastMessageAt = lastMessageAt,
     isOnline = isOnline, lastSeenAt = lastSeenAt,
+    lastMessageKind = when (lastMessageKind?.uppercase()) {
+        "PHOTO" -> ThreadPreviewKind.PHOTO
+        "FILE" -> ThreadPreviewKind.FILE
+        "PRESCRIPTION" -> ThreadPreviewKind.PRESCRIPTION
+        else -> ThreadPreviewKind.TEXT
+    },
 )
 
 @Serializable

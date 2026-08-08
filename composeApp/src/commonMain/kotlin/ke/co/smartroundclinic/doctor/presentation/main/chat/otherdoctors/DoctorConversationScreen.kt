@@ -1,5 +1,6 @@
 package ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors
 
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.formatBytes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -936,7 +937,7 @@ private fun PendingFileBubble(pending: PendingFile) {
         if (isImage) {
             Box(Modifier.widthIn(max = 260.dp).clip(shape)) {
                 AsyncImage(
-                    model = pending.bytes,
+                    model = pending.previewBytes,
                     contentDescription = pending.fileName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.size(240.dp, 200.dp),
@@ -986,14 +987,30 @@ private fun PendingFileBubble(pending: PendingFile) {
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    val progress = pending.progress
                     Text(
-                        text = if (pending.failed) "Failed to send" else "Sending…",
+                        text = when {
+                            pending.errorText != null -> pending.errorText
+                            pending.failed -> "Failed to send"
+                            progress != null -> "Sending… ${(progress * 100).toInt()}%  ·  ${formatBytes(pending.totalBytes)}"
+                            else -> "Sending…"
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = if (pending.failed)
                             MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
                         else
                             Color.White.copy(alpha = 0.7f),
                     )
+                    // A large attachment takes minutes; without a real bar it reads as frozen.
+                    if (!pending.failed && progress != null) {
+                        Spacer(Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth().height(3.dp),
+                            color = Color.White,
+                            trackColor = Color.White.copy(alpha = 0.3f),
+                        )
+                    }
                 }
                 if (!pending.failed) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
