@@ -1,5 +1,6 @@
 package ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors
 
+import ke.co.smartroundclinic.doctor.presentation.main.chat.util.formatFileSizeDecimal
 import kotlinx.io.RawSource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -51,6 +52,9 @@ import kotlinx.serialization.json.Json
 
 private val wsJson = Json { ignoreUnknownKeys = true; isLenient = true; explicitNulls = false }
 private const val HISTORY_PAGE_SIZE = 20
+
+/** A rejected attachment clears itself after this long. */
+private const val FAILED_ATTACHMENT_AUTO_DISMISS_MS = 5_000L
 private const val DOCTORS_PAGE_SIZE = 20
 
 /**
@@ -511,16 +515,30 @@ class DoctorChatViewModel(
     }
 
     /** Shows a failed attachment for a file rejected on size before it was ever read. */
-    fun rejectOversizedFile(fileName: String, contentType: String) {
+    fun rejectOversizedFile(fileName: String, contentType: String, sizeBytes: Long) {
+        val localId = "p${kotlin.random.Random.nextInt()}"
         pendingFiles.add(
             PendingFile(
-                localId = "p${kotlin.random.Random.nextInt()}",
+                localId = localId,
                 fileName = fileName,
                 contentType = contentType,
                 failed = true,
                 errorText = Constants.FILE_TOO_LARGE_MESSAGE,
+                // Naming both numbers makes the rejection actionable — the patient can see how
+                // far over the limit they are rather than guessing.
+                detailText = "${formatFileSizeDecimal(sizeBytes)} / ${formatFileSizeDecimal(Constants.MAX_CHAT_FILE_BYTES)} max",
             ),
         )
+        // Clears itself so a rejection doesn't sit in the thread forever; the X dismisses it sooner.
+        viewModelScope.launch {
+            delay(FAILED_ATTACHMENT_AUTO_DISMISS_MS)
+            dismissPendingFile(localId)
+        }
+    }
+
+    /** Removes a failed attachment from the thread — the bubble's X, or the auto-dismiss timer. */
+    fun dismissPendingFile(localId: String) {
+        pendingFiles.removeAll { it.localId == localId }
     }
 
     /** Shows a failed attachment for a file we could not read at all (revoked URI, etc). */

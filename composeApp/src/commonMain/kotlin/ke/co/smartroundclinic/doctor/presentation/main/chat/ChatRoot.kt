@@ -219,6 +219,7 @@ fun ChatRoot(
                         doctorChatVm.sendFile(dest.threadId, fileName, contentType, sizeBytes, previewBytes, openSource)
                     },
                     onFileTooLarge = doctorChatVm::rejectOversizedFile,
+                    onDismissPendingFile = doctorChatVm::dismissPendingFile,
                     onSendFileFailed = doctorChatVm::rejectUnreadableFile,
                 )
             }
@@ -361,6 +362,7 @@ fun ChatRoot(
                     onSendText = vm::sendText,
                     onSendFile = vm::sendFile,
                     onFileTooLarge = vm::rejectOversizedFile,
+                    onDismissPendingFile = vm::dismissPendingFile,
                     onSendFileFailed = vm::rejectUnreadableFile,
                 )
             }

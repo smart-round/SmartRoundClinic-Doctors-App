@@ -187,7 +187,8 @@ internal fun ConversationScreen(
     onVideoCall: () -> Unit,
     onSendText: (String) -> Unit,
     onSendFile: (String, String, Long, ByteArray?, () -> RawSource) -> Unit,
-    onFileTooLarge: (String, String) -> Unit = { _, _ -> },
+    onFileTooLarge: (String, String, Long) -> Unit = { _, _, _ -> },
+    onDismissPendingFile: (String) -> Unit = {},
     onSendFileFailed: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
@@ -274,7 +275,7 @@ internal fun ConversationScreen(
                 return@launch
             }
             if (size > Constants.MAX_CHAT_FILE_BYTES) {
-                onFileTooLarge(name, mime)
+                onFileTooLarge(name, mime, size)
                 return@launch
             }
             // Only small images are read into memory, purely to draw the in-flight thumbnail.
@@ -470,7 +471,7 @@ internal fun ConversationScreen(
                             }
                             // Optimistic pending messages — appear immediately, removed when server echoes back
                             items(pendingFiles, key = { "p_${it.localId}" }) { pending ->
-                                PendingFileBubble(pending = pending)
+                                PendingFileBubble(pending = pending, onDismiss = { onDismissPendingFile(pending.localId) })
                             }
                             if (otherPartyTyping) {
                                 item(key = "typing_indicator") { TypingIndicatorBubble() }
@@ -1210,7 +1211,7 @@ private fun FileBubble(
 
 // WhatsApp-style optimistic bubble shown immediately while the file is uploading
 @Composable
-private fun PendingFileBubble(pending: PendingFile) {
+private fun PendingFileBubble(pending: PendingFile, onDismiss: () -> Unit = {}) {
     val kind = attachmentKind(pending.fileName, pending.contentType)
     // Only show the inline preview when we actually kept the bytes (small images).
     val isImage = kind == AttachmentKind.PHOTO && pending.previewBytes != null
@@ -1286,6 +1287,23 @@ private fun PendingFileBubble(pending: PendingFile) {
                         else
                             Color.White.copy(alpha = 0.7f),
                     )
+                    pending.detailText?.let { detail ->
+                        Text(
+                            text = detail,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
+                if (pending.failed) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Dismiss",
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
                 if (!pending.failed) {
                     UploadProgressRing(progress = pending.progress)
