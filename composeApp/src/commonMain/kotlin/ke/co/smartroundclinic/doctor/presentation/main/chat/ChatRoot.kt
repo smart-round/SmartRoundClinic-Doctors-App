@@ -212,8 +212,8 @@ fun ChatRoot(
                             backStack.add(DoctorProfileView(counterpartId, dest.counterpartName, counterpartPicture))
                         }
                     },
-                    onVoiceCall = { backStack.add(OutgoingDoctorCall(dest.threadId, dest.counterpartName, isVideo = false)) },
-                    onVideoCall = { backStack.add(OutgoingDoctorCall(dest.threadId, dest.counterpartName, isVideo = true)) },
+                    onVoiceCall = { backStack.add(OutgoingDoctorCall(dest.threadId, dest.counterpartName, isVideo = false, calleePicture = counterpartPicture)) },
+                    onVideoCall = { backStack.add(OutgoingDoctorCall(dest.threadId, dest.counterpartName, isVideo = true, calleePicture = counterpartPicture)) },
                     onSendText = doctorChatVm::sendText,
                     onSendFile = { fileName, contentType, sizeBytes, previewBytes, openSource ->
                         doctorChatVm.sendFile(dest.threadId, fileName, contentType, sizeBytes, previewBytes, openSource)
@@ -283,6 +283,7 @@ fun ChatRoot(
 
                 OutgoingCallScreen(
                     calleeName = dest.calleeName,
+                    calleePicture = dest.calleePicture,
                     statusText = when (status) {
                         is OutgoingDoctorCallStatus.Declined -> "Call declined"
                         else -> "Calling…"
@@ -355,8 +356,8 @@ fun ChatRoot(
                         vm.disconnect()
                         backStack.removeLastOrNull()
                     },
-                    onVoiceCall = { backStack.add(OutgoingCall(dest.patientId, dest.patientName, isVideo = false)) },
-                    onVideoCall = { backStack.add(OutgoingCall(dest.patientId, dest.patientName, isVideo = true)) },
+                    onVoiceCall = { backStack.add(OutgoingCall(dest.patientId, dest.patientName, isVideo = false, calleePicture = patientPicture)) },
+                    onVideoCall = { backStack.add(OutgoingCall(dest.patientId, dest.patientName, isVideo = true, calleePicture = patientPicture)) },
                     onSendText = vm::sendText,
                     onSendFile = vm::sendFile,
                     onFileTooLarge = vm::rejectOversizedFile,
@@ -403,6 +404,7 @@ fun ChatRoot(
 
                 OutgoingCallScreen(
                     calleeName = dest.calleeName,
+                    calleePicture = dest.calleePicture,
                     statusText = when (status) {
                         is OutgoingCallStatus.Declined -> "Call declined"
                         else -> "Calling…"

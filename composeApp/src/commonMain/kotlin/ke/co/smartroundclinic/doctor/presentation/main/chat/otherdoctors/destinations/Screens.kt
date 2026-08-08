@@ -7,4 +7,4 @@ import kotlinx.serialization.Serializable
 @Serializable data class DoctorConversation(val threadId: String, val counterpartName: String, val counterpartPicture: String?) : NavKey
 @Serializable data class DoctorProfileView(val doctorId: String, val name: String, val picture: String?) : NavKey
 @Serializable data class DoctorCall(val threadId: String, val isVideo: Boolean) : NavKey
-@Serializable data class OutgoingDoctorCall(val threadId: String, val calleeName: String, val isVideo: Boolean) : NavKey
+@Serializable data class OutgoingDoctorCall(val threadId: String, val calleeName: String, val isVideo: Boolean, val calleePicture: String? = null) : NavKey
