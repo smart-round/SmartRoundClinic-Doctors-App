@@ -4,6 +4,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.chat.util.isPdf
 import ke.co.smartroundclinic.doctor.presentation.main.chat.util.attachmentLabel
 import ke.co.smartroundclinic.doctor.presentation.main.chat.util.attachmentKind
 import ke.co.smartroundclinic.doctor.presentation.main.chat.util.AttachmentKind
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.PdfViewer
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.UploadProgressRing
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.attachmentIcon
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.formatBytes
@@ -684,9 +685,9 @@ private fun FileViewerSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = null,
-        containerColor = if (isImage || isVideo) Color.Black else MaterialTheme.colorScheme.surface,
+        containerColor = if (isImage || isVideo || isPdfFile) Color.Black else MaterialTheme.colorScheme.surface,
         // Media fills the screen edge to edge; documents keep the inset sheet.
-        modifier = if (isImage || isVideo) Modifier.fillMaxSize() else Modifier.fillMaxHeight(0.94f).statusBarsPadding(),
+        modifier = if (isImage || isVideo || isPdfFile) Modifier.fillMaxSize() else Modifier.fillMaxHeight(0.94f).statusBarsPadding(),
     ) {
         if (isVideo) {
             // Plays in-app, same as photos open in-app, rather than handing off to the OS.
@@ -696,6 +697,34 @@ private fun FileViewerSheet(
                     modifier = Modifier.fillMaxSize(),
                     playerHost = playerHost,
                 )
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .statusBarsPadding()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                    Text(
+                        text = file.fileName,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { uriHandler.openUri(file.url) }) {
+                        Icon(Icons.Filled.Download, contentDescription = "Download", tint = Color.White)
+                    }
+                }
+            }
+        } else if (isPdfFile) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                PdfViewer(url = file.url, modifier = Modifier.fillMaxSize())
                 Row(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
