@@ -1,5 +1,6 @@
 package ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors
 
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.UploadProgressRing
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.formatBytes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
@@ -98,6 +99,9 @@ import io.github.vinceglb.filekit.dialogs.FileKitMode
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberCameraPickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.size
+import io.github.vinceglb.filekit.source
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.readBytes
 import ke.co.smartroundclinic.doctor.domain.model.DoctorChatFileAttachment
@@ -111,6 +115,11 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Secondary90
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 import kotlinx.coroutines.delay
+import kotlinx.io.RawSource
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import ke.co.smartroundclinic.doctor.common.Constants
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
@@ -153,7 +162,9 @@ internal fun DoctorConversationScreen(
     onVoiceCall: () -> Unit = {},
     onVideoCall: () -> Unit,
     onSendText: (String) -> Unit,
-    onSendFile: (String, String, ByteArray) -> Unit,
+    onSendFile: (String, String, Long, ByteArray?, () -> RawSource) -> Unit,
+    onFileTooLarge: (String, String) -> Unit = { _, _ -> },
+    onSendFileFailed: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -192,21 +203,44 @@ internal fun DoctorConversationScreen(
         }
     }
 
-    fun sendPickedFile(name: String, bytes: ByteArray) {
-        scope.launch { onSendFile(name, mimeFromName(name), bytes) }
+    /**
+     * Reads a picked file and hands it to the ViewModel. The read happens on [Dispatchers.IO],
+     * never on the composition's Main-dispatched scope, and the size is checked first so an
+     * oversized file is never read at all.
+     */
+    fun sendPickedFile(file: PlatformFile, fallbackName: String) {
+        scope.launch {
+            val name = file.name.ifBlank { fallbackName }
+            val mime = mimeFromName(name)
+            val size = withContext(Dispatchers.IO) { runCatching { file.size() }.getOrNull() }
+            if (size == null) {
+                onSendFileFailed(name, mime)
+                return@launch
+            }
+            if (size > Constants.MAX_CHAT_FILE_BYTES) {
+                onFileTooLarge(name, mime)
+                return@launch
+            }
+            val preview = if (mime.startsWith("image/") && size <= Constants.MAX_INLINE_PREVIEW_BYTES) {
+                withContext(Dispatchers.IO) { runCatching { file.readBytes() }.getOrNull() }
+            } else {
+                null
+            }
+            onSendFile(name, mime, size, preview) { file.source() }
+        }
     }
 
     val cameraLauncher = rememberCameraPickerLauncher { file ->
         file?.let {
             val name = it.name.takeIf { n -> n.isNotBlank() && n.contains('.') } ?: "photo.jpg"
-            scope.launch { sendPickedFile(name, it.readBytes()) }
+            sendPickedFile(it, name)
         }
     }
     val galleryLauncher = rememberFilePickerLauncher(mode = FileKitMode.Single, type = FileKitType.Image) { file ->
-        file?.let { scope.launch { sendPickedFile(it.name.ifBlank { "image.jpg" }, it.readBytes()) } }
+        file?.let { sendPickedFile(it, "image.jpg") }
     }
     val fileLauncher = rememberFilePickerLauncher(mode = FileKitMode.Single, type = FileKitType.File()) { file ->
-        file?.let { scope.launch { sendPickedFile(it.name.ifBlank { "file" }, it.readBytes()) } }
+        file?.let { sendPickedFile(it, "file") }
     }
 
     Scaffold(
@@ -987,13 +1021,11 @@ private fun PendingFileBubble(pending: PendingFile) {
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    val progress = pending.progress
                     Text(
                         text = when {
                             pending.errorText != null -> pending.errorText
                             pending.failed -> "Failed to send"
-                            progress != null -> "Sending… ${(progress * 100).toInt()}%  ·  ${formatBytes(pending.totalBytes)}"
-                            else -> "Sending…"
+                            else -> formatBytes(pending.totalBytes)
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = if (pending.failed)
@@ -1001,19 +1033,9 @@ private fun PendingFileBubble(pending: PendingFile) {
                         else
                             Color.White.copy(alpha = 0.7f),
                     )
-                    // A large attachment takes minutes; without a real bar it reads as frozen.
-                    if (!pending.failed && progress != null) {
-                        Spacer(Modifier.height(6.dp))
-                        LinearProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier.fillMaxWidth().height(3.dp),
-                            color = Color.White,
-                            trackColor = Color.White.copy(alpha = 0.3f),
-                        )
-                    }
                 }
                 if (!pending.failed) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                    UploadProgressRing(progress = pending.progress)
                 }
             }
         }

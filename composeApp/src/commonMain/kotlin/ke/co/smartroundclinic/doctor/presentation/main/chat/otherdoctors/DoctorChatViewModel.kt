@@ -1,5 +1,6 @@
 package ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors
 
+import kotlinx.io.RawSource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -445,20 +446,43 @@ class DoctorChatViewModel(
         }
     }
 
-    fun sendFile(threadId: String, fileName: String, contentType: String, bytes: ByteArray) {
-        // Doctor-to-doctor chat still proxies the upload through the API (no pre-signed
-        // route on that module yet), so the bytes are in memory here regardless — only keep
-        // them for the thumbnail when they're small.
+    /**
+     * Queues an attachment. [openSource] is a factory rather than bytes so the upload can stream
+     * the file straight to storage without ever holding it in memory.
+     */
+    fun sendFile(
+        threadId: String,
+        fileName: String,
+        contentType: String,
+        sizeBytes: Long,
+        previewBytes: ByteArray?,
+        openSource: () -> RawSource,
+    ) {
         val pending = PendingFile(
             localId = "p${kotlin.random.Random.nextInt()}",
             fileName = fileName,
             contentType = contentType,
-            previewBytes = bytes.takeIf { it.size <= Constants.MAX_INLINE_PREVIEW_BYTES },
-            totalBytes = bytes.size.toLong(),
+            previewBytes = previewBytes,
+            totalBytes = sizeBytes,
         )
         pendingFiles.add(pending)
+
+        // Backstop for callers that didn't check the size first.
+        if (sizeBytes > Constants.MAX_CHAT_FILE_BYTES) {
+            markFailed(pending, Constants.FILE_TOO_LARGE_MESSAGE)
+            return
+        }
+
         viewModelScope.launch {
-            when (val result = repository.uploadFile(threadId, fileName, contentType, bytes)) {
+            val result = repository.uploadFile(
+                threadId = threadId,
+                fileName = fileName,
+                contentType = contentType,
+                sizeBytes = sizeBytes,
+                openSource = openSource,
+                onProgress = { sent, total -> updateProgress(pending.localId, sent, total) },
+            )
+            when (result) {
                 is Resource.Success -> {
                     val msg = result.data
                     if (msg != null && messages.none { it.id == msg.id }) {
@@ -468,12 +492,47 @@ class DoctorChatViewModel(
                 }
                 is Resource.Error -> {
                     snackbarController.show(result.message ?: "Failed to send file", isError = true)
-                    val index = pendingFiles.indexOfFirst { it.localId == pending.localId }
-                    if (index >= 0) pendingFiles[index] = pending.copy(failed = true)
+                    markFailed(pending)
                 }
                 else -> {}
             }
         }
+    }
+
+    private fun updateProgress(localId: String, sent: Long, total: Long) {
+        val idx = pendingFiles.indexOfFirst { it.localId == localId }
+        if (idx >= 0) pendingFiles[idx] = pendingFiles[idx].copy(sentBytes = sent, totalBytes = total)
+    }
+
+    private fun markFailed(pending: PendingFile, errorText: String? = null) {
+        val idx = pendingFiles.indexOfFirst { it.localId == pending.localId }
+        if (idx >= 0) pendingFiles[idx] = pending.copy(failed = true, errorText = errorText)
+    }
+
+    /** Shows a failed attachment for a file rejected on size before it was ever read. */
+    fun rejectOversizedFile(fileName: String, contentType: String) {
+        pendingFiles.add(
+            PendingFile(
+                localId = "p${kotlin.random.Random.nextInt()}",
+                fileName = fileName,
+                contentType = contentType,
+                failed = true,
+                errorText = Constants.FILE_TOO_LARGE_MESSAGE,
+            ),
+        )
+    }
+
+    /** Shows a failed attachment for a file we could not read at all (revoked URI, etc). */
+    fun rejectUnreadableFile(fileName: String, contentType: String) {
+        pendingFiles.add(
+            PendingFile(
+                localId = "p${kotlin.random.Random.nextInt()}",
+                fileName = fileName,
+                contentType = contentType,
+                failed = true,
+                errorText = "Couldn't read this file. Please try again.",
+            ),
+        )
     }
 
     fun startCall(threadId: String, isVideo: Boolean, calleeName: String?) {

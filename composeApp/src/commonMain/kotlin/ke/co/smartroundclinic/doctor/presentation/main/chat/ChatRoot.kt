@@ -215,7 +215,11 @@ fun ChatRoot(
                     onVoiceCall = { backStack.add(OutgoingDoctorCall(dest.threadId, dest.counterpartName, isVideo = false)) },
                     onVideoCall = { backStack.add(OutgoingDoctorCall(dest.threadId, dest.counterpartName, isVideo = true)) },
                     onSendText = doctorChatVm::sendText,
-                    onSendFile = { fileName, contentType, bytes -> doctorChatVm.sendFile(dest.threadId, fileName, contentType, bytes) },
+                    onSendFile = { fileName, contentType, sizeBytes, previewBytes, openSource ->
+                        doctorChatVm.sendFile(dest.threadId, fileName, contentType, sizeBytes, previewBytes, openSource)
+                    },
+                    onFileTooLarge = doctorChatVm::rejectOversizedFile,
+                    onSendFileFailed = doctorChatVm::rejectUnreadableFile,
                 )
             }
             entry<DoctorProfileView> { dest ->

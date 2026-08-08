@@ -176,3 +176,37 @@ data class DoctorChatMessagesResponse(
     val message: String,
     val status: Boolean,
 )
+
+// ─── Pre-signed direct-to-storage upload ────────────────────────────────────
+
+@Serializable
+data class DoctorChatPresignUploadReq(
+    val fileName: String,
+    val contentType: String,
+    val sizeBytes: Long,
+)
+
+@Serializable
+data class DoctorChatPresignUploadData(
+    val messageId: String,
+    val key: String,
+    val uploadUrl: String,
+    val contentType: String,
+)
+
+@Serializable
+data class DoctorChatPresignUploadResponse(
+    val data: DoctorChatPresignUploadData? = null,
+    val httpStatusCode: Int,
+    val message: String,
+    val status: Boolean,
+)
+
+@Serializable
+data class DoctorChatCompleteUploadReq(
+    val messageId: String,
+    val key: String,
+    val fileName: String,
+    val contentType: String,
+    val sizeBytes: Long,
+)

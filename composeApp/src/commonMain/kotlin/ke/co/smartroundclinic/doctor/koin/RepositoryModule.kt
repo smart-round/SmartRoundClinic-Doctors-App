@@ -88,5 +88,5 @@ val repositoryModule = module {
     single<PatientRatingRepository> { PatientRatingRepositoryImpl(get()) }
     single<DoctorDirectoryRepository> { DoctorDirectoryRepositoryImpl(get()) }
     single<ReferralRepository> { ReferralRepositoryImpl(get()) }
-    single<DoctorChatRepository> { DoctorChatRepositoryImpl(get()) }
+    single<DoctorChatRepository> { DoctorChatRepositoryImpl(get(), get(named(STORAGE_HTTP_CLIENT))) }
 }
