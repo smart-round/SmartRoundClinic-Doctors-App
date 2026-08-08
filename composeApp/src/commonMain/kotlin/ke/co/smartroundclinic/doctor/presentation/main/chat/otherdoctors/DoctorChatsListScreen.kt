@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.FloatingActionButton
@@ -160,9 +161,14 @@ private fun ThreadRow(thread: DoctorChatThread, onClick: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = "Dr. ${thread.counterpartName}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (thread.lastMessageKind == ThreadPreviewKind.PHOTO) {
+                val previewIcon = when (thread.lastMessageKind) {
+                    ThreadPreviewKind.PHOTO -> Icons.Filled.CameraAlt
+                    ThreadPreviewKind.VIDEO -> Icons.Filled.Videocam
+                    else -> null
+                }
+                if (previewIcon != null) {
                     Icon(
-                        imageVector = Icons.Filled.CameraAlt,
+                        imageVector = previewIcon,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(14.dp),

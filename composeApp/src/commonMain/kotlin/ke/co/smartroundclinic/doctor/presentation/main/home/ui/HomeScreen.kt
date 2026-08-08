@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -532,9 +533,14 @@ private fun MessageRow(
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (previewKind == ThreadPreviewKind.PHOTO) {
+                    val previewIcon = when (previewKind) {
+                        ThreadPreviewKind.PHOTO -> Icons.Filled.CameraAlt
+                        ThreadPreviewKind.VIDEO -> Icons.Filled.Videocam
+                        else -> null
+                    }
+                    if (previewIcon != null) {
                         Icon(
-                            imageVector = Icons.Filled.CameraAlt,
+                            imageVector = previewIcon,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(14.dp),

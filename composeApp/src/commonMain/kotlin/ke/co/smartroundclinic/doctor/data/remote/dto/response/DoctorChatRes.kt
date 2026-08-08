@@ -158,6 +158,8 @@ fun DoctorChatThreadData.toDomain() = DoctorChatThread(
     isOnline = isOnline, lastSeenAt = lastSeenAt,
     lastMessageKind = when (lastMessageKind?.uppercase()) {
         "PHOTO" -> ThreadPreviewKind.PHOTO
+        "VIDEO" -> ThreadPreviewKind.VIDEO
+    "VIDEO" -> ThreadPreviewKind.VIDEO
         "FILE" -> ThreadPreviewKind.FILE
         "PRESCRIPTION" -> ThreadPreviewKind.PRESCRIPTION
         else -> ThreadPreviewKind.TEXT

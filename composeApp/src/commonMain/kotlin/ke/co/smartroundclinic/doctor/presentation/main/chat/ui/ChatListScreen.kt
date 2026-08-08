@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -253,9 +254,14 @@ private fun ThreadRow(thread: ConversationThread, onClick: () -> Unit, onLongCli
             Text(text = thread.counterpartName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (thread.lastMessageKind == ThreadPreviewKind.PHOTO) {
+                val previewIcon = when (thread.lastMessageKind) {
+                    ThreadPreviewKind.PHOTO -> Icons.Filled.CameraAlt
+                    ThreadPreviewKind.VIDEO -> Icons.Filled.Videocam
+                    else -> null
+                }
+                if (previewIcon != null) {
                     Icon(
-                        imageVector = Icons.Filled.CameraAlt,
+                        imageVector = previewIcon,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(14.dp),

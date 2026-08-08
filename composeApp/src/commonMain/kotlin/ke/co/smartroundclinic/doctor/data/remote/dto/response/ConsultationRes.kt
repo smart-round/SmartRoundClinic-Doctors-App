@@ -183,6 +183,7 @@ fun ConversationThreadData.toDomain() = ConversationThread(
 /** Absent on older API builds — anything unrecognised falls back to plain text. */
 private fun String?.toThreadPreviewKind(): ThreadPreviewKind = when (this?.uppercase()) {
     "PHOTO" -> ThreadPreviewKind.PHOTO
+    "VIDEO" -> ThreadPreviewKind.VIDEO
     "FILE" -> ThreadPreviewKind.FILE
     "PRESCRIPTION" -> ThreadPreviewKind.PRESCRIPTION
     else -> ThreadPreviewKind.TEXT
