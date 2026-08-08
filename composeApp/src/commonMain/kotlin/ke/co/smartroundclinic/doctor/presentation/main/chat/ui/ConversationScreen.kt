@@ -1673,9 +1673,11 @@ internal fun UploadProgressRing(progress: Float?) {
                 gapSize = 0.dp,
             )
             Text(
-                text = "${(progress * 100).toInt()}",
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                // 9sp so "100%" still fits inside the 40dp ring.
+                text = "${(progress * 100).toInt()}%",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
                 color = Color.White,
+                maxLines = 1,
             )
         }
     }
