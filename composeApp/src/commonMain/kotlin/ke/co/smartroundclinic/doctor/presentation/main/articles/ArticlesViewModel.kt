@@ -108,12 +108,12 @@ class ArticlesViewModel(
     fun createArticle(
         title: String,
         content: String,
-        summary: String,
         categoryId: String,
         onSuccess: (Article) -> Unit,
     ) {
         viewModelScope.launch {
             isSaving = true
+            val summary = summaryFrom(content, title)
             val result = createArticleUseCase(title, content, summary, categoryId, thumbnailBytes, thumbnailFilename)
             isSaving = false
             when (result) {
@@ -131,12 +131,12 @@ class ArticlesViewModel(
         id: String,
         title: String,
         content: String,
-        summary: String,
         categoryId: String,
         onSuccess: () -> Unit,
     ) {
         viewModelScope.launch {
             isSaving = true
+            val summary = summaryFrom(content, title)
             val result = updateArticleUseCase(id, title, content, summary, categoryId, thumbnailBytes, thumbnailFilename)
             isSaving = false
             when (result) {
@@ -176,4 +176,31 @@ class ArticlesViewModel(
             }
         }
     }
+}
+
+/** Longest summary we send; list and detail cards only ever show a couple of lines of it. */
+private const val SUMMARY_MAX_LENGTH = 200
+
+/**
+ * Doctors no longer type a summary, but the API requires one and both apps show it on article
+ * cards — so take the opening of the article body, stripped of its HTML.
+ */
+private fun summaryFrom(contentHtml: String, title: String): String {
+    val text = contentHtml
+        .replace(Regex("<[^>]*>"), " ")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
+    if (text.isBlank()) return title
+    if (text.length <= SUMMARY_MAX_LENGTH) return text
+
+    // Cut on a word boundary so the preview doesn't end mid-word.
+    val cut = text.take(SUMMARY_MAX_LENGTH)
+    return cut.substringBeforeLast(' ', cut).trimEnd() + "…"
 }

@@ -16,11 +16,11 @@ import androidx.navigation3.ui.NavDisplay
 import ke.co.smartroundclinic.doctor.domain.model.Article
 import ke.co.smartroundclinic.doctor.domain.model.ArticleState
 import ke.co.smartroundclinic.doctor.presentation.main.articles.destinations.ArticleDetail
-import ke.co.smartroundclinic.doctor.presentation.main.articles.ui.ArticlesTab
 import ke.co.smartroundclinic.doctor.presentation.main.articles.destinations.ArticleList
 import ke.co.smartroundclinic.doctor.presentation.main.articles.destinations.WriteArticle
 import ke.co.smartroundclinic.doctor.presentation.main.articles.ui.ArticleDetailScreen
 import ke.co.smartroundclinic.doctor.presentation.main.articles.ui.ArticleListScreen
+import ke.co.smartroundclinic.doctor.presentation.main.articles.ui.ArticlesTab
 import ke.co.smartroundclinic.doctor.presentation.main.articles.ui.WriteArticleScreen
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -33,10 +33,19 @@ fun ArticlesRoot(
 ) {
     val viewModel = koinViewModel<ArticlesViewModel>()
     val backStack = retain { mutableStateListOf<NavKey>(ArticleList) }
-    val isAtRoot = backStack.size == 1
     var selectedTab by remember { mutableStateOf(ArticlesTab.MY_ARTICLES) }
+    var isSearching by remember { mutableStateOf(false) }
 
-    SideEffect { onAtRootChanged(isAtRoot) }
+    // The header is identical on every frame, search icon included, so tapping it from a
+    // sub-screen returns to the list — the only place a search over articles means anything.
+    fun openSearchOnList() {
+        while (backStack.size > 1) backStack.removeLastOrNull()
+        isSearching = true
+    }
+
+    // Every frame in the amended spec — list, editor and reader alike — keeps the bottom nav bar
+    // on screen, so this tab never reports itself as being off its root.
+    SideEffect { onAtRootChanged(true) }
 
     val myArticles by viewModel.myArticles.collectAsState()
     val liveArticles by viewModel.liveArticles.collectAsState()
@@ -57,17 +66,15 @@ fun ArticlesRoot(
                     hasLoadedLive = viewModel.hasLoadedLive,
                     selectedTab = selectedTab,
                     categories = categories,
+                    isSearching = isSearching,
+                    onSearchingChange = { isSearching = it },
                     onTabSelected = { tab ->
                         selectedTab = tab
                         if (tab == ArticlesTab.MY_ARTICLES) viewModel.refreshMyArticles()
                         else viewModel.refreshLiveArticles()
                     },
                     onWriteArticle = { viewModel.clearThumbnail(); backStack.add(WriteArticle()) },
-                    onEditArticle = { article -> viewModel.clearThumbnail(); backStack.add(WriteArticle(articleId = article.id)) },
                     onArticleClick = { article -> backStack.add(ArticleDetail(article.id)) },
-                    onPublish = { article -> viewModel.publishArticle(article.id) },
-                    onUnpublish = { article -> viewModel.unpublishArticle(article.id) },
-                    onDelete = { article -> viewModel.deleteArticle(article.id) },
                     onRefresh = {
                         if (selectedTab == ArticlesTab.MY_ARTICLES) viewModel.refreshMyArticles(forceRefresh = true)
                         else viewModel.refreshLiveArticles(forceRefresh = true)
@@ -89,14 +96,11 @@ fun ArticlesRoot(
                     onBack = { backStack.removeLastOrNull() },
                     onThumbnailPicked = { bytes, filename -> viewModel.setThumbnail(bytes, filename) },
                     onRefreshCategories = { viewModel.refreshCategories() },
-                    onSaveDraft = { title, content, summary, categoryId ->
-                        viewModel.createArticle(title, content, summary, categoryId) {
-                            backStack.removeLastOrNull()
-                        }
-                    },
-                    onPublish = { title, content, summary, categoryId ->
+                    onNotificationsClick = onNotificationsClick,
+                    onSearchClick = ::openSearchOnList,
+                    onPublish = { title, content, categoryId ->
                         if (dest.articleId != null) {
-                            viewModel.updateArticle(dest.articleId, title, content, summary, categoryId) {
+                            viewModel.updateArticle(dest.articleId, title, content, categoryId) {
                                 val updated = myArticles.find { it.id == dest.articleId }
                                 if (updated?.state == ArticleState.DRAFT) {
                                     viewModel.publishArticle(dest.articleId)
@@ -104,7 +108,7 @@ fun ArticlesRoot(
                                 backStack.removeLastOrNull()
                             }
                         } else {
-                            viewModel.createArticle(title, content, summary, categoryId) { created ->
+                            viewModel.createArticle(title, content, categoryId) { created ->
                                 viewModel.publishArticle(created.id)
                                 backStack.removeLastOrNull()
                             }
@@ -120,8 +124,11 @@ fun ArticlesRoot(
                     val isOwn = myArticles.any { it.id == dest.articleId }
                     ArticleDetailScreen(
                         article = article,
+                        categoryName = categories.find { it.id == article.categoryId }?.name ?: "",
                         isOwn = isOwn,
                         onBack = { backStack.removeLastOrNull() },
+                        onNotificationsClick = onNotificationsClick,
+                        onSearchClick = ::openSearchOnList,
                         onEdit = { viewModel.clearThumbnail(); backStack.add(WriteArticle(articleId = article.id)) },
                         onPublish = { viewModel.publishArticle(article.id) },
                         onUnpublish = { viewModel.unpublishArticle(article.id) },

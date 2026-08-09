@@ -12,86 +12,87 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import ke.co.smartroundclinic.doctor.core.platform.rememberShareText
 import ke.co.smartroundclinic.doctor.domain.model.Article
 import ke.co.smartroundclinic.doctor.domain.model.ArticleState
+import ke.co.smartroundclinic.doctor.presentation.main.articles.readMinutes
+import ke.co.smartroundclinic.doctor.presentation.theme.Neutral20
+import ke.co.smartroundclinic.doctor.presentation.theme.Neutral40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
-import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
+/** Destructive glyph in the byline row — pure red in the Figma spec, not the muted error token. */
+private val DeleteRed = Color(0xFFFF0000)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ArticleDetailScreen(
     article: Article,
+    categoryName: String,
     isOwn: Boolean,
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onPublish: () -> Unit,
     onUnpublish: () -> Unit,
     onDelete: () -> Unit,
+    onNotificationsClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val formattedDate = remember(article.datePosted) {
-        try {
-            article.datePosted?.let {
-                val instant = Instant.parse(it)
-                val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-                val month = dateTime.month.name.lowercase().replaceFirstChar { char -> char.uppercase() }.take(3)
-                "$month ${dateTime.dayOfMonth}, ${dateTime.year}"
-            } ?: ""
-        } catch (_: Exception) {
-            article.datePosted?.take(10) ?: ""
-        }
+    val shareText = rememberShareText()
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    val minutes = remember(article.content) { readMinutes(article.content) }
+    val formattedDate = remember(article.datePosted, article.createdAt) {
+        formatLongDate(article.datePosted ?: article.createdAt)
     }
 
     Scaffold(
         modifier = modifier,
+        containerColor = Color.White,
         topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                title = {
-                    Text(text = article.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                actions = {
-                    if (isOwn && article.state != ArticleState.SUSPENDED) {
-                        IconButton(onClick = onEdit) {
-                            Icon(imageVector = Icons.Filled.Edit, contentDescription = "Edit", tint = Primary40)
-                        }
-                    }
-                },
+            ArticlesHeader(
+                onBack = onBack,
+                onNotificationsClick = onNotificationsClick,
+                onSearchClick = onSearchClick,
             )
         },
         contentWindowInsets = WindowInsets(0),
@@ -99,36 +100,90 @@ internal fun ArticleDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.White)
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = ArticlesGutter),
         ) {
+            Spacer(Modifier.height(24.dp))
+
+            if (categoryName.isNotBlank()) {
+                Text(
+                    text = categoryName,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, letterSpacing = 0.sp),
+                    color = Neutral40,
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+
+            Text(
+                text = article.title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    lineHeight = 24.sp,
+                    letterSpacing = 0.sp,
+                ),
+                color = Neutral20,
+            )
+
+            Spacer(Modifier.height(10.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ArticleStateBadge(state = article.state)
-                if (formattedDate.isNotEmpty()) {
-                    Text(
-                        text = formattedDate,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Text(
+                    text = buildAnnotatedString {
+                        if (formattedDate.isNotBlank()) append("$formattedDate by ")
+                        val author = article.authorName
+                        if (!author.isNullOrBlank()) {
+                            withStyle(SpanStyle(color = Primary40)) { append(author) }
+                        }
+                        append(" · $minutes min read")
+                    },
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, letterSpacing = 0.sp),
+                    color = Neutral20,
+                    modifier = Modifier.weight(1f),
+                )
+
+                Icon(
+                    imageVector = Icons.Filled.Share,
+                    contentDescription = "Share article",
+                    tint = Neutral20,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = { shareText("${article.title}\n\n${article.summary}") },
+                        ),
+                )
+
+                if (isOwn) {
+                    Spacer(Modifier.width(18.dp))
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = "Delete article",
+                        tint = DeleteRed,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() },
+                                onClick = { showDeleteConfirm = true },
+                            ),
                     )
                 }
             }
 
-            Text(text = article.title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
-
-            Text(text = article.summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(16.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(ShapeCard)
+                    .height(147.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
@@ -137,28 +192,73 @@ internal fun ArticleDetailScreen(
                         model = article.thumbnailUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().clip(ShapeCard),
+                        modifier = Modifier.fillMaxSize(),
                     )
                 } else {
-                    Icon(imageVector = Icons.Outlined.Image, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(48.dp))
+                    Icon(
+                        imageVector = Icons.Outlined.Image,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(40.dp),
+                    )
                 }
             }
 
-            HtmlText(html = article.content, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(24.dp))
 
+            HtmlText(
+                html = article.content,
+                textAlign = TextAlign.Justify,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // The Figma frames are cut off above the fold, so the management actions a doctor still
+            // needs — edit, and moving an article between draft and live — live under the body.
             if (isOwn && article.state != ArticleState.SUSPENDED) {
+                Spacer(Modifier.height(28.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (article.state == ArticleState.DRAFT) {
-                        ArticleActionButton(label = "Publish", containerColor = Primary40, onClick = onPublish)
-                    } else if (article.state == ArticleState.LIVE) {
-                        ArticleActionButton(label = "Unpublish", containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface, onClick = onUnpublish)
+                    ArticleActionButton(
+                        label = "Edit",
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = Neutral20,
+                        onClick = onEdit,
+                    )
+                    when (article.state) {
+                        ArticleState.DRAFT -> ArticleActionButton(
+                            label = "Publish",
+                            containerColor = Primary40,
+                            onClick = onPublish,
+                        )
+                        ArticleState.LIVE -> ArticleActionButton(
+                            label = "Unpublish",
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = Neutral20,
+                            onClick = onUnpublish,
+                        )
+                        else -> Unit
                     }
-                    ArticleActionButton(label = "Delete", containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.error, onClick = onDelete)
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(32.dp))
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            containerColor = MaterialTheme.colorScheme.background,
+            title = { Text("Delete article?") },
+            text = { Text("\"${article.title}\" will be removed permanently.") },
+            confirmButton = {
+                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
+                    Text("Delete", color = DeleteRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            },
+        )
     }
 }
 
@@ -173,10 +273,23 @@ private fun ArticleActionButton(
         modifier = Modifier
             .clip(ShapePill)
             .background(containerColor)
-            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onClick,
+            )
             .padding(horizontal = 20.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
     }
+}
+
+/** "20 Nov, 2025" — the long form the detail byline uses. */
+private fun formatLongDate(isoDate: String): String = try {
+    val dateTime = Instant.parse(isoDate).toLocalDateTime(TimeZone.currentSystemDefault())
+    val month = dateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
+    "${dateTime.dayOfMonth} $month, ${dateTime.year}"
+} catch (_: Exception) {
+    ""
 }
