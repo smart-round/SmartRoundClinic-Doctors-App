@@ -31,7 +31,13 @@ data class ArticleCategoryData(
 )
 
 @Serializable
-data class ArticleRes(val data: ArticleData)
+data class ArticleRes(
+    // Nullable because the API returns the same envelope shape for failures, carrying `message`
+    // and no `data`. Requiring `data` turned every rejected request into an opaque
+    // "Field 'data' is required" deserialization error instead of the server's actual reason.
+    val data: ArticleData? = null,
+    val message: String = "",
+)
 
 @Serializable
 data class ArticlePaginatedData(

@@ -1,43 +1,41 @@
 package ke.co.smartroundclinic.doctor.presentation.main.articles.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Article
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -52,39 +50,52 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import ke.co.smartroundclinic.doctor.domain.model.Article
 import ke.co.smartroundclinic.doctor.domain.model.ArticleCategory
 import ke.co.smartroundclinic.doctor.domain.model.ArticleState
-import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
+import ke.co.smartroundclinic.doctor.presentation.main.articles.readMinutes
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
-import ke.co.smartroundclinic.doctor.presentation.theme.Error40
-import ke.co.smartroundclinic.doctor.presentation.theme.Error90
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientStart
+import ke.co.smartroundclinic.doctor.presentation.theme.Neutral20
+import ke.co.smartroundclinic.doctor.presentation.theme.Neutral60
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
-import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
-import ke.co.smartroundclinic.doctor.presentation.theme.Primary95
-import ke.co.smartroundclinic.doctor.presentation.theme.ShapeBadge
-import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.StatusPublished
 import ke.co.smartroundclinic.doctor.presentation.theme.StatusSuspended
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
+import smartroundclinic.composeapp.generated.resources.Res
+import smartroundclinic.composeapp.generated.resources.bottom_bar_cost_articles
+
+// ── Figma geometry (414pt frame) ─────────────────────────────────────────────
+private val CardShape = RoundedCornerShape(12.dp)
+private val CardHeight = 129.dp
+private val CardThumbWidth = 97.dp
+private val TabRowHeight = 50.dp
+private val ChipHeight = 21.dp
+
+/** Card fill — #E84E1C21 from the spec (brand orange at 0x21 alpha). */
+private val CardBackground = Color(0x21E84E1C)
 
 internal enum class ArticlesTab(val label: String) {
     MY_ARTICLES("My Articles"),
@@ -102,13 +113,11 @@ internal fun ArticleListScreen(
     hasLoadedLive: Boolean,
     selectedTab: ArticlesTab,
     categories: List<ArticleCategory>,
+    isSearching: Boolean,
+    onSearchingChange: (Boolean) -> Unit,
     onTabSelected: (ArticlesTab) -> Unit,
     onWriteArticle: () -> Unit,
-    onEditArticle: (Article) -> Unit,
     onArticleClick: (Article) -> Unit,
-    onPublish: (Article) -> Unit,
-    onUnpublish: (Article) -> Unit,
-    onDelete: (Article) -> Unit,
     onRefresh: () -> Unit,
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
@@ -117,6 +126,9 @@ internal fun ArticleListScreen(
 ) {
     val isMyTab = selectedTab == ArticlesTab.MY_ARTICLES
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
+    var query by remember { mutableStateOf("") }
+
+    LaunchedEffect(isSearching) { if (!isSearching) query = "" }
 
     val user by profileViewModel.user.collectAsState()
     val doctorName = user?.fullName?.trim() ?: ""
@@ -124,20 +136,57 @@ internal fun ArticleListScreen(
     LaunchedEffect(selectedTab) { if (isMyTab) selectedCategoryId = null }
 
     val articles = if (isMyTab) myArticles else liveArticles
-    val filteredArticles = if (!isMyTab && selectedCategoryId != null) {
-        articles.filter { it.categoryId == selectedCategoryId }
-    } else articles
+    val filteredArticles = remember(articles, selectedCategoryId, isMyTab, query) {
+        articles
+            .filter { isMyTab || selectedCategoryId == null || it.categoryId == selectedCategoryId }
+            .filter { article ->
+                query.isBlank() ||
+                    article.title.contains(query, ignoreCase = true) ||
+                    article.summary.contains(query, ignoreCase = true) ||
+                    (article.authorName?.contains(query, ignoreCase = true) == true)
+            }
+    }
     val isLoading = if (isMyTab) isLoadingMine else isLoadingLive
     val hasLoaded = if (isMyTab) hasLoadedMine else hasLoadedLive
 
+    // Both tabs share one list, so without this a scrolled "My Articles" leaves "Other Articles"
+    // opening halfway down its own list, with the first card clipped under the filter chips.
+    val listState = rememberLazyListState()
+    LaunchedEffect(selectedTab, selectedCategoryId) { listState.scrollToItem(0) }
+
     Scaffold(
         modifier = modifier,
+        containerColor = Color.White,
         topBar = {
-            DashboardHeader(
-                title = "Articles",
-                onProfileClick = onProfileClick,
-                onNotificationsClick = onNotificationsClick,
-            )
+            Column(modifier = Modifier.background(Color.White)) {
+                ArticlesHeader(
+                    title = if (isSearching) null else "Articles",
+                    onProfileClick = onProfileClick,
+                    onNotificationsClick = onNotificationsClick,
+                    onSearchClick = { onSearchingChange(!isSearching) },
+                )
+
+                if (isSearching) {
+                    ArticleSearchField(
+                        query = query,
+                        onQueryChange = { query = it },
+                        onClose = { onSearchingChange(false) },
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                SegmentedTabRow(selectedTab = selectedTab, onTabSelected = onTabSelected)
+
+                if (!isMyTab && categories.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    CategoryFilterRow(
+                        categories = categories,
+                        selectedCategoryId = selectedCategoryId,
+                        onCategorySelected = { selectedCategoryId = it },
+                    )
+                }
+            }
         },
         floatingActionButton = {
             if (isMyTab) {
@@ -156,61 +205,46 @@ internal fun ArticleListScreen(
         },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-
-            SegmentedTabRow(selectedTab = selectedTab, onTabSelected = onTabSelected)
-
-            if (!isMyTab && categories.isNotEmpty()) {
-                CategoryFilterRow(
-                    categories = categories,
-                    selectedCategoryId = selectedCategoryId,
-                    onCategorySelected = { selectedCategoryId = it },
-                )
-            }
-
-            PullToRefreshBox(
-                isRefreshing = isLoading,
-                onRefresh = onRefresh,
-                modifier = Modifier.weight(1f),
-            ) {
-                when {
-                    !hasLoaded && filteredArticles.isEmpty() -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Primary40)
-                        }
+        PullToRefreshBox(
+            isRefreshing = isLoading,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+        ) {
+            when {
+                !hasLoaded && filteredArticles.isEmpty() -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Primary40)
                     }
+                }
 
-                    hasLoaded && filteredArticles.isEmpty() -> {
-                        EmptyArticlesView(
-                            isMyTab = isMyTab,
-                            onWriteArticle = onWriteArticle,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
+                hasLoaded && filteredArticles.isEmpty() -> {
+                    EmptyArticlesView(
+                        isMyTab = isMyTab,
+                        isFiltered = query.isNotBlank() || selectedCategoryId != null,
+                        onWriteArticle = onWriteArticle,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
 
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                end = 16.dp,
-                                top = 12.dp,
-                                bottom = 88.dp,
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            items(filteredArticles, key = { it.id }) { article ->
-                                ArticleCard(
-                                    article = article,
-                                    isOwn = isMyTab,
-                                    authorName = article.authorName ?: (if (isMyTab) doctorName else ""),
-                                    onClick = { onArticleClick(article) },
-                                    onEdit = { onEditArticle(article) },
-                                    onPublish = { onPublish(article) },
-                                    onUnpublish = { onUnpublish(article) },
-                                    onDelete = { onDelete(article) },
-                                )
-                            }
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = ArticlesGutter,
+                            end = ArticlesGutter,
+                            top = 22.dp,
+                            bottom = 88.dp,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(filteredArticles, key = { it.id }) { article ->
+                            ArticleCard(
+                                article = article,
+                                isOwn = isMyTab,
+                                authorName = article.authorName ?: (if (isMyTab) doctorName else ""),
+                                onClick = { onArticleClick(article) },
+                            )
                         }
                     }
                 }
@@ -220,18 +254,62 @@ internal fun ArticleListScreen(
 }
 
 @Composable
+private fun ArticleSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text("Search articles", style = MaterialTheme.typography.bodyMedium, color = Neutral60) },
+        singleLine = true,
+        shape = CardShape,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = "Close search",
+                tint = Neutral60,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = onClose,
+                    ),
+            )
+        },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Primary40,
+            unfocusedBorderColor = Primary40,
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = ArticlesGutter, vertical = 12.dp)
+            .focusRequester(focusRequester),
+    )
+}
+
+@Composable
 private fun SegmentedTabRow(
     selectedTab: ArticlesTab,
     onTabSelected: (ArticlesTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Same segmented control the Bookings tab uses, so the two screens read as one system.
     Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .shadow(elevation = 4.dp, shape = ShapePill)
             .clip(ShapePill)
-            .background(color = MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(4.dp),
     ) {
         Row {
@@ -271,37 +349,55 @@ private fun CategoryFilterRow(
 ) {
     LazyRow(
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = ArticlesGutter),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         item {
-            FilterChip(label = "All", isSelected = selectedCategoryId == null, onClick = { onCategorySelected(null) })
+            CategoryChip(
+                label = "All",
+                isSelected = selectedCategoryId == null,
+                onClick = { onCategorySelected(null) },
+            )
         }
-        items(categories, key = { it.id }) { cat ->
-            FilterChip(label = cat.name, isSelected = selectedCategoryId == cat.id, onClick = { onCategorySelected(cat.id) })
+        items(categories, key = { it.id }) { category ->
+            CategoryChip(
+                label = category.name,
+                isSelected = selectedCategoryId == category.id,
+                onClick = { onCategorySelected(category.id) },
+            )
         }
     }
-    Spacer(Modifier.height(4.dp))
 }
 
 @Composable
-private fun FilterChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
-    val gradient = Brush.horizontalGradient(listOf(GradientStart, GradientEnd))
+private fun CategoryChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
+    val gradient = Brush.verticalGradient(listOf(GradientStart, GradientEnd))
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .clip(ShapePill)
+            .height(ChipHeight)
+            .clip(CircleShape)
             .then(
-                if (isSelected) Modifier.background(gradient)
-                else Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                if (isSelected) {
+                    Modifier.background(gradient)
+                } else {
+                    Modifier
+                        .background(Color.White)
+                        .border(1.dp, Neutral20.copy(alpha = 0.17f), CircleShape)
+                },
             )
-            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onClick,
+            )
+            .padding(horizontal = 14.dp),
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp, letterSpacing = 0.sp),
+            color = if (isSelected) Color.White else Neutral20,
+            maxLines = 1,
         )
     }
 }
@@ -309,45 +405,70 @@ private fun FilterChip(label: String, isSelected: Boolean, onClick: () -> Unit) 
 @Composable
 private fun EmptyArticlesView(
     isMyTab: Boolean,
+    isFiltered: Boolean,
     onWriteArticle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 32.dp),
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            modifier = Modifier.size(80.dp).clip(CircleShape).background(Primary90),
+            modifier = Modifier
+                .size(55.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Primary40.copy(alpha = 0.14f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Outlined.Article,
+                painter = painterResource(Res.drawable.bottom_bar_cost_articles),
                 contentDescription = null,
                 tint = Primary40,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(24.dp),
             )
         }
-        Spacer(Modifier.height(16.dp))
+
+        Spacer(Modifier.height(20.dp))
+
         Text(
-            text = if (isMyTab) "No Articles Yet" else "No Published Articles",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            text = when {
+                isFiltered -> "No Matching Articles"
+                isMyTab -> "No Articles Yet"
+                else -> "No Published Articles"
+            },
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+            ),
+            color = Neutral20,
         )
-        Spacer(Modifier.height(8.dp))
+
+        Spacer(Modifier.height(10.dp))
+
         Text(
-            text = if (isMyTab) "Create your first article and share your expertise with patients." else "No articles from other doctors yet.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = when {
+                isFiltered -> "Try a different search or category"
+                isMyTab -> "Create your first article and share your expertise with patients"
+                else -> "No articles from other doctors yet"
+            },
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+            color = Neutral60,
             textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 40.dp),
         )
-        if (isMyTab) {
-            Spacer(Modifier.height(24.dp))
-            PrimaryButton(onClick = onWriteArticle) {
+
+        if (isMyTab && !isFiltered) {
+            Spacer(Modifier.height(46.dp))
+            PrimaryButton(
+                onClick = onWriteArticle,
+                shape = RoundedCornerShape(14.5.dp),
+                modifier = Modifier.padding(horizontal = 48.dp).height(57.dp),
+            ) {
                 Text(
                     text = "Write Article",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 16.sp),
                     color = Color.White,
-                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
                 )
             }
         }
@@ -360,112 +481,86 @@ private fun ArticleCard(
     isOwn: Boolean,
     authorName: String,
     onClick: () -> Unit,
-    onEdit: () -> Unit,
-    onPublish: () -> Unit,
-    onUnpublish: () -> Unit,
-    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val readMinutes = remember(article.content) {
-        val words = article.content
-            .replace(Regex("<[^>]+>"), "")
-            .trim()
-            .split(Regex("\\s+"))
-            .count { it.isNotBlank() }
-        maxOf(1, words / 200)
-    }
-
+    val minutes = remember(article.content) { readMinutes(article.content) }
     val formattedDate = remember(article.datePosted, article.createdAt) {
-        val dateStr = article.datePosted ?: article.createdAt
-        try {
-            val dt = Instant.parse(dateStr).toLocalDateTime(TimeZone.currentSystemDefault())
-            val month = dt.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
-            "${dt.dayOfMonth} $month"
-        } catch (_: Exception) {
-            ""
-        }
+        formatDayMonth(article.datePosted ?: article.createdAt)
     }
 
-    var menuExpanded by remember { mutableStateOf(false) }
-    val canManage = isOwn && article.state != ArticleState.SUSPENDED && article.state != ArticleState.DELETED
-
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = ShapeCard,
-        colors = CardDefaults.cardColors(containerColor = Primary95),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(CardHeight)
+            .clip(CardShape)
+            .background(CardBackground)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onClick,
+            ),
     ) {
-        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).heightIn(min = 170.dp)) {
+        Row(modifier = Modifier.fillMaxSize()) {
             Column(
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 12.dp),
             ) {
+                Text(
+                    text = buildAnnotatedString {
+                        if (authorName.isNotBlank()) {
+                            withStyle(SpanStyle(color = Primary40, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)) {
+                                append(authorName)
+                            }
+                            append("  ")
+                        }
+                        withStyle(SpanStyle(color = Neutral60, fontSize = 9.sp)) {
+                            append("· $minutes min read")
+                            if (formattedDate.isNotBlank()) append(" · $formattedDate")
+                        }
+                    },
+                    style = MaterialTheme.typography.bodySmall.copy(letterSpacing = 0.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
 
-                if (authorName.isNotBlank()) {
-                    Text(
-                        text = authorName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Primary40,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Spacer(Modifier.height(8.dp))
 
                 Text(
                     text = article.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                )
-                Text(
-                    text = article.summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        lineHeight = 20.sp,
+                        letterSpacing = 0.sp,
+                    ),
+                    color = Neutral20,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
 
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(8.dp))
 
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = buildAnnotatedString {
-                            append("$readMinutes min read")
-                            if (isOwn) {
-                                val (stateLabel, stateColor) = when (article.state) {
-                                    ArticleState.DRAFT -> "Draft" to MaterialTheme.colorScheme.onSurfaceVariant
-                                    ArticleState.LIVE -> "Published" to StatusPublished
-                                    ArticleState.SUSPENDED -> "Suspended" to StatusSuspended
-                                    ArticleState.DELETED -> "Deleted" to Error40
-                                }
-                                append("  ·  ")
-                                withStyle(SpanStyle(color = stateColor, fontWeight = FontWeight.Medium)) {
-                                    append(stateLabel)
-                                }
-                            }
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (formattedDate.isNotBlank()) {
-                        Text(
-                            text = formattedDate,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            modifier = Modifier.padding(start = 6.dp),
-                        )
-                    }
-                }
+                Text(
+                    text = article.summary,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 10.sp,
+                        lineHeight = 14.sp,
+                        letterSpacing = 0.sp,
+                    ),
+                    color = Neutral60,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
 
             Box(
                 modifier = Modifier
-                    .width(110.dp)
+                    .padding(top = 8.dp, bottom = 7.dp, end = 5.dp)
+                    .width(CardThumbWidth)
                     .fillMaxHeight()
+                    .clip(CardShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 if (article.thumbnailUrl != null) {
@@ -480,68 +575,53 @@ private fun ArticleCard(
                         imageVector = Icons.Outlined.Image,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(28.dp).align(Alignment.Center),
+                        modifier = Modifier.size(24.dp).align(Alignment.Center),
                     )
                 }
 
-                if (canManage) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(6.dp)
-                            .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.35f)),
-                    ) {
-                        IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(28.dp)) {
-                            Icon(
-                                imageVector = Icons.Filled.MoreVert,
-                                contentDescription = "Article actions",
-                                tint = Color.White,
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false },
-                            containerColor = MaterialTheme.colorScheme.background,
-                        ) {
-                            when (article.state) {
-                                ArticleState.DRAFT -> DropdownMenuItem(
-                                    text = { Text("Publish") },
-                                    onClick = { menuExpanded = false; onPublish() },
-                                )
-                                ArticleState.LIVE -> DropdownMenuItem(
-                                    text = { Text("Unpublish") },
-                                    onClick = { menuExpanded = false; onUnpublish() },
-                                )
-                                else -> Unit
-                            }
-                            DropdownMenuItem(text = { Text("Edit") }, onClick = { menuExpanded = false; onEdit() })
-                            DropdownMenuItem(
-                                text = { Text("Delete", color = Error40) },
-                                onClick = { menuExpanded = false; onDelete() },
-                            )
-                        }
-                    }
+                if (isOwn) {
+                    ArticleStateBadge(
+                        state = article.state,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = 6.dp, end = 5.dp),
+                    )
                 }
             }
         }
     }
 }
 
+/** Pill over the card thumbnail — 57×13 in Figma, green when live and red when suspended. */
 @Composable
 internal fun ArticleStateBadge(state: ArticleState, modifier: Modifier = Modifier) {
-    val (label, bgColor, textColor) = when (state) {
-        ArticleState.DRAFT -> Triple("Draft", MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
-        ArticleState.LIVE -> Triple("Published", Color(0xFFE6F4E5), StatusPublished)
-        ArticleState.SUSPENDED -> Triple("Suspended", Error90, StatusSuspended)
-        ArticleState.DELETED -> Triple("Deleted", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.error)
+    val (label, background) = when (state) {
+        ArticleState.DRAFT -> "Draft" to Neutral60
+        ArticleState.LIVE -> "Published" to StatusPublished
+        ArticleState.SUSPENDED -> "Suspended" to StatusSuspended
+        ArticleState.DELETED -> "Deleted" to StatusSuspended
     }
+
     Box(
         modifier = modifier
-            .clip(ShapeBadge)
-            .background(bgColor)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .height(13.dp)
+            .clip(CircleShape)
+            .background(background)
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = textColor)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 8.sp, letterSpacing = 0.sp),
+            color = Color.White,
+            maxLines = 1,
+        )
     }
+}
+
+/** "20 Nov" — the short form the cards use. */
+internal fun formatDayMonth(isoDate: String): String = try {
+    val dateTime = Instant.parse(isoDate).toLocalDateTime(TimeZone.currentSystemDefault())
+    val month = dateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
+    "${dateTime.dayOfMonth} $month"
+} catch (_: Exception) {
+    ""
 }

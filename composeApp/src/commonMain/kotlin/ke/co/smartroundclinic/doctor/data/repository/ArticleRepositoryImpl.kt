@@ -87,7 +87,7 @@ class ArticleRepositoryImpl(private val client: HttpClient) : ArticleRepository 
                     }
                 }))
             }.body<ArticleRes>()
-            Resource.Success(res.data.toDomain())
+            res.toResource()
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to create article")
         }
@@ -122,7 +122,7 @@ class ArticleRepositoryImpl(private val client: HttpClient) : ArticleRepository 
                     }
                 }))
             }.body<ArticleRes>()
-            Resource.Success(res.data.toDomain())
+            res.toResource()
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to update article")
         }
@@ -133,7 +133,7 @@ class ArticleRepositoryImpl(private val client: HttpClient) : ArticleRepository 
             val res = client.patch("article/my/publish") {
                 parameter("id", id)
             }.body<ArticleRes>()
-            Resource.Success(res.data.toDomain())
+            res.toResource()
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to publish article")
         }
@@ -144,7 +144,7 @@ class ArticleRepositoryImpl(private val client: HttpClient) : ArticleRepository 
             val res = client.patch("article/my/unpublish") {
                 parameter("id", id)
             }.body<ArticleRes>()
-            Resource.Success(res.data.toDomain())
+            res.toResource()
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to unpublish article")
         }
@@ -155,12 +155,20 @@ class ArticleRepositoryImpl(private val client: HttpClient) : ArticleRepository 
             val res = client.delete("article") {
                 parameter("id", id)
             }.body<ArticleRes>()
-            Resource.Success(res.data.toDomain())
+            res.toResource()
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to delete article")
         }
     }
 }
+
+/**
+ * A rejected request comes back as the same envelope with `data` absent and `message` set, so the
+ * doctor is shown the server's own reason ("Article category not found") rather than a parser error.
+ */
+private fun ArticleRes.toResource(): Resource<Article> =
+    data?.let { Resource.Success(it.toDomain()) }
+        ?: Resource.Error(message.ifBlank { "Request was rejected" })
 
 private fun mimeTypeFromFilename(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
     "pdf" -> "application/pdf"
