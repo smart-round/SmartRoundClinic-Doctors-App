@@ -3,6 +3,7 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   android:
@@ -54,13 +55,21 @@ jobs:
         run: ./gradlew :androidApp:publishReleaseBundle
 
   ios:
-    runs-on: macos-15
+    # GitHub's hosted macos-15 runner only has 7GB RAM, which isn't enough to link this app's
+    # framework (Firebase + RealtimeKit + KMPNotifier all export into it) — confirmed via two
+    # separate heap increases that didn't move the OOM point at all. Larger hosted runners need
+    # an Organization on a Team/Enterprise Cloud plan, which this repo isn't on, so this job runs
+    # on a self-hosted Mac with real headroom instead.
+    runs-on: [self-hosted, macOS, ios-deploy]
     steps:
       - uses: actions/checkout@v4
 
-      # macos-15's default xcode-select points at an older Xcode. Apple now rejects any
-      # App Store Connect / TestFlight upload not built with the iOS 26 SDK (Xcode 26+).
+      # macos-15's default xcode-select points at an older Xcode, so hosted runners need pinning
+      # to the iOS 26 SDK Apple now requires for TestFlight uploads. The self-hosted runner
+      # already has the right Xcode selected locally, and maxim-lobanov/setup-xcode expects the
+      # hosted-image "Xcode_<version>.app" naming convention that a self-hosted Mac won't have.
       - name: Select Xcode 26
+        if: runner.environment == 'github-hosted'
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "26"
