@@ -1,5 +1,6 @@
 package ke.co.smartroundclinic.doctor.data.remote.dto.response
 
+import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.domain.model.Article
 import ke.co.smartroundclinic.doctor.domain.model.ArticleCategory
 import ke.co.smartroundclinic.doctor.domain.model.ArticleState
@@ -84,3 +85,11 @@ fun ArticleData.toDomain() = Article(
 )
 
 fun ArticleCategoryData.toDomain() = ArticleCategory(id = id, name = name, isActive = isActive)
+
+/**
+ * A rejected request comes back as the same envelope with `data` absent and `message` set, so the
+ * doctor is shown the server's own reason ("Article category not found") rather than a parser error.
+ */
+fun ArticleRes.toResource(): Resource<Article> =
+    data?.let { Resource.Success(it.toDomain()) }
+        ?: Resource.Error(message.ifBlank { "Request was rejected" })

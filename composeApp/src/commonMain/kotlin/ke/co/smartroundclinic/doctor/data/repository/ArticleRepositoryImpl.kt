@@ -18,6 +18,7 @@ import ke.co.smartroundclinic.doctor.data.remote.dto.response.ArticleListRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.ArticleRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.CategoryListRes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.toDomain
+import ke.co.smartroundclinic.doctor.data.remote.dto.response.toResource
 import ke.co.smartroundclinic.doctor.domain.model.Article
 import ke.co.smartroundclinic.doctor.domain.model.ArticleCategory
 import ke.co.smartroundclinic.doctor.domain.repository.ArticleRepository
@@ -161,14 +162,6 @@ class ArticleRepositoryImpl(private val client: HttpClient) : ArticleRepository 
         }
     }
 }
-
-/**
- * A rejected request comes back as the same envelope with `data` absent and `message` set, so the
- * doctor is shown the server's own reason ("Article category not found") rather than a parser error.
- */
-private fun ArticleRes.toResource(): Resource<Article> =
-    data?.let { Resource.Success(it.toDomain()) }
-        ?: Resource.Error(message.ifBlank { "Request was rejected" })
 
 private fun mimeTypeFromFilename(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
     "pdf" -> "application/pdf"
