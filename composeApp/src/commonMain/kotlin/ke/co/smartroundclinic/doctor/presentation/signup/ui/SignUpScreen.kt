@@ -58,6 +58,8 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberCameraPickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.readBytes
 import ke.co.smartroundclinic.doctor.core.media.PhotoPickerBottomSheet
+import ke.co.smartroundclinic.doctor.common.isValidPassword
+import ke.co.smartroundclinic.doctor.presentation.common.composables.PasswordRequirements
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.signup.PersonalInfoData
 import ke.co.smartroundclinic.doctor.presentation.signup.SignUpFilesViewModel
@@ -90,7 +92,7 @@ fun SignUpScreen(
 
     val isFormValid = formViewModel.fullName.isNotBlank() &&
         formViewModel.email.isValidEmail() &&
-        formViewModel.password.length >= 8 &&
+        formViewModel.password.isValidPassword() &&
         filesViewModel.profilePictureBytes != null
 
     val galleryLauncher = rememberFilePickerLauncher(type = FileKitType.Image) { file ->
@@ -225,7 +227,7 @@ fun SignUpScreen(
                 onValueChange = { formViewModel.password = it },
                 label = { Text("Password", style = MaterialTheme.typography.bodySmall) },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                isError = formViewModel.password.isNotBlank() && formViewModel.password.length < 8,
+                isError = formViewModel.password.isNotBlank() && !formViewModel.password.isValidPassword(),
                 trailingIcon = {
                     TextButton(onClick = { passwordVisible = !passwordVisible }) {
                         Text(
@@ -246,14 +248,10 @@ fun SignUpScreen(
                     .fillMaxWidth()
                     .onFocusChanged { if (it.isFocused) scope.launch { passwordBivr.bringIntoView() } },
             )
-            if (formViewModel.password.isNotBlank() && formViewModel.password.length < 8) {
-                Text(
-                    text = "Minimum 8 characters",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(start = 4.dp, top = 2.dp),
-                )
-            }
+            PasswordRequirements(
+                password = formViewModel.password,
+                visible = formViewModel.password.isNotBlank(),
+            )
         }
 
         Spacer(Modifier.height(8.dp))

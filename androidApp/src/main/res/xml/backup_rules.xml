@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android ≤ 11 (fullBackupContent). The encrypted prefs are sealed with a Keystore key that
+     never leaves the device, so restoring them onto a fresh install only produces an
+     undecryptable file. Leave them out and let the doctor sign in again. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="secure-shared-preferences.xml" />
+</full-backup-content>

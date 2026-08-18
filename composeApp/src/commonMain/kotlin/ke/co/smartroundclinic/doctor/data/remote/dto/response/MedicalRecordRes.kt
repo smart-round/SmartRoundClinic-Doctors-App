@@ -28,6 +28,9 @@ data class MedicalRecordData(
     val additionalNotes: String? = null,
     val createdAt: String,
     val updatedAt: String? = null,
+    /** Set only on the copy embedded in a chat card — which fields this revision changed. */
+    val editedFields: List<String> = emptyList(),
+    val doctorName: String? = null,
 )
 
 @Serializable
@@ -62,4 +65,5 @@ fun MedicalRecordData.toDomain() = MedicalRecord(
     additionalNotes = additionalNotes,
     createdAt = createdAt,
     updatedAt = updatedAt,
+    doctorName = doctorName,
 )

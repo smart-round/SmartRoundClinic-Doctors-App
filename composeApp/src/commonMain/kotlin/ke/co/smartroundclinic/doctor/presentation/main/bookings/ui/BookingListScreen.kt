@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -66,6 +67,7 @@ import ke.co.smartroundclinic.doctor.core.platform.todayMonth
 import ke.co.smartroundclinic.doctor.core.platform.todayYear
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
+import ke.co.smartroundclinic.doctor.presentation.theme.DetailIconChip
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
@@ -84,8 +86,8 @@ internal enum class BookingTab(val label: String, val filter: String?) {
 /** Consultation (default) holds the existing Upcoming/Past sub-tabs unchanged; Referral is a
  * sibling showing this doctor's own referral list — both directions. */
 internal enum class BookingTopTab(val label: String) {
-    CONSULTATION("Consultation"),
-    REFERRAL("Referral"),
+    CONSULTATION("Consultations"),
+    REFERRAL("Referrals"),
 }
 
 /** Referral tab sub-tabs: patients referred to this doctor vs. patients this doctor referred out. */
@@ -225,7 +227,11 @@ internal fun BookingListScreen(
                                     ReferralCard(
                                         referral = referral,
                                         direction = selectedReferralSubTab,
-                                        onClick = { onReferralClick(referral) },
+                                        // Sent referrals are read-only — nothing to do once it's been
+                                        // handed off to another doctor, so the card isn't clickable at all.
+                                        onClick = if (selectedReferralSubTab == ReferralSubTab.RECEIVED) {
+                                            { onReferralClick(referral) }
+                                        } else null,
                                     )
                                 }
                             }
@@ -386,7 +392,7 @@ private fun EmptyReferralsView(subTab: ReferralSubTab, modifier: Modifier = Modi
 }
 
 @Composable
-private fun ReferralCard(referral: Referral, direction: ReferralSubTab, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ReferralCard(referral: Referral, direction: ReferralSubTab, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     val (statusLabel, statusColor, statusBg) = when (referral.status.uppercase()) {
         "ACCEPTED" -> Triple("Accepted", Tertiary40, Tertiary40.copy(alpha = 0.12f))
         "DECLINED" -> Triple("Declined", Error40, Error40.copy(alpha = 0.12f))
@@ -395,20 +401,14 @@ private fun ReferralCard(referral: Referral, direction: ReferralSubTab, onClick:
     val counterpartName = if (direction == ReferralSubTab.RECEIVED) referral.referringDoctorName else referral.receivingDoctorName
     val counterpartPicture = if (direction == ReferralSubTab.RECEIVED) referral.referringDoctorPicture else referral.receivingDoctorPicture
     val isBooked = referral.resultingAppointmentId != null
-
-    Card(
-        onClick = onClick,
-        enabled = isBooked,
-        modifier = modifier.fillMaxWidth(),
-        shape = ShapeCard,
-        colors = CardDefaults.cardColors(
-            containerColor = CardBackground,
-            disabledContainerColor = CardBackground,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            disabledContentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp, pressedElevation = 6.dp),
-    ) {
+    val cardColors = CardDefaults.cardColors(
+        containerColor = CardBackground,
+        disabledContainerColor = CardBackground,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        disabledContentColor = MaterialTheme.colorScheme.onSurface,
+    )
+    val cardElevation = CardDefaults.cardElevation(defaultElevation = 3.dp, pressedElevation = 6.dp)
+    val cardContent: @Composable () -> Unit = {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             Box(
                 modifier = Modifier
@@ -481,16 +481,19 @@ private fun ReferralCard(referral: Referral, direction: ReferralSubTab, onClick:
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = referral.reason,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // Referrals created before the reason screen was removed still carry one.
+                if (referral.reason.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = referral.reason,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = when {
-                        isBooked -> "Booked — tap to view appointment"
+                        isBooked -> if (onClick != null) "Booked — tap to view appointment" else "Booked"
                         referral.status.uppercase() == "DECLINED" -> "Declined by patient"
                         referral.status.uppercase() == "ACCEPTED" -> "Accepted — awaiting booking"
                         else -> "Awaiting patient response"
@@ -500,6 +503,26 @@ private fun ReferralCard(referral: Referral, direction: ReferralSubTab, onClick:
                 )
             }
         }
+    }
+
+    if (onClick != null) {
+        Card(
+            onClick = onClick,
+            enabled = isBooked,
+            modifier = modifier.fillMaxWidth(),
+            shape = ShapeCard,
+            colors = cardColors,
+            elevation = cardElevation,
+            content = { cardContent() },
+        )
+    } else {
+        Card(
+            modifier = modifier.fillMaxWidth(),
+            shape = ShapeCard,
+            colors = cardColors,
+            elevation = cardElevation,
+            content = { cardContent() },
+        )
     }
 }
 
@@ -589,7 +612,13 @@ private fun BookingCard(appointment: Appointment, onClick: () -> Unit, modifier:
                         )
                     }
                 }
-                Spacer(Modifier.height(10.dp))
+                // Splits the card in half: appointment date/time above, patient and View below —
+                // the same hairline the appointment detail card draws under its date/time row.
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 10.dp),
+                    thickness = 1.dp,
+                    color = DetailIconChip.copy(alpha = 0.26f),
+                )
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Box(
                         modifier = Modifier.size(36.dp).clip(CircleShape).background(Secondary90),

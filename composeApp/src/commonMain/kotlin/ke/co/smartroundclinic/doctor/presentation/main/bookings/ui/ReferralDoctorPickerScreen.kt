@@ -147,7 +147,7 @@ internal fun ReferralDoctorPickerScreen(
         AlertDialog(
             onDismissRequest = { if (!isSubmitting) doctorPendingConfirm = null },
             title = { Text("Refer this patient?") },
-            text = { Text("This patient's medical summary and your referral notes will be shared with Dr. ${doctor.name}.") },
+            text = { Text("This patient's medical summary will be shared with Dr. ${doctor.name}.") },
             confirmButton = {
                 TextButton(
                     enabled = !isSubmitting,

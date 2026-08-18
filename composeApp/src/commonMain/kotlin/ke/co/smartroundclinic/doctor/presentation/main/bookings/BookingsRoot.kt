@@ -17,7 +17,6 @@ import ke.co.smartroundclinic.doctor.presentation.main.bookings.destinations.Boo
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.destinations.BookingList
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.destinations.MedicalRecordDetail
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.destinations.ReferralDoctorPicker
-import ke.co.smartroundclinic.doctor.presentation.main.bookings.destinations.ReferralReason
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.AppointmentDetailScreen
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingListScreen
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingTab
@@ -25,7 +24,6 @@ import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.BookingTopTab
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.ReferralSubTab
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.MedicalRecordScreen
 import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.ReferralDoctorPickerScreen
-import ke.co.smartroundclinic.doctor.presentation.main.bookings.ui.ReferralReasonScreen
 import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -128,7 +126,7 @@ fun BookingsRoot(
                         onConfirm = { viewModel.confirmAppointment(appointment.id) },
                         onComplete = { viewModel.completeAppointment(appointment.id) },
                         onCancel = { reason -> viewModel.cancelAppointment(appointment.id, reason) },
-                        onRefer = { backStack.add(ReferralReason(appointment.id)) },
+                        onRefer = { backStack.add(ReferralDoctorPicker(appointment.id)) },
                         onAddMedicalRecord = { backStack.add(MedicalRecordDetail(appointment.id, null, appointment.patientId)) },
                         onSubmitRating = { rating, comment ->
                             ratingViewModel.submitRating(appointment.id, appointment.patientId, rating, comment)
@@ -155,12 +153,6 @@ fun BookingsRoot(
                     onBack = { backStack.removeLastOrNull() },
                 )
             }
-            entry<ReferralReason> { dest ->
-                ReferralReasonScreen(
-                    onNext = { reason -> backStack.add(ReferralDoctorPicker(dest.appointmentId, reason)) },
-                    onBack = { backStack.removeLastOrNull() },
-                )
-            }
             entry<ReferralDoctorPicker> { dest ->
                 LaunchedEffect(Unit) { referralViewModel.loadDoctors(currentUser?.id) }
                 ReferralDoctorPickerScreen(
@@ -172,8 +164,8 @@ fun BookingsRoot(
                     isSubmitting = referralViewModel.isSubmitting,
                     onBack = { backStack.removeLastOrNull() },
                     onDoctorSelected = { doctor ->
-                        referralViewModel.createReferral(dest.appointmentId, doctor.id, dest.reason) {
-                            backStack.removeAll { it is ReferralReason || it is ReferralDoctorPicker }
+                        referralViewModel.createReferral(dest.appointmentId, doctor.id) {
+                            backStack.removeAll { it is ReferralDoctorPicker }
                             viewModel.loadAppointments()
                         }
                     },

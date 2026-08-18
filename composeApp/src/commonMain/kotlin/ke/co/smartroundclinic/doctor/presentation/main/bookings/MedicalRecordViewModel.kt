@@ -41,7 +41,12 @@ class MedicalRecordViewModel(
 
     var diagnosis by mutableStateOf("")
     var summary by mutableStateOf("")
+
+    // No longer editable — referring a patient now collects its own medical reason on the Refer
+    // Patient screen. Still round-tripped so that editing a record written before that change
+    // preserves its existing note instead of silently clearing it.
     var referralNote by mutableStateOf("")
+
     var additionalNotes by mutableStateOf("")
     val prescription = mutableStateListOf<PrescriptionItemReq>()
     val labRequests = mutableStateListOf<String>()

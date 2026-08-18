@@ -222,15 +222,15 @@ internal fun DoctorResultRow(doctor: Doctor, onClick: () -> Unit) {
 }
 
 @Composable
-internal fun Avatar(pictureUrl: String?) {
+internal fun Avatar(pictureUrl: String?, size: Int = 48) {
     Box(
-        modifier = Modifier.size(48.dp).clip(CircleShape).background(Primary90),
+        modifier = Modifier.size(size.dp).clip(CircleShape).background(Primary90),
         contentAlignment = Alignment.Center,
     ) {
         if (pictureUrl != null) {
             AsyncImage(model = pictureUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(CircleShape))
         } else {
-            Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Primary40, modifier = Modifier.size(22.dp))
+            Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Primary40, modifier = Modifier.size((size * 22 / 48).dp))
         }
     }
 }

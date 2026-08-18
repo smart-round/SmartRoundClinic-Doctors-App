@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,10 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,8 +36,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ke.co.smartroundclinic.doctor.domain.model.ThreadPreviewKind
 import ke.co.smartroundclinic.doctor.domain.model.DoctorChatThread
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatCardAvatarGap
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatCardAvatarSize
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatCardBackground
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatCardGutter
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatCardHeight
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatCardPadding
+import ke.co.smartroundclinic.doctor.presentation.main.chat.ui.ChatCardShape
+import ke.co.smartroundclinic.doctor.presentation.theme.Neutral20
+import ke.co.smartroundclinic.doctor.presentation.theme.Neutral60
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
@@ -60,11 +67,10 @@ internal fun DoctorChatsListScreen(
     threads: List<DoctorChatThread>,
     onThreadClick: (DoctorChatThread) -> Unit,
     onOpenAllDoctors: () -> Unit,
+    // Owned by the Chat header's search field, which spans both tabs.
+    searchQuery: String = "",
     modifier: Modifier = Modifier,
 ) {
-    var isSearching by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-
     // A thread exists as soon as either side hits "Connect", before any message is actually
     // sent — only show it here once there's something to actually show a preview/timestamp for.
     val threadsWithMessages = threads.filter { it.lastMessageAt != null }
@@ -76,22 +82,22 @@ internal fun DoctorChatsListScreen(
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            SearchHeaderRow(
-                isSearching = isSearching,
-                onToggleSearch = { isSearching = !isSearching; if (!isSearching) searchQuery = "" },
-                searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
-                hintText = "Your conversations with other doctors",
-            )
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-
             if (visibleThreads.isEmpty()) {
                 EmptyChatsView(hasQuery = searchQuery.isNotBlank(), modifier = Modifier.weight(1f))
             } else {
-                LazyColumn(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(
+                        start = ChatCardGutter,
+                        end = ChatCardGutter,
+                        top = 12.dp,
+                        // Clears the "browse all doctors" FAB in the bottom-end corner.
+                        bottom = 88.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     items(visibleThreads, key = { it.threadId }) { thread ->
-                        ThreadRow(thread = thread, onClick = { onThreadClick(thread) })
-                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(start = 76.dp))
+                        ThreadCard(thread = thread, onClick = { onThreadClick(thread) })
                     }
                 }
             }
@@ -137,13 +143,19 @@ private fun EmptyChatsView(hasQuery: Boolean, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ThreadRow(thread: DoctorChatThread, onClick: () -> Unit) {
+private fun ThreadCard(thread: DoctorChatThread, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(ChatCardHeight)
+            .clip(ChatCardShape)
+            .background(ChatCardBackground)
+            .clickable(onClick = onClick)
+            .padding(horizontal = ChatCardPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {
-            Avatar(pictureUrl = thread.counterpartPicture)
+            Avatar(pictureUrl = thread.counterpartPicture, size = ChatCardAvatarSize)
             if (thread.isOnline) {
                 Box(
                     modifier = Modifier
@@ -157,9 +169,24 @@ private fun ThreadRow(thread: DoctorChatThread, onClick: () -> Unit) {
                 )
             }
         }
-        Spacer(Modifier.size(12.dp))
+
+        Spacer(Modifier.width(ChatCardAvatarGap))
+
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = "Dr. ${thread.counterpartName}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = "Dr. ${thread.counterpartName}",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    letterSpacing = 0.sp,
+                ),
+                color = Neutral20,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            Spacer(Modifier.height(6.dp))
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val previewIcon = when (thread.lastMessageKind) {
                     ThreadPreviewKind.PHOTO -> Icons.Filled.CameraAlt
@@ -170,26 +197,29 @@ private fun ThreadRow(thread: DoctorChatThread, onClick: () -> Unit) {
                     Icon(
                         imageVector = previewIcon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = Neutral60,
                         modifier = Modifier.size(14.dp),
                     )
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(
                     text = thread.lastMessagePreview ?: "No messages yet",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, letterSpacing = 0.sp),
+                    color = Neutral60,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
+                if (thread.lastMessageAt != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = formatThreadTimestamp(thread.lastMessageAt),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, letterSpacing = 0.sp),
+                        color = Neutral60,
+                        maxLines = 1,
+                    )
+                }
             }
-        }
-        if (thread.lastMessageAt != null) {
-            Text(
-                text = formatThreadTimestamp(thread.lastMessageAt),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

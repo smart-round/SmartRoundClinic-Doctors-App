@@ -14,7 +14,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -125,7 +128,11 @@ internal fun MedicalRecordScreen(
             Column(
                 modifier = Modifier
                     .background(MaterialTheme.colorScheme.surface)
-                    .navigationBarsPadding(),
+                    // Ride above the keyboard rather than behind it, so Save stays reachable while
+                    // a field is focused. union() instead of navigationBarsPadding().imePadding():
+                    // the IME inset already spans the navigation bar, so chaining the two would
+                    // leave a nav-bar-sized gap above the keyboard.
+                    .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
             ) {
                 HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                 Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
@@ -275,21 +282,6 @@ internal fun MedicalRecordScreen(
                                 shape = ShapeInput,
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 3,
-                                colors = inputColors(),
-                            )
-                            OutlinedTextField(
-                                value = viewModel.referralNote,
-                                onValueChange = { viewModel.referralNote = it },
-                                label = { Text("Referral Note (optional)") },
-                                placeholder = {
-                                    Text(
-                                        "Referral details if applicable",
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                },
-                                shape = ShapeInput,
-                                modifier = Modifier.fillMaxWidth(),
-                                minLines = 2,
                                 colors = inputColors(),
                             )
                             OutlinedTextField(

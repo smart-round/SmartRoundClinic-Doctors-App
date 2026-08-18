@@ -34,14 +34,6 @@ fun ArticlesRoot(
     val viewModel = koinViewModel<ArticlesViewModel>()
     val backStack = retain { mutableStateListOf<NavKey>(ArticleList) }
     var selectedTab by remember { mutableStateOf(ArticlesTab.MY_ARTICLES) }
-    var isSearching by remember { mutableStateOf(false) }
-
-    // The header is identical on every frame, search icon included, so tapping it from a
-    // sub-screen returns to the list — the only place a search over articles means anything.
-    fun openSearchOnList() {
-        while (backStack.size > 1) backStack.removeLastOrNull()
-        isSearching = true
-    }
 
     // Every frame in the amended spec — list, editor and reader alike — keeps the bottom nav bar
     // on screen, so this tab never reports itself as being off its root.
@@ -66,8 +58,6 @@ fun ArticlesRoot(
                     hasLoadedLive = viewModel.hasLoadedLive,
                     selectedTab = selectedTab,
                     categories = categories,
-                    isSearching = isSearching,
-                    onSearchingChange = { isSearching = it },
                     onTabSelected = { tab ->
                         selectedTab = tab
                         if (tab == ArticlesTab.MY_ARTICLES) viewModel.refreshMyArticles()
@@ -97,7 +87,6 @@ fun ArticlesRoot(
                     onThumbnailPicked = { bytes, filename -> viewModel.setThumbnail(bytes, filename) },
                     onRefreshCategories = { viewModel.refreshCategories() },
                     onNotificationsClick = onNotificationsClick,
-                    onSearchClick = ::openSearchOnList,
                     onPublish = { title, content, categoryId ->
                         if (dest.articleId != null) {
                             viewModel.updateArticle(dest.articleId, title, content, categoryId) {
@@ -128,7 +117,6 @@ fun ArticlesRoot(
                         isOwn = isOwn,
                         onBack = { backStack.removeLastOrNull() },
                         onNotificationsClick = onNotificationsClick,
-                        onSearchClick = ::openSearchOnList,
                         onEdit = { viewModel.clearThumbnail(); backStack.add(WriteArticle(articleId = article.id)) },
                         onPublish = { viewModel.publishArticle(article.id) },
                         onUnpublish = { viewModel.unpublishArticle(article.id) },

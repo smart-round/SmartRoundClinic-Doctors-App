@@ -2,11 +2,13 @@ package ke.co.smartroundclinic.doctor.presentation.main.chat.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -19,20 +21,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,19 +49,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ke.co.smartroundclinic.doctor.domain.model.ThreadPreviewKind
 import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
 import ke.co.smartroundclinic.doctor.domain.model.DoctorChatThread
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
 import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorChatsListScreen
-import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.SearchHeaderRow
+import ke.co.smartroundclinic.doctor.presentation.theme.Neutral20
+import ke.co.smartroundclinic.doctor.presentation.theme.Neutral60
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
+import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -64,12 +76,24 @@ import kotlinx.datetime.toLocalDateTime
 
 /** Mirrors bookings' BookingTopTab pattern: Consultations is the existing patient-chat list,
  * unchanged; Other Doctors is the doctor directory + doctor-to-doctor chat (see :doctor-chat
- * backend). Rendered in the header itself (bottomContent), same idiom as WalletScreen's tabs —
- * each tab fills half the header width via the default (non-scrollable) TabRow layout. */
+ * backend). Rendered as the same pill segmented control bookings uses below its header, with the
+ * header's own slot given over to the search field. */
 internal enum class ChatTopTab(val label: String) {
     CONSULTATIONS("Consultations"),
     OTHER_DOCTORS("Other Doctors"),
 }
+
+// ── Amended chat card (369×78 in the 414pt Figma frame) ──────────────────────
+/** 369 wide in a 414 frame — the same 23dp gutter the amended Articles screens hang off. */
+internal val ChatCardGutter = 23.dp
+internal val ChatCardHeight = 78.dp
+internal val ChatCardPadding = 18.dp
+internal val ChatCardAvatarGap = 31.dp
+internal const val ChatCardAvatarSize = 53
+internal val ChatCardShape = RoundedCornerShape(12.dp)
+
+/** #393938 at 3% — a wash just strong enough to separate the card from the page. */
+internal val ChatCardBackground = Neutral20.copy(alpha = 0.03f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,9 +111,7 @@ internal fun ChatListScreen(
     modifier: Modifier = Modifier,
 ) {
     var threadPendingDelete by remember { mutableStateOf<ConversationThread?>(null) }
-    var isSearching by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    val selectedIndex = ChatTopTab.entries.indexOf(selectedTopTab)
 
     val visibleThreads = if (searchQuery.isNotBlank()) {
         threads.filter { it.counterpartName.contains(searchQuery, ignoreCase = true) }
@@ -105,60 +127,38 @@ internal fun ChatListScreen(
                 onProfileClick = onProfileClick,
                 onNotificationsClick = onNotificationsClick,
                 bottomContent = {
-                    TabRow(
-                        selectedTabIndex = selectedIndex,
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White,
-                        indicator = { tabPositions ->
-                            SecondaryIndicator(
-                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
-                                color = Color.White,
-                            )
+                    ChatSearchField(
+                        query = searchQuery,
+                        onQueryChange = { searchQuery = it },
+                        placeholder = when (selectedTopTab) {
+                            ChatTopTab.CONSULTATIONS -> "Search patients..."
+                            ChatTopTab.OTHER_DOCTORS -> "Search doctors..."
                         },
-                        divider = {},
-                    ) {
-                        ChatTopTab.entries.forEachIndexed { index, tab ->
-                            Tab(
-                                selected = selectedIndex == index,
-                                onClick = { onTopTabSelected(tab) },
-                                text = {
-                                    Text(
-                                        text = tab.label,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = if (selectedIndex == index) Color.White else Color.White.copy(alpha = 0.65f),
-                                    )
-                                },
-                            )
-                        }
-                    }
+                    )
                 },
             )
         },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            ChatTopTabRow(selectedTab = selectedTopTab, onTabSelected = onTopTabSelected)
+
             when (selectedTopTab) {
                 ChatTopTab.CONSULTATIONS -> {
-                    SearchHeaderRow(
-                        isSearching = isSearching,
-                        onToggleSearch = { isSearching = !isSearching; if (!isSearching) searchQuery = "" },
-                        searchQuery = searchQuery,
-                        onSearchQueryChange = { searchQuery = it },
-                        hintText = "Your conversations with patients",
-                    )
-                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-
                     if (visibleThreads.isEmpty()) {
                         EmptyView(hasQuery = searchQuery.isNotBlank(), modifier = Modifier.weight(1f))
                     } else {
-                        LazyColumn(modifier = Modifier.weight(1f)) {
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = ChatCardGutter, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
                             items(visibleThreads, key = { it.threadId }) { thread ->
-                                ThreadRow(
+                                ThreadCard(
                                     thread = thread,
                                     onClick = { onThreadClick(thread) },
                                     onLongClick = { threadPendingDelete = thread },
                                 )
-                                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(start = 76.dp))
                             }
                         }
                     }
@@ -166,6 +166,7 @@ internal fun ChatListScreen(
                 ChatTopTab.OTHER_DOCTORS -> {
                     DoctorChatsListScreen(
                         threads = doctorThreads,
+                        searchQuery = searchQuery,
                         onThreadClick = onDoctorThreadClick,
                         onOpenAllDoctors = onOpenAllDoctors,
                         modifier = Modifier.weight(1f),
@@ -190,6 +191,117 @@ internal fun ChatListScreen(
             },
         )
     }
+}
+
+/**
+ * The same pill segmented control bookings uses for Upcoming/Past, so the two tabbed lists in the
+ * app read the same way.
+ */
+@Composable
+private fun ChatTopTabRow(
+    selectedTab: ChatTopTab,
+    onTabSelected: (ChatTopTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .shadow(elevation = 4.dp, shape = ShapePill)
+            .clip(ShapePill)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(4.dp),
+    ) {
+        Row {
+            ChatTopTab.entries.forEach { tab ->
+                val isSelected = selectedTab == tab
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(ShapePill)
+                        .then(if (isSelected) Modifier.background(Color.White) else Modifier)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = { onTabSelected(tab) },
+                        )
+                        .padding(vertical = 10.dp),
+                ) {
+                    Text(
+                        text = tab.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Services' in-header search field, with the magnifier moved to the trailing edge — it doubles as
+ * the clear button once there is a query to clear.
+ */
+@Composable
+private fun ChatSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = {
+            Text(
+                text = placeholder,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.6f),
+            )
+        },
+        trailingIcon = {
+            if (query.isEmpty()) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.size(20.dp),
+                )
+            } else {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(
+                        imageVector = Icons.Filled.Clear,
+                        contentDescription = "Clear search",
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            focusedBorderColor = Color.White.copy(alpha = 0.6f),
+            unfocusedBorderColor = Color.White.copy(alpha = 0.35f),
+            cursorColor = Color.White,
+            focusedContainerColor = Color.White.copy(alpha = 0.15f),
+            unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
+        ),
+        textStyle = MaterialTheme.typography.bodyMedium,
+        modifier = modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -221,22 +333,24 @@ private fun EmptyView(hasQuery: Boolean = false, modifier: Modifier = Modifier) 
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ThreadRow(thread: ConversationThread, onClick: () -> Unit, onLongClick: () -> Unit = {}, modifier: Modifier = Modifier) {
+private fun ThreadCard(thread: ConversationThread, onClick: () -> Unit, onLongClick: () -> Unit = {}, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .height(ChatCardHeight)
+            .clip(ChatCardShape)
+            .background(ChatCardBackground)
             .combinedClickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
                 onClick = onClick,
                 onLongClick = onLongClick,
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = ChatCardPadding),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box {
-            PatientAvatar(name = thread.counterpartName, picture = thread.counterpartPicture, size = 48)
+            PatientAvatar(name = thread.counterpartName, picture = thread.counterpartPicture, size = ChatCardAvatarSize)
             if (thread.isOnline) {
                 Box(
                     modifier = Modifier
@@ -250,9 +364,26 @@ private fun ThreadRow(thread: ConversationThread, onClick: () -> Unit, onLongCli
                 )
             }
         }
+
+        Spacer(Modifier.width(ChatCardAvatarGap))
+
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = thread.counterpartName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-            Spacer(Modifier.height(3.dp))
+            Text(
+                text = thread.counterpartName,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    letterSpacing = 0.sp,
+                ),
+                color = Neutral20,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            // Preview and timestamp share the second line in the amended card, rather than the
+            // timestamp sitting centred against the full row height.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val previewIcon = when (thread.lastMessageKind) {
                     ThreadPreviewKind.PHOTO -> Icons.Filled.CameraAlt
@@ -263,26 +394,29 @@ private fun ThreadRow(thread: ConversationThread, onClick: () -> Unit, onLongCli
                     Icon(
                         imageVector = previewIcon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = Neutral60,
                         modifier = Modifier.size(14.dp),
                     )
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(
                     text = thread.lastMessagePreview ?: "No messages yet",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, letterSpacing = 0.sp),
+                    color = Neutral60,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
+                if (thread.lastMessageAt != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = formatThreadTimestamp(thread.lastMessageAt),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, letterSpacing = 0.sp),
+                        color = Neutral60,
+                        maxLines = 1,
+                    )
+                }
             }
-        }
-        if (thread.lastMessageAt != null) {
-            Text(
-                text = formatThreadTimestamp(thread.lastMessageAt),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

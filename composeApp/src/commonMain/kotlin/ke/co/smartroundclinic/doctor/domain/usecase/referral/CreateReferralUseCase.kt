@@ -7,8 +7,8 @@ import ke.co.smartroundclinic.doctor.domain.model.Referral
 import ke.co.smartroundclinic.doctor.domain.repository.ReferralRepository
 
 class CreateReferralUseCase(private val repository: ReferralRepository) {
-    suspend operator fun invoke(appointmentId: String, receivingDoctorId: String, reason: String): Resource<Referral> {
-        val result = repository.createReferral(CreateReferralReq(appointmentId, receivingDoctorId, reason))
+    suspend operator fun invoke(appointmentId: String, receivingDoctorId: String): Resource<Referral> {
+        val result = repository.createReferral(CreateReferralReq(appointmentId, receivingDoctorId))
         val data = result.data ?: return Resource.Error(result.message ?: "Failed to create referral")
         return Resource.Success(data.toDomain(), result.message ?: "Referral created")
     }

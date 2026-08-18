@@ -1,6 +1,6 @@
 package ke.co.smartroundclinic.doctor.presentation.main.bookings.ui
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -81,11 +82,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -125,6 +123,9 @@ import ke.co.smartroundclinic.doctor.presentation.theme.ShapeInput
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary90
+import org.jetbrains.compose.resources.painterResource
+import smartroundclinic.composeapp.generated.resources.Res
+import smartroundclinic.composeapp.generated.resources.refer_icon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -398,22 +399,30 @@ internal fun AppointmentDetailScreen(
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             InfoRow(label = "Cancellation Reason", value = appointment.cancellationReason)
                         }
-                        if (appointment.doctorSpecialities.isNotEmpty()) {
+                        if (appointment.doctorSpecialities.isNotEmpty() || appointment.amount != null) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                            InfoRow(label = "Speciality", value = appointment.doctorSpecialities.joinToString(", "))
-                        }
-                        appointment.amount?.let { amount ->
-                            Spacer(Modifier.height(16.dp))
-                            Text(
-                                text = "Amount",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Neutral40,
-                            )
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                text = "${appointment.currency} ${amount.toAmountString()}",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                if (appointment.doctorSpecialities.isNotEmpty()) {
+                                    InfoRow(label = "Speciality", value = appointment.doctorSpecialities.joinToString(", "))
+                                }
+                                appointment.amount?.let { amount ->
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = "Amount",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Neutral40,
+                                        )
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            text = "${appointment.currency} ${amount.toAmountString()}",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -650,7 +659,7 @@ private fun BioMetricCard(label: String, value: String, modifier: Modifier = Mod
     Card(
         modifier = modifier,
         shape = ShapeCard,
-        colors = CardDefaults.cardColors(containerColor = Neutral90),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
         elevation = CardDefaults.cardElevation(0.dp),
     ) {
         Column(
@@ -712,7 +721,7 @@ private fun MedicalRecordSection(
         if (record != null) {
             Card(
                 shape = ShapeCard,
-                colors = CardDefaults.cardColors(containerColor = Primary40.copy(alpha = 0.06f)),
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (!record.diagnosis.isNullOrBlank()) {
@@ -729,6 +738,22 @@ private fun MedicalRecordSection(
                                     text = "• ${item.drug} — ${item.dosage}, ${item.frequency} for ${item.duration}",
                                     style = MaterialTheme.typography.bodySmall,
                                 )
+                                if (!item.instructions.isNullOrBlank()) {
+                                    Text(
+                                        text = item.instructions,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Tertiary40,
+                                        modifier = Modifier.padding(start = 10.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (record.labRequests.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Lab Requests", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            record.labRequests.forEach { lab ->
+                                Text("• $lab", style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -742,6 +767,12 @@ private fun MedicalRecordSection(
                         Column {
                             Text("Referral", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(record.referralNote, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    if (!record.additionalNotes.isNullOrBlank()) {
+                        Column {
+                            Text("Additional Notes", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(record.additionalNotes, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -890,7 +921,14 @@ private fun ReferPatientCard(onRefer: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.weight(149f), contentAlignment = Alignment.Center) {
-            ReferralIllustration(modifier = Modifier.size(92.dp))
+            // Fills its column rather than a fixed size — the artwork carries its own internal
+            // padding, so a fixed 92dp left the motif looking small against the text beside it.
+            Image(
+                painter = painterResource(Res.drawable.refer_icon),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxWidth().heightIn(max = 150.dp),
+            )
         }
         Column(modifier = Modifier.weight(200f).padding(end = 16.dp)) {
             Text(
@@ -913,68 +951,6 @@ private fun ReferPatientCard(onRefer: () -> Unit) {
                 contentPadding = PaddingValues(horizontal = 12.dp),
             ) {
                 Text("Refer Patient", style = detailActionTextStyle(), color = Primary40)
-            }
-        }
-    }
-}
-
-/**
- * Two patient avatars joined by dashed arrows circling a "+" — the hand-off motif from the
- * Figma spec, drawn rather than shipped as an asset so it stays crisp at any density.
- */
-@Composable
-private fun ReferralIllustration(modifier: Modifier = Modifier) {
-    val bubble = Primary40.copy(alpha = 0.12f)
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val r = size.minDimension / 2f
-            val dash = PathEffect.dashPathEffect(floatArrayOf(r * 0.14f, r * 0.12f), 0f)
-            val stroke = Stroke(width = r * 0.075f, cap = StrokeCap.Round, pathEffect = dash)
-            // Upper-right arc sweeping away from the first avatar, lower-left arc returning.
-            drawArc(
-                color = Primary40,
-                startAngle = -85f,
-                sweepAngle = 130f,
-                useCenter = false,
-                topLeft = Offset(center.x - r * 0.82f, center.y - r * 0.82f),
-                size = Size(r * 1.64f, r * 1.64f),
-                style = stroke,
-            )
-            drawArc(
-                color = Primary40,
-                startAngle = 95f,
-                sweepAngle = 130f,
-                useCenter = false,
-                topLeft = Offset(center.x - r * 0.82f, center.y - r * 0.82f),
-                size = Size(r * 1.64f, r * 1.64f),
-                style = stroke,
-            )
-        }
-        // Avatars sit on the diagonal, the "+" badge between them.
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier.align(Alignment.TopStart).size(34.dp).clip(CircleShape).background(bubble),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Person, null, tint = Primary40, modifier = Modifier.size(20.dp))
-            }
-            Box(
-                modifier = Modifier.align(Alignment.BottomEnd).size(34.dp).clip(CircleShape).background(bubble),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Person, null, tint = Primary40, modifier = Modifier.size(20.dp))
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(20.dp)
-                    .border(1.dp, Primary40, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Add, null, tint = Primary40, modifier = Modifier.size(13.dp))
             }
         }
     }
@@ -1080,8 +1056,13 @@ private fun MedicalHistorySheet(
     }
 }
 
+/**
+ * Also reused by [ke.co.smartroundclinic.doctor.presentation.main.chat.ui.PatientChatSheet] so
+ * the patient-history view opened from chat can't drift out of sync with the one opened from an
+ * appointment — one rendering of a [MedicalRecord], not two copies to keep aligned by hand.
+ */
 @Composable
-private fun HistoryRecordCard(
+internal fun HistoryRecordCard(
     record: MedicalRecord,
     isEditable: Boolean = false,
     onEdit: () -> Unit = {},
@@ -1105,11 +1086,20 @@ private fun HistoryRecordCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = record.createdAt.take(10),
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = Primary40,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = record.createdAt.take(10),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = Primary40,
+                        )
+                        if (!record.doctorName.isNullOrBlank()) {
+                            Text(
+                                text = "· Dr. ${record.doctorName}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     if (!record.diagnosis.isNullOrBlank()) {
                         Spacer(Modifier.height(2.dp))
                         Text(
@@ -1176,6 +1166,13 @@ private fun HistoryRecordCard(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (!item.instructions.isNullOrBlank()) {
+                                    Text(
+                                        text = item.instructions,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Tertiary40,
+                                    )
+                                }
                             }
                         }
                     }
@@ -1218,6 +1215,17 @@ private fun HistoryRecordCard(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(text = record.referralNote, style = MaterialTheme.typography.bodySmall)
+                }
+
+                if (!record.additionalNotes.isNullOrBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = "Additional Notes",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(text = record.additionalNotes, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -1518,7 +1526,7 @@ private fun ReviewItem(review: Rating) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = ShapeCard,
-        colors = CardDefaults.cardColors(containerColor = Neutral90),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
         elevation = CardDefaults.cardElevation(0.dp),
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

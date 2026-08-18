@@ -64,11 +64,11 @@ class ReferralViewModel(
         }
     }
 
-    fun createReferral(appointmentId: String, receivingDoctorId: String, reason: String, onSuccess: () -> Unit) {
+    fun createReferral(appointmentId: String, receivingDoctorId: String, onSuccess: () -> Unit) {
         if (isSubmitting) return
         viewModelScope.launch {
             isSubmitting = true
-            when (val result = createReferralUseCase(appointmentId, receivingDoctorId, reason)) {
+            when (val result = createReferralUseCase(appointmentId, receivingDoctorId)) {
                 is Resource.Success -> {
                     snackbarController.show("Referral sent successfully")
                     loadSentReferrals()

@@ -2,13 +2,12 @@ package ke.co.smartroundclinic.doctor.common
 
 object Constants {
     const val ONBOARDING_KEY = "onboarding_completed"
-    const val BASE_URL = "https://sandbox-api.smartroundclinic.co.ke/"
-    //const val BASE_URL = "https://api.smartroundclinic.co.ke/"
+    //const val BASE_URL = "https://sandbox-api.smartroundclinic.co.ke/"
+    const val BASE_URL = "https://api.smartroundclinic.co.ke/"
     const val PRIVACY_POLICY_URL = "https://smartroundclinic.co.ke/privacy-policy/"
     const val TERMS_CONDITIONS_URL = "https://smartroundclinic.co.ke/terms-and-conditions/"
     const val DOCTORS_AGREEMENT_URL = "https://smartroundclinic.co.ke/doctors-agreement/"
     const val FAQ_URL = "https://smartroundclinic.co.ke/faq/"
-
     const val KEY_ACCESS_TOKEN = "key_access_token"
     const val KEY_REFRESH_TOKEN = "key_refresh_token"
     const val KEY_COMPLIANCE_STATUS = "key_compliance_status"
@@ -22,7 +21,7 @@ object Constants {
      * it in memory. Never read a file this large into a ByteArray.
      *
      * Expressed in decimal MB deliberately — file managers report "26 MB" as 26,000,000 bytes,
-     * so a binary-MiB threshold lets files the user calls "26 MB" slip under a "25 MB" cap.
+     * so a binary-MiB threshold lets files the useAdd grey divider on Consultation cards between appointment date/time as implemented on the appointment details card	DOCTOR/PATIENT	BOOKINGSr calls "26 MB" slip under a "25 MB" cap.
      */
     const val MAX_CHAT_FILE_BYTES = 300L * 1_000_000
 
