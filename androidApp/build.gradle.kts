@@ -9,8 +9,10 @@ plugins {
 // No serviceAccountCredentials — CI authenticates via Workload Identity Federation, not a
 // downloaded key (our GCP org blocks key creation: iam.disableServiceAccountKeyCreation).
 // google-github-actions/auth sets GOOGLE_APPLICATION_CREDENTIALS to a short-lived, federated
-// token file; GPP's underlying Google auth library picks that up via standard ADC discovery.
+// token file, but GPP won't pick it up on its own — useApplicationDefaultCredentials must be
+// set explicitly, or GPP fails with "No credentials specified" even though ADC is available.
 play {
+    useApplicationDefaultCredentials = true
     track.set("internal")
     defaultToAppBundles.set(true)
 }
@@ -18,9 +20,22 @@ play {
 // CI (see .github/workflows/deploy.yml) provides all four via env vars, pointing at a keystore
 // decoded from the ANDROID_KEYSTORE_BASE64 secret. Absent locally, so local `assembleRelease`
 // keeps producing an unsigned build exactly as before — this only activates in CI.
-val hasReleaseSigningEnv = listOf(
-    "ANDROID_KEYSTORE_PATH", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD"
-).all { System.getenv(it) != null }
+//
+// Checked for blank, not just presence: a GitHub secret that's referenced but never actually
+// set resolves to an empty string, not a missing env var — signing would otherwise silently
+// attempt with a blank password and fail deep inside bundle signing with an opaque
+// "Tag number over 30 is not supported" (corrupt-looking ASN.1 from decrypting with the wrong
+// password) instead of a message that says what's actually missing.
+val releaseSigningVars = listOf("ANDROID_KEYSTORE_PATH", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD")
+val setSigningVars = releaseSigningVars.filter { !System.getenv(it).isNullOrBlank() }
+val hasReleaseSigningEnv = setSigningVars.size == releaseSigningVars.size
+if (setSigningVars.isNotEmpty() && !hasReleaseSigningEnv) {
+    throw GradleException(
+        "Release signing env vars are partially set — missing/blank: " +
+            (releaseSigningVars - setSigningVars.toSet()).joinToString(", ") +
+            ". Set all four (as GitHub Secrets in CI) or none (for an unsigned local build)."
+    )
+}
 
 android {
     namespace = "ke.co.smartroundclinic.doctor.android"

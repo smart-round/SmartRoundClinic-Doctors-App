@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import ke.co.smartroundclinic.doctor.core.platform.rememberShareText
 import ke.co.smartroundclinic.doctor.domain.model.Article
 import ke.co.smartroundclinic.doctor.domain.model.ArticleState
 import ke.co.smartroundclinic.doctor.presentation.main.articles.readMinutes
@@ -84,9 +86,9 @@ internal fun ArticleDetailScreen(
     onUnpublish: () -> Unit,
     onDelete: () -> Unit,
     onNotificationsClick: () -> Unit = {},
-    onSearchClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val shareText = rememberShareText()
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val minutes = remember(article.content) { readMinutes(article.content) }
@@ -112,6 +114,14 @@ internal fun ArticleDetailScreen(
                     )
                 },
                 actions = {
+                    IconButton(onClick = { shareText("${article.title}\n\n${article.summary}") }) {
+                        Icon(
+                            imageVector = Icons.Filled.Share,
+                            contentDescription = "Share article",
+                            tint = Neutral20,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                     if (isOwn) {
                         IconButton(onClick = onEdit) {
                             Icon(
@@ -168,7 +178,7 @@ internal fun ArticleDetailScreen(
 
             Spacer(Modifier.height(10.dp))
 
-            // Edit and delete live in the top bar's action slots, so the byline is text only.
+            // Share, edit and delete live in the top bar's action slots, so the byline is text only.
             Text(
                 text = buildAnnotatedString {
                     if (formattedDate.isNotBlank()) append("$formattedDate by ")

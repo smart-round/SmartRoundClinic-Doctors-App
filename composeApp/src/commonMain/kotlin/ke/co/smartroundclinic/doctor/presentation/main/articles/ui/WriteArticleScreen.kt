@@ -97,7 +97,6 @@ internal fun WriteArticleScreen(
     onRefreshCategories: () -> Unit,
     onPublish: (title: String, content: String, categoryId: String) -> Unit,
     onNotificationsClick: () -> Unit = {},
-    onSearchClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var title by remember { mutableStateOf(article?.title ?: "") }
