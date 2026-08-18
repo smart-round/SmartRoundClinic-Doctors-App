@@ -74,6 +74,28 @@ jobs:
           ruby-version: "3.2"
           bundler-cache: true
 
+      # The shared SPM package cache (clone objects, not per-checkout files) survives even
+      # though DerivedData itself is wiped every run on a fresh runner — this is what actually
+      # saves the ~15 Firebase package clones from hitting the network again.
+      - name: Cache Swift Package Manager packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ hashFiles('iosApp/iosApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-
+
+      # Kotlin/Native's compiler distribution (~500MB) and Gradle's dependency/module cache —
+      # both re-downloaded from scratch every run otherwise.
+      - name: Cache Gradle and Kotlin/Native
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.konan
+          key: gradle-konan-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-konan-
+
       - name: Write App Store Connect API key
         run: echo '${{ secrets.APP_STORE_CONNECT_API_KEY_JSON }}' > "$RUNNER_TEMP/asc-api-key.json"
 
