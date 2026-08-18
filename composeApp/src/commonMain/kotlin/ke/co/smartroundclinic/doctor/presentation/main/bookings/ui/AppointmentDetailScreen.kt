@@ -1,11 +1,15 @@
 package ke.co.smartroundclinic.doctor.presentation.main.bookings.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -29,17 +34,23 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -70,12 +81,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import ke.co.smartroundclinic.doctor.core.util.formatAppointmentDate
+import ke.co.smartroundclinic.doctor.core.util.formatAppointmentTimeRange
 import ke.co.smartroundclinic.doctor.core.util.parseAppointmentInstant
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
@@ -87,7 +105,11 @@ import kotlinx.datetime.Clock
 import ke.co.smartroundclinic.doctor.presentation.common.composables.PrimaryButton
 import ke.co.smartroundclinic.doctor.presentation.common.composables.StarRatingDisplay
 import ke.co.smartroundclinic.doctor.presentation.common.composables.StarRatingInput
+import ke.co.smartroundclinic.doctor.presentation.theme.ActionDestructive
+import ke.co.smartroundclinic.doctor.presentation.theme.ActionDisabled
+import ke.co.smartroundclinic.doctor.presentation.theme.ActionEnabled
 import ke.co.smartroundclinic.doctor.presentation.theme.CardBackground
+import ke.co.smartroundclinic.doctor.presentation.theme.DetailIconChip
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.Error90
 import ke.co.smartroundclinic.doctor.presentation.theme.Neutral40
@@ -113,6 +135,7 @@ internal fun AppointmentDetailScreen(
     onConfirm: () -> Unit,
     onComplete: () -> Unit,
     onCancel: (String?) -> Unit,
+    onRefer: () -> Unit = {},
     medicalRecord: MedicalRecord? = null,
     patientHistory: List<MedicalRecord> = emptyList(),
     patientBio: PatientBio? = null,
@@ -217,11 +240,8 @@ internal fun AppointmentDetailScreen(
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                title = { Text("Appointment Details") },
-                actions = {
-                    AppointmentStatusBadge(status = appointment.status)
-                    Spacer(Modifier.width(8.dp))
-                },
+                // The status now lives on the summary card itself, so the bar carries only the title.
+                title = { Text("Appointment Details", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
             )
         },
         contentWindowInsets = WindowInsets(0),
@@ -239,22 +259,57 @@ internal fun AppointmentDetailScreen(
                     .navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Card(
-                    shape = ShapeCard,
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        InfoRow(label = "Date", value = appointment.date)
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-                        InfoRow(label = "Time", value = "${appointment.slotStart} – ${appointment.slotEnd}")
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                AccentCard {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = "Appointment Date/Time",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Neutral40,
+                                modifier = Modifier.weight(1f),
+                            )
+                            AppointmentStatusBadge(status = appointment.status)
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier.size(24.dp).clip(CircleShape).background(DetailIconChip),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Schedule,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = formatAppointmentDate(appointment.date),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Box(Modifier.size(6.dp).clip(CircleShape).background(DetailIconChip.copy(alpha = 0.48f)))
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = formatAppointmentTimeRange(appointment.slotStart, appointment.slotEnd),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            thickness = 1.dp,
+                            color = DetailIconChip.copy(alpha = 0.26f),
+                        )
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Box(
-                                modifier = Modifier.size(40.dp).clip(CircleShape).background(Secondary90),
+                                modifier = Modifier.size(47.dp).clip(CircleShape).background(Secondary90),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 if (appointment.patientProfilePicture != null) {
@@ -265,32 +320,73 @@ internal fun AppointmentDetailScreen(
                                         modifier = Modifier.fillMaxSize().clip(CircleShape),
                                     )
                                 } else {
-                                    Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(24.dp))
+                                    Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(28.dp))
                                 }
                             }
                             Spacer(Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(text = "Patient", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(text = appointment.patientName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                            }
-                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = appointment.patientName,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 OutlinedButton(
                                     onClick = { showPatientBioSheet = true },
                                     shape = ShapePill,
                                     border = androidx.compose.foundation.BorderStroke(1.dp, Primary40),
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp),
+                                    modifier = Modifier.height(20.dp),
                                 ) {
-                                    Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Primary40, modifier = Modifier.size(13.dp))
+                                    Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Primary40, modifier = Modifier.size(11.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text("Bio", style = MaterialTheme.typography.labelSmall, color = Primary40)
+                                    Text("Bio", style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 0.2.sp), color = Primary40)
                                 }
                                 if (hasHistory) {
-                                    TextButton(
-                                        onClick = { showHistorySheet = true },
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                    ) {
-                                        Text("Medical History", style = MaterialTheme.typography.labelSmall, color = Tertiary40)
+                                    Text(
+                                        text = "Medical History",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 11.sp,
+                                            letterSpacing = 0.2.sp,
+                                            textDecoration = TextDecoration.Underline,
+                                        ),
+                                        color = Tertiary40,
+                                        modifier = Modifier.clickable(
+                                            indication = null,
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            onClick = { showHistorySheet = true },
+                                        ),
+                                    )
+                                }
+                            }
+                        }
+                        if (appointment.referralId != null) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier.size(28.dp).clip(CircleShape).background(Tertiary90),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    if (appointment.referredByDoctorPicture != null) {
+                                        AsyncImage(
+                                            model = appointment.referredByDoctorPicture,
+                                            contentDescription = appointment.referredByDoctorName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                        )
+                                    } else {
+                                        Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Tertiary40, modifier = Modifier.size(16.dp))
                                     }
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(text = "Referred by", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        text = "Dr. ${appointment.referredByDoctorName ?: "another doctor"}",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    )
                                 }
                             }
                         }
@@ -306,6 +402,19 @@ internal fun AppointmentDetailScreen(
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                             InfoRow(label = "Speciality", value = appointment.doctorSpecialities.joinToString(", "))
                         }
+                        appointment.amount?.let { amount ->
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                text = "Amount",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Neutral40,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = "${appointment.currency} ${amount.toAmountString()}",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            )
+                        }
                     }
                 }
 
@@ -316,54 +425,47 @@ internal fun AppointmentDetailScreen(
                 } else {
                     when (appointment.status) {
                         AppointmentStatus.BOOKED -> {
-                            PrimaryButton(onClick = onConfirm) {
-                                Text("Confirm Appointment", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(vertical = 14.dp))
-                            }
-                            Button(
+                            DetailFilledButton(
+                                text = "Confirm Appointment",
+                                onClick = onConfirm,
+                                enabled = true,
+                            )
+                            DetailOutlinedButton(
+                                text = "Cancel Appointment",
                                 onClick = { showCancelDialog = true },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = ShapePill,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = MaterialTheme.colorScheme.error,
-                                ),
-                            ) {
-                                Text("Cancel Appointment", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(vertical = 10.dp))
-                            }
+                                color = ActionDestructive,
+                            )
                         }
                         AppointmentStatus.CONFIRMED -> {
-                            PrimaryButton(onClick = { showCompleteConfirmSheet = true }, enabled = canComplete) {
-                                Text("Mark as Complete", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(vertical = 14.dp))
-                            }
-                            if (!canComplete) {
-                                Text(
-                                    text = "Available after the appointment starts at ${appointment.slotStart}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
-                                )
-                            }
-                            Button(
+                            DetailFilledButton(
+                                text = "Mark As Complete",
+                                onClick = { showCompleteConfirmSheet = true },
+                                enabled = canComplete,
+                            )
+                            DetailOutlinedButton(
+                                text = "Cancel Appointment",
                                 onClick = { showCancelDialog = true },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = ShapePill,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = MaterialTheme.colorScheme.error,
-                                ),
-                            ) {
-                                Text("Cancel Appointment", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(vertical = 10.dp))
+                                color = ActionDestructive,
+                            )
+                            if (!canComplete) {
+                                LockedActionNote(
+                                    text = "The \"Mark as Complete\" button will be enabled once the appointment starts",
+                                )
                             }
                         }
                         AppointmentStatus.COMPLETED -> {
+                            // Referring only requires the appointment to be COMPLETED — see
+                            // CR-SMRC-0001 §5.1.1 (the rating/prescription/summary prerequisites
+                            // originally specified there were dropped per user direction).
+                            ReferPatientCard(onRefer = onRefer)
                             RatingSection(
                                 myRating = myRatingOfPatient,
                                 isSubmitting = isSubmittingRating,
                                 onSubmit = onSubmitRating,
                                 onUpdate = onUpdateRating,
                                 onDelete = onDeleteRating,
-                                patientAverageRating = patientAverageRating,
-                                patientTotalReviews = patientTotalReviews,
+                                patientPicture = appointment.patientProfilePicture,
+                                patientName = appointment.patientName,
                                 onViewAllReviews = { showReviewsSheet = true },
                             )
                         }
@@ -677,6 +779,212 @@ internal fun AppointmentStatusBadge(status: AppointmentStatus, modifier: Modifie
     }
 }
 
+// ── Amended appointment-detail design system ─────────────────────────────────
+// Cards carry a 7dp rounded accent bar on the leading edge and sit flat on the
+// background; actions are 32dp tall with a 5dp radius.
+
+private val DetailActionShape = RoundedCornerShape(5.dp)
+private val DetailActionHeight = 32.dp
+
+/** Flat card with the leading accent bar, sized to its content. */
+@Composable
+private fun AccentCard(
+    modifier: Modifier = Modifier,
+    accent: Color = Primary40,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clip(ShapeCard)
+            .background(CardBackground),
+    ) {
+        Box(Modifier.width(7.dp).fillMaxHeight().background(accent))
+        Column(
+            modifier = Modifier.weight(1f).padding(start = 21.dp, end = 22.dp, top = 10.dp, bottom = 16.dp),
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun DetailFilledButton(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth().height(DetailActionHeight),
+        shape = DetailActionShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = ActionEnabled,
+            contentColor = Color.White,
+            // The locked state is a flat grey fill rather than a faded green.
+            disabledContainerColor = ActionDisabled,
+            disabledContentColor = Color.White,
+        ),
+        contentPadding = PaddingValues(horizontal = 12.dp),
+    ) {
+        Text(text, style = detailActionTextStyle(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun DetailOutlinedButton(
+    text: String,
+    onClick: () -> Unit,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().height(DetailActionHeight),
+        shape = DetailActionShape,
+        border = androidx.compose.foundation.BorderStroke(1.dp, color),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = color),
+        contentPadding = PaddingValues(horizontal = 12.dp),
+    ) {
+        Text(text, style = detailActionTextStyle(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun detailActionTextStyle() =
+    MaterialTheme.typography.titleSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold)
+
+/** Green ⓘ note explaining why the primary action is still greyed out. */
+@Composable
+private fun LockedActionNote(text: String) {
+    Row(verticalAlignment = Alignment.Top) {
+        Icon(
+            imageVector = Icons.Filled.Info,
+            contentDescription = null,
+            tint = ActionEnabled,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = Neutral40,
+        )
+    }
+}
+
+/**
+ * "Need To Refer Your Patient?" — unlike the summary and rating cards this one has **no**
+ * accent bar, and splits into an illustration column and a text column.
+ */
+@Composable
+private fun ReferPatientCard(onRefer: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(ShapeCard)
+            .background(CardBackground)
+            .padding(vertical = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.weight(149f), contentAlignment = Alignment.Center) {
+            ReferralIllustration(modifier = Modifier.size(92.dp))
+        }
+        Column(modifier = Modifier.weight(200f).padding(end = 16.dp)) {
+            Text(
+                text = "Need To Refer Your Patient?",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Would you like another doctor to take over this case? Then click the " +
+                    "button below to select the doctor and send a referral to the patient.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Neutral40,
+            )
+            Spacer(Modifier.height(14.dp))
+            OutlinedButton(
+                onClick = onRefer,
+                modifier = Modifier.fillMaxWidth().height(DetailActionHeight),
+                shape = DetailActionShape,
+                border = androidx.compose.foundation.BorderStroke(1.dp, Primary40),
+                contentPadding = PaddingValues(horizontal = 12.dp),
+            ) {
+                Text("Refer Patient", style = detailActionTextStyle(), color = Primary40)
+            }
+        }
+    }
+}
+
+/**
+ * Two patient avatars joined by dashed arrows circling a "+" — the hand-off motif from the
+ * Figma spec, drawn rather than shipped as an asset so it stays crisp at any density.
+ */
+@Composable
+private fun ReferralIllustration(modifier: Modifier = Modifier) {
+    val bubble = Primary40.copy(alpha = 0.12f)
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val r = size.minDimension / 2f
+            val dash = PathEffect.dashPathEffect(floatArrayOf(r * 0.14f, r * 0.12f), 0f)
+            val stroke = Stroke(width = r * 0.075f, cap = StrokeCap.Round, pathEffect = dash)
+            // Upper-right arc sweeping away from the first avatar, lower-left arc returning.
+            drawArc(
+                color = Primary40,
+                startAngle = -85f,
+                sweepAngle = 130f,
+                useCenter = false,
+                topLeft = Offset(center.x - r * 0.82f, center.y - r * 0.82f),
+                size = Size(r * 1.64f, r * 1.64f),
+                style = stroke,
+            )
+            drawArc(
+                color = Primary40,
+                startAngle = 95f,
+                sweepAngle = 130f,
+                useCenter = false,
+                topLeft = Offset(center.x - r * 0.82f, center.y - r * 0.82f),
+                size = Size(r * 1.64f, r * 1.64f),
+                style = stroke,
+            )
+        }
+        // Avatars sit on the diagonal, the "+" badge between them.
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier.align(Alignment.TopStart).size(34.dp).clip(CircleShape).background(bubble),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Person, null, tint = Primary40, modifier = Modifier.size(20.dp))
+            }
+            Box(
+                modifier = Modifier.align(Alignment.BottomEnd).size(34.dp).clip(CircleShape).background(bubble),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Person, null, tint = Primary40, modifier = Modifier.size(20.dp))
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(20.dp)
+                    .border(1.dp, Primary40, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Add, null, tint = Primary40, modifier = Modifier.size(13.dp))
+            }
+        }
+    }
+}
+
+private fun Double.toAmountString(): String {
+    val whole = toLong()
+    return if (this == whole.toDouble()) whole.toString() else toString()
+}
+
 @Composable
 private fun InfoRow(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
@@ -916,6 +1224,11 @@ private fun HistoryRecordCard(
     }
 }
 
+/**
+ * "Rate and Review Patient" — the amended design folds the old rate card and
+ * ratings-history card into one, with the edit/delete affordances and the
+ * "See All Ratings" link stacked in the top-right corner.
+ */
 @Composable
 private fun RatingSection(
     myRating: Rating?,
@@ -923,33 +1236,9 @@ private fun RatingSection(
     onSubmit: (Int, String?) -> Unit,
     onUpdate: (Int, String?) -> Unit,
     onDelete: () -> Unit,
-    patientAverageRating: Double,
-    patientTotalReviews: Int,
+    patientPicture: String?,
+    patientName: String,
     onViewAllReviews: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        RatePatientCard(
-            myRating = myRating,
-            isSubmitting = isSubmitting,
-            onSubmit = onSubmit,
-            onUpdate = onUpdate,
-            onDelete = onDelete,
-        )
-        PatientRatingHistoryCard(
-            averageRating = patientAverageRating,
-            totalReviews = patientTotalReviews,
-            onViewAllReviews = onViewAllReviews,
-        )
-    }
-}
-
-@Composable
-private fun RatePatientCard(
-    myRating: Rating?,
-    isSubmitting: Boolean,
-    onSubmit: (Int, String?) -> Unit,
-    onUpdate: (Int, String?) -> Unit,
-    onDelete: () -> Unit,
 ) {
     var isEditing by remember(myRating) { mutableStateOf(myRating == null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -961,51 +1250,88 @@ private fun RatePatientCard(
         )
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = ShapeCard,
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+    AccentCard {
+        Text(
+            text = "Rate and Review Patient",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+        )
+        Spacer(Modifier.height(12.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            Box(
+                modifier = Modifier.size(47.dp).clip(CircleShape).background(Secondary90),
+                contentAlignment = Alignment.Center,
             ) {
-                Text("Rate Patient", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
-                if (myRating != null && !isEditing) {
-                    Row {
-                        TextButton(onClick = { isEditing = true }) {
-                            Text("Edit", style = MaterialTheme.typography.labelSmall, color = Tertiary40)
-                        }
-                        TextButton(onClick = { showDeleteDialog = true }) {
-                            Text("Delete", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-                        }
-                    }
+                if (patientPicture != null) {
+                    AsyncImage(
+                        model = patientPicture,
+                        contentDescription = patientName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    )
+                } else {
+                    Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(28.dp))
                 }
             }
-
-            if (isEditing) {
-                RatingForm(
-                    initialRating = myRating?.rating ?: 0,
-                    initialComment = myRating?.comment.orEmpty(),
-                    isSubmitting = isSubmitting,
-                    submitLabel = if (myRating != null) "Save Changes" else "Submit Rating",
-                    onCancel = if (myRating != null) ({ isEditing = false }) else null,
-                    onSubmit = { rating, comment ->
-                        if (myRating != null) onUpdate(rating, comment) else onSubmit(rating, comment)
-                    },
-                )
-            } else if (myRating != null) {
-                StarRatingDisplay(rating = myRating.rating.toDouble(), starSize = 20.dp)
-                if (!myRating.comment.isNullOrBlank()) {
-                    Text(
-                        text = myRating.comment,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            Spacer(Modifier.weight(1f))
+            Column(horizontalAlignment = Alignment.End) {
+                if (myRating != null && !isEditing) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        IconButton(onClick = { isEditing = true }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Edit rating", tint = Tertiary40, modifier = Modifier.size(20.dp))
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete rating", tint = ActionDestructive, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
                 }
+                Text(
+                    text = "See All Ratings",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 11.sp,
+                        letterSpacing = 0.2.sp,
+                        textDecoration = TextDecoration.Underline,
+                    ),
+                    color = Primary40,
+                    modifier = Modifier.clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = onViewAllReviews,
+                    ),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        if (isEditing) {
+            RatingForm(
+                initialRating = myRating?.rating ?: 0,
+                initialComment = myRating?.comment.orEmpty(),
+                isSubmitting = isSubmitting,
+                submitLabel = if (myRating != null) "Save Changes" else "Submit Rating",
+                onCancel = if (myRating != null) ({ isEditing = false }) else null,
+                onSubmit = { rating, comment ->
+                    if (myRating != null) onUpdate(rating, comment) else onSubmit(rating, comment)
+                },
+            )
+        } else if (myRating != null) {
+            StarRatingDisplay(rating = myRating.rating.toDouble(), starSize = 22.dp)
+            if (!myRating.comment.isNullOrBlank()) {
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = "Review",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Neutral40,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = myRating.comment,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Neutral40,
+                    textAlign = TextAlign.Justify,
+                )
             }
         }
     }
@@ -1058,58 +1384,6 @@ private fun RatingForm(
                         modifier = Modifier.padding(vertical = 4.dp),
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PatientRatingHistoryCard(averageRating: Double, totalReviews: Int, onViewAllReviews: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-                onClick = onViewAllReviews,
-            ),
-        shape = ShapeCard,
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("This Patient's Ratings", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("See all", style = MaterialTheme.typography.labelSmall, color = Tertiary40)
-                    Icon(
-                        imageVector = Icons.Filled.ChevronRight,
-                        contentDescription = null,
-                        tint = Tertiary40,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-            }
-            if (totalReviews > 0) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    StarRatingDisplay(rating = averageRating, starSize = 18.dp)
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "$totalReviews rating${if (totalReviews == 1) "" else "s"} from doctors",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            } else {
-                Text(
-                    text = "No previous doctors have rated this patient yet.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }

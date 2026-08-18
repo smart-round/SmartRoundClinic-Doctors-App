@@ -2,15 +2,14 @@ package ke.co.smartroundclinic.doctor.presentation.main.chat.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +20,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,6 +29,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,12 +43,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ke.co.smartroundclinic.doctor.domain.model.ThreadPreviewKind
 import ke.co.smartroundclinic.doctor.domain.model.ConversationThread
+import ke.co.smartroundclinic.doctor.domain.model.DoctorChatThread
 import ke.co.smartroundclinic.doctor.presentation.common.composables.DashboardHeader
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.DoctorChatsListScreen
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.SearchHeaderRow
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import ke.co.smartroundclinic.doctor.presentation.theme.Primary90
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
@@ -52,36 +62,114 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
+/** Mirrors bookings' BookingTopTab pattern: Consultations is the existing patient-chat list,
+ * unchanged; Other Doctors is the doctor directory + doctor-to-doctor chat (see :doctor-chat
+ * backend). Rendered in the header itself (bottomContent), same idiom as WalletScreen's tabs —
+ * each tab fills half the header width via the default (non-scrollable) TabRow layout. */
+internal enum class ChatTopTab(val label: String) {
+    CONSULTATIONS("Consultations"),
+    OTHER_DOCTORS("Other Doctors"),
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ChatListScreen(
     threads: List<ConversationThread>,
     onThreadClick: (ConversationThread) -> Unit,
     onDeleteThread: (ConversationThread) -> Unit = {},
+    selectedTopTab: ChatTopTab,
+    onTopTabSelected: (ChatTopTab) -> Unit,
+    doctorThreads: List<DoctorChatThread> = emptyList(),
+    onDoctorThreadClick: (DoctorChatThread) -> Unit = {},
+    onOpenAllDoctors: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var threadPendingDelete by remember { mutableStateOf<ConversationThread?>(null) }
+    var isSearching by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val selectedIndex = ChatTopTab.entries.indexOf(selectedTopTab)
+
+    val visibleThreads = if (searchQuery.isNotBlank()) {
+        threads.filter { it.counterpartName.contains(searchQuery, ignoreCase = true) }
+    } else {
+        threads
+    }
 
     Scaffold(
         modifier = modifier,
-        topBar = { DashboardHeader(title = "Consultations", onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick) },
+        topBar = {
+            DashboardHeader(
+                title = "Chat",
+                onProfileClick = onProfileClick,
+                onNotificationsClick = onNotificationsClick,
+                bottomContent = {
+                    TabRow(
+                        selectedTabIndex = selectedIndex,
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White,
+                        indicator = { tabPositions ->
+                            SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
+                                color = Color.White,
+                            )
+                        },
+                        divider = {},
+                    ) {
+                        ChatTopTab.entries.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = selectedIndex == index,
+                                onClick = { onTopTabSelected(tab) },
+                                text = {
+                                    Text(
+                                        text = tab.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (selectedIndex == index) Color.White else Color.White.copy(alpha = 0.65f),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                },
+            )
+        },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (threads.isEmpty()) {
-                EmptyView(modifier = Modifier.weight(1f))
-            } else {
-                LazyColumn(modifier = Modifier.weight(1f)) {
-                    items(threads, key = { it.threadId }) { thread ->
-                        ThreadRow(
-                            thread = thread,
-                            onClick = { onThreadClick(thread) },
-                            onLongClick = { threadPendingDelete = thread },
-                        )
-                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(start = 76.dp))
+            when (selectedTopTab) {
+                ChatTopTab.CONSULTATIONS -> {
+                    SearchHeaderRow(
+                        isSearching = isSearching,
+                        onToggleSearch = { isSearching = !isSearching; if (!isSearching) searchQuery = "" },
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        hintText = "Your conversations with patients",
+                    )
+                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+                    if (visibleThreads.isEmpty()) {
+                        EmptyView(hasQuery = searchQuery.isNotBlank(), modifier = Modifier.weight(1f))
+                    } else {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
+                            items(visibleThreads, key = { it.threadId }) { thread ->
+                                ThreadRow(
+                                    thread = thread,
+                                    onClick = { onThreadClick(thread) },
+                                    onLongClick = { threadPendingDelete = thread },
+                                )
+                                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(start = 76.dp))
+                            }
+                        }
                     }
+                }
+                ChatTopTab.OTHER_DOCTORS -> {
+                    DoctorChatsListScreen(
+                        threads = doctorThreads,
+                        onThreadClick = onDoctorThreadClick,
+                        onOpenAllDoctors = onOpenAllDoctors,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
@@ -105,7 +193,7 @@ internal fun ChatListScreen(
 }
 
 @Composable
-private fun EmptyView(modifier: Modifier = Modifier) {
+private fun EmptyView(hasQuery: Boolean = false, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -115,14 +203,19 @@ private fun EmptyView(modifier: Modifier = Modifier) {
             Icon(imageVector = Icons.Filled.ChatBubbleOutline, contentDescription = null, tint = Primary40, modifier = Modifier.size(40.dp))
         }
         Spacer(Modifier.height(16.dp))
-        Text(text = "No Conversations Yet", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        Spacer(Modifier.height(8.dp))
         Text(
-            text = "Conversations with your patients will appear here\nonce you have a confirmed appointment.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
+            text = if (hasQuery) "No conversations found" else "No Conversations Yet",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
         )
+        if (!hasQuery) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Conversations with your patients will appear here\nonce you have a confirmed appointment.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
@@ -160,13 +253,29 @@ private fun ThreadRow(thread: ConversationThread, onClick: () -> Unit, onLongCli
         Column(modifier = Modifier.weight(1f)) {
             Text(text = thread.counterpartName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
             Spacer(Modifier.height(3.dp))
-            Text(
-                text = thread.lastMessagePreview ?: "No messages yet",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val previewIcon = when (thread.lastMessageKind) {
+                    ThreadPreviewKind.PHOTO -> Icons.Filled.CameraAlt
+                    ThreadPreviewKind.VIDEO -> Icons.Filled.Videocam
+                    else -> null
+                }
+                if (previewIcon != null) {
+                    Icon(
+                        imageVector = previewIcon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                }
+                Text(
+                    text = thread.lastMessagePreview ?: "No messages yet",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         if (thread.lastMessageAt != null) {
             Text(

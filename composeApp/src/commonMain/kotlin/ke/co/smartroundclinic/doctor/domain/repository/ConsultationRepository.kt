@@ -1,5 +1,6 @@
 package ke.co.smartroundclinic.doctor.domain.repository
 
+import kotlinx.io.RawSource
 import ke.co.smartroundclinic.doctor.common.Resource
 import ke.co.smartroundclinic.doctor.domain.model.CallInvite
 import ke.co.smartroundclinic.doctor.domain.model.CallJoinInfo
@@ -9,7 +10,20 @@ import ke.co.smartroundclinic.doctor.domain.model.MergedHistoryPage
 
 interface ConsultationRepository {
     suspend fun endCall(otherUserId: String): Resource<Unit>
-    suspend fun uploadFile(otherUserId: String, fileName: String, contentType: String, bytes: ByteArray): Resource<ConsultationMessage>
+    /**
+     * Uploads an attachment by streaming it straight to storage.
+     *
+     * Takes an [openSource] factory rather than a ByteArray so the file is never held in memory
+     * — a 300MB attachment would otherwise exhaust the heap long before reaching the network.
+     */
+    suspend fun uploadFile(
+        otherUserId: String,
+        fileName: String,
+        contentType: String,
+        sizeBytes: Long,
+        openSource: () -> RawSource,
+        onProgress: (sent: Long, total: Long) -> Unit = { _, _ -> },
+    ): Resource<ConsultationMessage>
     suspend fun joinCall(otherUserId: String): Resource<CallJoinInfo>
 
     /** Rings the other party (WhatsApp-style) — does not join the meeting itself, see JoinConsultationCallUseCase. */

@@ -53,6 +53,8 @@ import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.Specialization
 import ke.co.smartroundclinic.doctor.presentation.main.profile.ui.VerifyEmailSecurityScreen
 import ke.co.smartroundclinic.doctor.presentation.main.support.SupportRoot
 import ke.co.smartroundclinic.doctor.presentation.main.profile.destinations.ContactSupport
+import ke.co.smartroundclinic.doctor.presentation.main.destinations.Wallet
+import ke.co.smartroundclinic.doctor.presentation.main.wallet.WalletRoot
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -115,6 +117,7 @@ fun HomeRoot(
                     onBack = { backStack.removeLastOrNull() },
                     onPersonalInfo = { backStack.add(PersonalInfo) },
                     onBankingDetails = { backStack.add(BankingDetails) },
+                    onWallet = { backStack.add(Wallet) },
                     onSecuritySettings = { backStack.add(ResetPassword) },
                     onSupport = { backStack.add(ContactSupport) },
                     onAbout = { backStack.add(About) },
@@ -133,6 +136,13 @@ fun HomeRoot(
             }
             entry<BankingDetails> {
                 PaymentDetailsScreen(onBack = { backStack.removeLastOrNull() })
+            }
+            entry<Wallet> {
+                WalletRoot(
+                    onAtRootChanged = {},
+                    onProfileClick = { backStack.removeLastOrNull() },
+                    onNotificationsClick = { backStack.add(Notifications) },
+                )
             }
             entry<ResetPassword> {
                 ResetPasswordScreen(

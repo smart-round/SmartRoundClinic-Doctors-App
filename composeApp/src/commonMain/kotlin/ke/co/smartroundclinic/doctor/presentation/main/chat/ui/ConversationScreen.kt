@@ -104,11 +104,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Fullscreen
+import chaintech.videoplayer.model.VideoPlayerConfig
+import chaintech.videoplayer.ui.preview.VideoPreviewComposable
+import chaintech.videoplayer.host.MediaPlayerHost
+import chaintech.videoplayer.ui.video.VideoPlayerComposable
 import coil3.compose.AsyncImage
 import io.github.vinceglb.filekit.dialogs.FileKitMode
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberCameraPickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.size
+import io.github.vinceglb.filekit.source
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.readBytes
 import ke.co.smartroundclinic.doctor.data.remote.dto.response.MedicalRecordData
@@ -118,6 +127,10 @@ import ke.co.smartroundclinic.doctor.domain.model.ConsultationMessage
 import ke.co.smartroundclinic.doctor.domain.model.MedicalRecord
 import ke.co.smartroundclinic.doctor.domain.model.PatientBio
 import ke.co.smartroundclinic.doctor.presentation.main.chat.PendingFile
+import ke.co.smartroundclinic.doctor.presentation.main.chat.util.AttachmentKind
+import ke.co.smartroundclinic.doctor.presentation.main.chat.util.attachmentKind
+import ke.co.smartroundclinic.doctor.presentation.main.chat.util.attachmentLabel
+import ke.co.smartroundclinic.doctor.presentation.main.chat.util.isPdf
 import ke.co.smartroundclinic.doctor.presentation.main.chat.util.CallAvailability
 import ke.co.smartroundclinic.doctor.presentation.main.chat.util.callAvailability
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
@@ -133,6 +146,11 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Secondary90
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
 import kotlinx.coroutines.delay
+import kotlinx.io.RawSource
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import ke.co.smartroundclinic.doctor.common.Constants
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
@@ -168,7 +186,10 @@ internal fun ConversationScreen(
     onVoiceCall: () -> Unit,
     onVideoCall: () -> Unit,
     onSendText: (String) -> Unit,
-    onSendFile: (String, String, ByteArray) -> Unit,
+    onSendFile: (String, String, Long, ByteArray?, () -> RawSource) -> Unit,
+    onFileTooLarge: (String, String, Long) -> Unit = { _, _, _ -> },
+    onDismissPendingFile: (String) -> Unit = {},
+    onSendFileFailed: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -237,22 +258,48 @@ internal fun ConversationScreen(
         }
     }
 
-    fun sendPickedFile(name: String, bytes: ByteArray) {
-        scope.launch { onSendFile(name, mimeFromName(name), bytes) }
+    /**
+     * Reads a picked file and hands it to the ViewModel.
+     *
+     * The read happens on [Dispatchers.IO], never on the composition's Main-dispatched scope:
+     * pulling tens of MB off a content provider on the UI thread freezes the app for the whole
+     * transfer. The size is checked first so an oversized file is never read at all.
+     */
+    fun sendPickedFile(file: PlatformFile, fallbackName: String) {
+        scope.launch {
+            val name = file.name.ifBlank { fallbackName }
+            val mime = mimeFromName(name)
+            val size = withContext(Dispatchers.IO) { runCatching { file.size() }.getOrNull() }
+            if (size == null) {
+                onSendFileFailed(name, mime)
+                return@launch
+            }
+            if (size > Constants.MAX_CHAT_FILE_BYTES) {
+                onFileTooLarge(name, mime, size)
+                return@launch
+            }
+            // Only small images are read into memory, purely to draw the in-flight thumbnail.
+            val preview = if (mime.startsWith("image/") && size <= Constants.MAX_INLINE_PREVIEW_BYTES) {
+                withContext(Dispatchers.IO) { runCatching { file.readBytes() }.getOrNull() }
+            } else {
+                null
+            }
+            onSendFile(name, mime, size, preview) { file.source() }
+        }
     }
 
     // Camera photos may have no recognisable extension — force .jpg so MIME is correct
     val cameraLauncher = rememberCameraPickerLauncher { file ->
         file?.let {
             val name = it.name.takeIf { n -> n.isNotBlank() && n.contains('.') } ?: "photo.jpg"
-            scope.launch { sendPickedFile(name, it.readBytes()) }
+            sendPickedFile(it, name)
         }
     }
-    val galleryLauncher = rememberFilePickerLauncher(mode = FileKitMode.Single, type = FileKitType.Image) { file ->
-        file?.let { scope.launch { sendPickedFile(it.name.ifBlank { "image.jpg" }, it.readBytes()) } }
+    val galleryLauncher = rememberFilePickerLauncher(mode = FileKitMode.Single, type = FileKitType.ImageAndVideo) { file ->
+        file?.let { sendPickedFile(it, "media") }
     }
     val fileLauncher = rememberFilePickerLauncher(mode = FileKitMode.Single, type = FileKitType.File()) { file ->
-        file?.let { scope.launch { sendPickedFile(it.name.ifBlank { "file" }, it.readBytes()) } }
+        file?.let { sendPickedFile(it, "file") }
     }
 
     Scaffold(
@@ -424,7 +471,7 @@ internal fun ConversationScreen(
                             }
                             // Optimistic pending messages — appear immediately, removed when server echoes back
                             items(pendingFiles, key = { "p_${it.localId}" }) { pending ->
-                                PendingFileBubble(pending = pending)
+                                PendingFileBubble(pending = pending, onDismiss = { onDismissPendingFile(pending.localId) })
                             }
                             if (otherPartyTyping) {
                                 item(key = "typing_indicator") { TypingIndicatorBubble() }
@@ -698,17 +745,83 @@ private fun FileViewerSheet(
     onDismiss: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
-    val isImage = file.fileName.isImageFile() || file.contentType.startsWith("image/")
-    val isPdf = file.fileName.endsWith(".pdf", ignoreCase = true) || file.contentType == "application/pdf"
+    val fileName = file.fileName
+    val kind = attachmentKind(fileName, file.contentType)
+    val isImage = kind == AttachmentKind.PHOTO
+    val isVideo = kind == AttachmentKind.VIDEO
+    val label = attachmentLabel(fileName, file.contentType)
+    val isPdfFile = isPdf(fileName, file.contentType)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = null,
-        containerColor = if (isImage) Color.Black else MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxHeight(0.94f).statusBarsPadding(),
+        containerColor = if (isImage || isVideo || isPdfFile) Color.Black else MaterialTheme.colorScheme.surface,
+        // Media fills the screen edge to edge; documents keep the inset sheet.
+        modifier = if (isImage || isVideo || isPdfFile) Modifier.fillMaxSize() else Modifier.fillMaxHeight(0.94f).statusBarsPadding(),
     ) {
-        if (isImage) {
+        if (isVideo) {
+            // Plays in-app, same as photos open in-app, rather than handing off to the OS.
+            val playerHost = remember(file.url) { MediaPlayerHost(mediaUrl = file.url, autoPlay = true, isLooping = false) }
+            Box(modifier = Modifier.fillMaxSize()) {
+                VideoPlayerComposable(
+                    modifier = Modifier.fillMaxSize(),
+                    playerHost = playerHost,
+                )
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .statusBarsPadding()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                    Text(
+                        text = file.fileName,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { uriHandler.openUri(file.url) }) {
+                        Icon(Icons.Filled.Download, contentDescription = "Download", tint = Color.White)
+                    }
+                }
+            }
+        } else if (isPdfFile) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                PdfViewer(url = file.url, modifier = Modifier.fillMaxSize())
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .statusBarsPadding()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                    Text(
+                        text = file.fileName,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { uriHandler.openUri(file.url) }) {
+                        Icon(Icons.Filled.Download, contentDescription = "Download", tint = Color.White)
+                    }
+                }
+            }
+        } else if (isImage) {
             Box(modifier = Modifier.fillMaxSize()) {
                 AsyncImage(
                     model = file.url,
@@ -721,6 +834,7 @@ private fun FileViewerSheet(
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
                         .background(Color.Black.copy(alpha = 0.5f))
+                        .statusBarsPadding()
                         .padding(horizontal = 4.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -771,13 +885,13 @@ private fun FileViewerSheet(
                         modifier = Modifier
                             .size(80.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(if (isPdf) Color(0xFFFFEBEE) else MaterialTheme.colorScheme.surfaceVariant),
+                            .background(if (isPdfFile) Color(0xFFFFEBEE) else MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = if (isPdf) Icons.Filled.PictureAsPdf else Icons.AutoMirrored.Filled.InsertDriveFile,
+                            imageVector = attachmentIcon(kind, fileName, file.contentType),
                             contentDescription = null,
-                            tint = if (isPdf) Color(0xFFE53935) else Primary40,
+                            tint = if (isPdfFile) Color(0xFFE53935) else Primary40,
                             modifier = Modifier.size(48.dp),
                         )
                     }
@@ -1023,8 +1137,11 @@ private fun FileBubble(
 ) {
     val file = message.files.firstOrNull() ?: return
     val fileName = file.fileName.ifBlank { message.message ?: "File" }
-    val isImage = fileName.isImageFile() || file.contentType.startsWith("image/")
-    val isPdf = fileName.endsWith(".pdf", ignoreCase = true) || file.contentType == "application/pdf"
+    val kind = attachmentKind(fileName, file.contentType)
+    val isImage = kind == AttachmentKind.PHOTO
+    val label = attachmentLabel(fileName, file.contentType)
+    val isPdfFile = isPdf(fileName, file.contentType)
+    val isVideoBubble = kind == AttachmentKind.VIDEO
 
     val shape = RoundedCornerShape(
         topStart = 18.dp, topEnd = 18.dp,
@@ -1036,12 +1153,22 @@ private fun FileBubble(
         modifier = Modifier
             .widthIn(max = 260.dp)
             .clip(shape)
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-            ) { onFileClick(file) },
+            .then(
+                // Video plays in place, so it owns its own gestures rather than the whole
+                // bubble opening the full-screen viewer on any tap.
+                if (isVideoBubble) Modifier else Modifier.clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                ) { onFileClick(file) },
+            ),
     ) {
-        if (isImage) {
+        if (isVideoBubble) {
+            InlineVideoBubble(
+                url = file.url,
+                timestamp = formatTime(message.createdAt),
+                onExpand = { onFileClick(file) },
+            )
+        } else if (isImage) {
             Box {
                 AsyncImage(
                     model = file.url,
@@ -1076,13 +1203,13 @@ private fun FileBubble(
                     modifier = Modifier
                         .size(46.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (fromMe) Color.White.copy(alpha = 0.15f) else if (isPdf) Color(0xFFFFEBEE) else MaterialTheme.colorScheme.surface),
+                        .background(if (fromMe) Color.White.copy(alpha = 0.15f) else if (isPdfFile) Color(0xFFFFEBEE) else MaterialTheme.colorScheme.surface),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = if (isPdf) Icons.Filled.PictureAsPdf else Icons.AutoMirrored.Filled.InsertDriveFile,
+                        imageVector = attachmentIcon(kind, fileName, file.contentType),
                         contentDescription = null,
-                        tint = if (isPdf) Color(0xFFE53935) else if (fromMe) Color.White else Primary40,
+                        tint = if (isPdfFile) Color(0xFFE53935) else if (fromMe) Color.White else Primary40,
                         modifier = Modifier.size(28.dp),
                     )
                 }
@@ -1115,9 +1242,11 @@ private fun FileBubble(
 
 // WhatsApp-style optimistic bubble shown immediately while the file is uploading
 @Composable
-private fun PendingFileBubble(pending: PendingFile) {
-    val isImage = pending.contentType.startsWith("image/") || pending.fileName.isImageFile()
-    val isPdf = pending.fileName.endsWith(".pdf", ignoreCase = true) || pending.contentType == "application/pdf"
+private fun PendingFileBubble(pending: PendingFile, onDismiss: () -> Unit = {}) {
+    val kind = attachmentKind(pending.fileName, pending.contentType)
+    // Only show the inline preview when we actually kept the bytes (small images).
+    val isImage = kind == AttachmentKind.PHOTO && pending.previewBytes != null
+    val label = attachmentLabel(pending.fileName, pending.contentType)
     val shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp)
 
     Box(
@@ -1127,7 +1256,7 @@ private fun PendingFileBubble(pending: PendingFile) {
         if (isImage) {
             Box(Modifier.widthIn(max = 260.dp).clip(shape)) {
                 AsyncImage(
-                    model = pending.bytes,
+                    model = pending.previewBytes,
                     contentDescription = pending.fileName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.size(240.dp, 200.dp),
@@ -1141,7 +1270,7 @@ private fun PendingFileBubble(pending: PendingFile) {
                     if (pending.failed) {
                         Text("Failed", style = MaterialTheme.typography.labelMedium, color = Color.White)
                     } else {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(32.dp), strokeWidth = 3.dp)
+                        UploadProgressRing(progress = pending.progress)
                     }
                 }
             }
@@ -1163,7 +1292,7 @@ private fun PendingFileBubble(pending: PendingFile) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = if (isPdf) Icons.Filled.PictureAsPdf else Icons.AutoMirrored.Filled.InsertDriveFile,
+                        imageVector = attachmentIcon(kind, pending.fileName, pending.contentType),
                         contentDescription = null,
                         tint = if (pending.failed) MaterialTheme.colorScheme.onErrorContainer else Color.White,
                         modifier = Modifier.size(28.dp),
@@ -1171,23 +1300,44 @@ private fun PendingFileBubble(pending: PendingFile) {
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = pending.fileName,
+                        text = label,
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                         color = if (pending.failed) MaterialTheme.colorScheme.onErrorContainer else Color.White,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = if (pending.failed) "Failed to send" else "Sending…",
+                        text = when {
+                            pending.errorText != null -> pending.errorText
+                            pending.failed -> "Failed to send"
+                            else -> formatBytes(pending.totalBytes)
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = if (pending.failed)
                             MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
                         else
                             Color.White.copy(alpha = 0.7f),
                     )
+                    pending.detailText?.let { detail ->
+                        Text(
+                            text = detail,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
+                if (pending.failed) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Dismiss",
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
                 if (!pending.failed) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                    UploadProgressRing(progress = pending.progress)
                 }
             }
         }
@@ -1539,6 +1689,155 @@ private fun ChatBioCard(label: String, value: String, modifier: Modifier = Modif
         ) {
             Text(value, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+
+/** Human-readable size in decimal units, matching how file managers report sizes. */
+internal fun formatBytes(bytes: Long): String = when {
+    bytes >= 1_000_000_000 -> "${(bytes / 100_000_000) / 10.0} GB"
+    bytes >= 1_000_000 -> "${(bytes / 100_000) / 10.0} MB"
+    bytes >= 1_000 -> "${bytes / 1_000} KB"
+    else -> "$bytes B"
+}
+
+
+/**
+ * WhatsApp-style upload indicator: a determinate ring with the percentage in the middle.
+ * Falls back to an indeterminate spinner until the first progress callback arrives.
+ */
+@Composable
+internal fun UploadProgressRing(progress: Float?) {
+    Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+        if (progress == null) {
+            CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
+        } else {
+            CircularProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxSize(),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.3f),
+                strokeWidth = 3.dp,
+                gapSize = 0.dp,
+            )
+            Text(
+                // 9sp so "100%" still fits inside the 40dp ring.
+                text = "${(progress * 100).toInt()}%",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
+                color = Color.White,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+
+/** Icon for an attachment bubble, matching the label produced by attachmentLabel. */
+@Composable
+internal fun attachmentIcon(
+    kind: AttachmentKind,
+    fileName: String,
+    contentType: String,
+): ImageVector = when (kind) {
+    AttachmentKind.PHOTO -> Icons.Filled.Photo
+    AttachmentKind.VIDEO -> Icons.Filled.Videocam
+    AttachmentKind.DOCUMENT -> if (isPdf(fileName, contentType)) Icons.Filled.PictureAsPdf else Icons.AutoMirrored.Filled.InsertDriveFile
+    AttachmentKind.OTHER -> Icons.AutoMirrored.Filled.InsertDriveFile
+}
+
+/**
+ * Video that plays inside the chat bubble, WhatsApp-style, and only goes full screen if the
+ * user asks for it.
+ *
+ * The player is created lazily on first play: a thread can hold many videos, and instantiating
+ * a platform player for each one as it scrolls into view would be far too heavy.
+ */
+@Composable
+private fun InlineVideoBubble(
+    url: String,
+    timestamp: String,
+    onExpand: () -> Unit,
+) {
+    var isPlaying by remember(url) { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier.size(240.dp, 200.dp).background(Color.Black),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (isPlaying) {
+            val playerHost = remember(url) {
+                MediaPlayerHost(mediaUrl = url, autoPlay = true, isLooping = false)
+            }
+            VideoPlayerComposable(
+                modifier = Modifier.fillMaxSize(),
+                playerHost = playerHost,
+                playerConfig = VideoPlayerConfig(
+                    isFastForwardBackwardEnabled = false,
+                    isScreenResizeEnabled = false,
+                    isSpeedControlEnabled = false,
+                    isFullScreenEnabled = false,
+                ),
+            )
+        } else {
+            // A real frame from the video, decoded on-device, rather than a generic icon.
+            VideoPreviewComposable(
+                url = url,
+                frameCount = 1,
+                contentScale = ContentScale.Crop,
+                loadingIndicatorColor = Color.White,
+            )
+            // Scrim so the play button stays legible over a bright frame.
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)))
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.45f))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) { isPlaying = true },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = "Play video",
+                    tint = Color.White,
+                    modifier = Modifier.size(34.dp),
+                )
+            }
+        }
+
+        // Expand to the full-screen viewer, which is where scrubbing and download live.
+        IconButton(
+            onClick = onExpand,
+            modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+        ) {
+            Box(
+                modifier = Modifier.size(28.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.45f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Fullscreen,
+                    contentDescription = "Full screen",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+
+        if (!isPlaying) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(6.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.Black.copy(alpha = 0.45f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(text = timestamp, style = MaterialTheme.typography.labelSmall, color = Color.White)
+            }
         }
     }
 }

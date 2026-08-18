@@ -1,5 +1,7 @@
 package ke.co.smartroundclinic.doctor.presentation.main.chat
 
+import ke.co.smartroundclinic.doctor.presentation.main.chat.util.formatFileSizeDecimal
+import kotlinx.io.RawSource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -61,14 +63,41 @@ private val wsJson = Json { ignoreUnknownKeys = true; isLenient = true; explicit
 // list has no scroll room at all and the user can never trigger the next page.
 private const val HISTORY_PAGE_SIZE = 20
 
+/** A rejected attachment clears itself after this long. */
+private const val FAILED_ATTACHMENT_AUTO_DISMISS_MS = 5_000L
+
 data class PendingFile(
     val localId: String,
     val fileName: String,
     val contentType: String,
-    val bytes: ByteArray,
+    /**
+     * Thumbnail bytes for the in-flight bubble, and *only* that. Null above
+     * [Constants.MAX_INLINE_PREVIEW_BYTES] — the upload streams from disk, so holding a large
+     * attachment here purely to draw a preview would exhaust the heap.
+     */
+    val previewBytes: ByteArray? = null,
     val failed: Boolean = false,
+    /** Shown beneath the attachment when it fails, e.g. the file-too-large message. */
+    val errorText: String? = null,
+    /** Secondary line under [errorText], e.g. the actual size against the limit. */
+    val detailText: String? = null,
+    /** Bytes written so far and the total, for the in-flight progress bar. */
+    val sentBytes: Long = 0L,
+    val totalBytes: Long = 0L,
 ) {
-    override fun equals(other: Any?) = other is PendingFile && localId == other.localId
+    /** 0f..1f, or null when the total isn't known yet. */
+    val progress: Float? get() = if (totalBytes > 0) (sentBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else null
+    // localId alone is NOT enough: the progress fields change while the upload runs, and if
+    // equals ignores them Compose treats each update as an identical value and skips
+    // recomposition — the percentage then never moves on screen. ByteArray is deliberately
+    // still excluded, since its equality is by identity.
+    override fun equals(other: Any?) = other is PendingFile &&
+        localId == other.localId &&
+        sentBytes == other.sentBytes &&
+        totalBytes == other.totalBytes &&
+        failed == other.failed &&
+        errorText == other.errorText
+
     override fun hashCode() = localId.hashCode()
 }
 
@@ -332,6 +361,7 @@ class ConsultationViewModel(
                                                     callId = event.callId,
                                                     callerId = event.callerId,
                                                     callerName = event.callerName,
+                                                    callerPicture = event.callerPicture,
                                                     doctorId = currentUserId,
                                                     patientId = otherUserId,
                                                     isVideo = event.isVideo,
@@ -448,7 +478,17 @@ class ConsultationViewModel(
         }
     }
 
-    fun sendFile(fileName: String, contentType: String, bytes: ByteArray) {
+    /**
+     * Queues an attachment. [openSource] is a factory rather than bytes so the upload can stream
+     * the file straight to storage without ever holding it in memory.
+     */
+    fun sendFile(
+        fileName: String,
+        contentType: String,
+        sizeBytes: Long,
+        previewBytes: ByteArray?,
+        openSource: () -> RawSource,
+    ) {
         val otherUserId = currentOtherUserId
         if (otherUserId == null) {
             snackbarController.show("Not connected", isError = true)
@@ -458,12 +498,27 @@ class ConsultationViewModel(
             localId = "p${kotlin.random.Random.nextInt()}",
             fileName = fileName,
             contentType = contentType,
-            bytes = bytes,
+            previewBytes = previewBytes,
+            totalBytes = sizeBytes,
         )
         pendingFiles.add(pending)
 
+        // Backstop for callers that didn't check the size first.
+        if (sizeBytes > Constants.MAX_CHAT_FILE_BYTES) {
+            markFailed(pending, Constants.FILE_TOO_LARGE_MESSAGE)
+            return
+        }
+
         viewModelScope.launch {
-            when (val result = consultationRepository.uploadFile(otherUserId, fileName, contentType, bytes)) {
+            val result = consultationRepository.uploadFile(
+                otherUserId = otherUserId,
+                fileName = fileName,
+                contentType = contentType,
+                sizeBytes = sizeBytes,
+                openSource = openSource,
+                onProgress = { sent, total -> updateProgress(pending.localId, sent, total) },
+            )
+            when (result) {
                 is Resource.Success -> {
                     // The WebSocket change-stream broadcast will deliver the message
                     // and remove the pending entry. If the broadcast somehow misses,
@@ -523,9 +578,54 @@ class ConsultationViewModel(
         viewModelScope.launch { cancelCallUseCase(otherUserId, callId) }
     }
 
-    private fun markFailed(pending: PendingFile) {
+    private fun updateProgress(localId: String, sent: Long, total: Long) {
+        val idx = pendingFiles.indexOfFirst { it.localId == localId }
+        if (idx >= 0) pendingFiles[idx] = pendingFiles[idx].copy(sentBytes = sent, totalBytes = total)
+    }
+
+    private fun markFailed(pending: PendingFile, errorText: String? = null) {
         val idx = pendingFiles.indexOfFirst { it.localId == pending.localId }
-        if (idx >= 0) pendingFiles[idx] = pending.copy(failed = true)
+        if (idx >= 0) pendingFiles[idx] = pending.copy(failed = true, errorText = errorText)
+    }
+
+    /** Shows a failed attachment for a file rejected on size before it was ever read. */
+    fun rejectOversizedFile(fileName: String, contentType: String, sizeBytes: Long) {
+        val localId = "p${kotlin.random.Random.nextInt()}"
+        pendingFiles.add(
+            PendingFile(
+                localId = localId,
+                fileName = fileName,
+                contentType = contentType,
+                failed = true,
+                errorText = Constants.FILE_TOO_LARGE_MESSAGE,
+                // Naming both numbers makes the rejection actionable — the patient can see how
+                // far over the limit they are rather than guessing.
+                detailText = "${formatFileSizeDecimal(sizeBytes)} / ${formatFileSizeDecimal(Constants.MAX_CHAT_FILE_BYTES)} max",
+            ),
+        )
+        // Clears itself so a rejection doesn't sit in the thread forever; the X dismisses it sooner.
+        viewModelScope.launch {
+            delay(FAILED_ATTACHMENT_AUTO_DISMISS_MS)
+            dismissPendingFile(localId)
+        }
+    }
+
+    /** Removes a failed attachment from the thread — the bubble's X, or the auto-dismiss timer. */
+    fun dismissPendingFile(localId: String) {
+        pendingFiles.removeAll { it.localId == localId }
+    }
+
+    /** Shows a failed attachment for a file we could not read at all (revoked URI, etc). */
+    fun rejectUnreadableFile(fileName: String, contentType: String) {
+        pendingFiles.add(
+            PendingFile(
+                localId = "p${kotlin.random.Random.nextInt()}",
+                fileName = fileName,
+                contentType = contentType,
+                failed = true,
+                errorText = "Couldn't read this file. Please try again.",
+            ),
+        )
     }
 
     fun disconnect() {

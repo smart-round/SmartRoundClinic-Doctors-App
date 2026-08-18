@@ -66,6 +66,7 @@ kotlin {
             implementation("com.cloudflare.realtimekit:core-android:2.1.0")
         }
         commonMain.dependencies {
+            implementation(libs.media.player)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)

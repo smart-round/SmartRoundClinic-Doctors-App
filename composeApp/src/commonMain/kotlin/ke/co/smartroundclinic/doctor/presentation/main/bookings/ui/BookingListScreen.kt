@@ -34,6 +34,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults.SecondaryIndicator
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -54,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import ke.co.smartroundclinic.doctor.domain.model.Appointment
 import ke.co.smartroundclinic.doctor.domain.model.AppointmentStatus
+import ke.co.smartroundclinic.doctor.domain.model.Referral
 
 import kotlinx.datetime.LocalDate
 import ke.co.smartroundclinic.doctor.core.platform.todayDay
@@ -69,10 +74,24 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Secondary90
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapeCard
 import ke.co.smartroundclinic.doctor.presentation.theme.ShapePill
 import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary40
+import ke.co.smartroundclinic.doctor.presentation.theme.Tertiary90
 
 internal enum class BookingTab(val label: String, val filter: String?) {
     UPCOMING("Upcoming", "upcoming"),
     PAST("Past", "past"),
+}
+
+/** Consultation (default) holds the existing Upcoming/Past sub-tabs unchanged; Referral is a
+ * sibling showing this doctor's own referral list — both directions. */
+internal enum class BookingTopTab(val label: String) {
+    CONSULTATION("Consultation"),
+    REFERRAL("Referral"),
+}
+
+/** Referral tab sub-tabs: patients referred to this doctor vs. patients this doctor referred out. */
+internal enum class ReferralSubTab(val label: String) {
+    RECEIVED("Received"),
+    SENT("Sent"),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,8 +101,18 @@ internal fun BookingListScreen(
     isLoading: Boolean,
     onRefresh: () -> Unit,
     onBookingClick: (Appointment) -> Unit,
+    selectedTopTab: BookingTopTab,
+    onTopTabSelected: (BookingTopTab) -> Unit,
     selectedTab: BookingTab,
     onTabSelected: (BookingTab) -> Unit,
+    receivedReferrals: List<Referral>,
+    sentReferrals: List<Referral>,
+    isLoadingReceivedReferrals: Boolean,
+    isLoadingSentReferrals: Boolean,
+    selectedReferralSubTab: ReferralSubTab,
+    onReferralSubTabSelected: (ReferralSubTab) -> Unit,
+    onReferralClick: (Referral) -> Unit,
+    onRefreshReferrals: () -> Unit,
     onProfileClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -92,7 +121,7 @@ internal fun BookingListScreen(
 
     val pendingStatuses = setOf(AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED)
     val terminalStatuses = setOf(AppointmentStatus.COMPLETED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW)
-    val filtered = appointments
+    val consultationFiltered = appointments
         .filter { appt ->
             val apptDate = runCatching { LocalDate.parse(appt.date) }.getOrNull() ?: return@filter false
             when (selectedTab) {
@@ -108,29 +137,98 @@ internal fun BookingListScreen(
             }
         )
 
+    val selectedIndex = BookingTopTab.entries.indexOf(selectedTopTab)
+
     Scaffold(
         modifier = modifier,
-        topBar = { DashboardHeader(title = "Bookings", onProfileClick = onProfileClick, onNotificationsClick = onNotificationsClick) },
+        topBar = {
+            DashboardHeader(
+                title = "Bookings",
+                onProfileClick = onProfileClick,
+                onNotificationsClick = onNotificationsClick,
+                bottomContent = {
+                    TabRow(
+                        selectedTabIndex = selectedIndex,
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White,
+                        indicator = { tabPositions ->
+                            SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedIndex]),
+                                color = Color.White,
+                            )
+                        },
+                        divider = {},
+                    ) {
+                        BookingTopTab.entries.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = selectedIndex == index,
+                                onClick = { onTopTabSelected(tab) },
+                                text = {
+                                    Text(
+                                        text = tab.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (selectedIndex == index) Color.White else Color.White.copy(alpha = 0.65f),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                },
+            )
+        },
         contentWindowInsets = WindowInsets(0),
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            BookingTabRow(selectedTab = selectedTab, onTabSelected = onTabSelected)
-
-            PullToRefreshBox(
-                isRefreshing = isLoading,
-                onRefresh = onRefresh,
-                modifier = Modifier.weight(1f),
-            ) {
-                if (filtered.isEmpty() && !isLoading) {
-                    EmptyBookingsView(tab = selectedTab, modifier = Modifier.fillMaxSize())
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+            when (selectedTopTab) {
+                BookingTopTab.CONSULTATION -> {
+                    BookingTabRow(selectedTab = selectedTab, onTabSelected = onTabSelected)
+                    PullToRefreshBox(
+                        isRefreshing = isLoading,
+                        onRefresh = onRefresh,
+                        modifier = Modifier.weight(1f),
                     ) {
-                        items(filtered, key = { it.id }) { appt ->
-                            BookingCard(appointment = appt, onClick = { onBookingClick(appt) })
+                        if (consultationFiltered.isEmpty() && !isLoading) {
+                            EmptyBookingsView(tab = selectedTab, modifier = Modifier.fillMaxSize())
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                items(consultationFiltered, key = { it.id }) { appt ->
+                                    BookingCard(appointment = appt, onClick = { onBookingClick(appt) })
+                                }
+                            }
+                        }
+                    }
+                }
+                BookingTopTab.REFERRAL -> {
+                    ReferralSubTabRow(selectedTab = selectedReferralSubTab, onTabSelected = onReferralSubTabSelected)
+                    val (listForSubTab, isLoadingSubTab) = when (selectedReferralSubTab) {
+                        ReferralSubTab.RECEIVED -> receivedReferrals to isLoadingReceivedReferrals
+                        ReferralSubTab.SENT -> sentReferrals to isLoadingSentReferrals
+                    }
+                    PullToRefreshBox(
+                        isRefreshing = isLoadingSubTab,
+                        onRefresh = onRefreshReferrals,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        if (listForSubTab.isEmpty() && !isLoadingSubTab) {
+                            EmptyReferralsView(subTab = selectedReferralSubTab, modifier = Modifier.fillMaxSize())
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                items(listForSubTab, key = { it.id }) { referral ->
+                                    ReferralCard(
+                                        referral = referral,
+                                        direction = selectedReferralSubTab,
+                                        onClick = { onReferralClick(referral) },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -156,6 +254,49 @@ private fun BookingTabRow(
     ) {
         Row {
             BookingTab.entries.forEach { tab ->
+                val isSelected = selectedTab == tab
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(ShapePill)
+                        .then(if (isSelected) Modifier.background(Color.White) else Modifier)
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = { onTabSelected(tab) },
+                        )
+                        .padding(vertical = 10.dp),
+                ) {
+                    Text(
+                        text = tab.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReferralSubTabRow(
+    selectedTab: ReferralSubTab,
+    onTabSelected: (ReferralSubTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .shadow(elevation = 4.dp, shape = ShapePill)
+            .clip(ShapePill)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(4.dp),
+    ) {
+        Row {
+            ReferralSubTab.entries.forEach { tab ->
                 val isSelected = selectedTab == tab
                 Box(
                     contentAlignment = Alignment.Center,
@@ -215,6 +356,154 @@ private fun EmptyBookingsView(tab: BookingTab, modifier: Modifier = Modifier) {
 }
 
 @Composable
+private fun EmptyReferralsView(subTab: ReferralSubTab, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(modifier = Modifier.size(80.dp).clip(CircleShape).background(Primary90), contentAlignment = Alignment.Center) {
+            Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Primary40, modifier = Modifier.size(40.dp))
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = if (subTab == ReferralSubTab.RECEIVED) "No Referrals Received" else "No Referrals Sent",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = if (subTab == ReferralSubTab.RECEIVED) {
+                "Patients other doctors refer to you will appear here as soon as the referral is made"
+            } else {
+                "Patients you refer to other doctors will appear here"
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun ReferralCard(referral: Referral, direction: ReferralSubTab, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val (statusLabel, statusColor, statusBg) = when (referral.status.uppercase()) {
+        "ACCEPTED" -> Triple("Accepted", Tertiary40, Tertiary40.copy(alpha = 0.12f))
+        "DECLINED" -> Triple("Declined", Error40, Error40.copy(alpha = 0.12f))
+        else -> Triple("Pending", Primary40, Primary40.copy(alpha = 0.12f))
+    }
+    val counterpartName = if (direction == ReferralSubTab.RECEIVED) referral.referringDoctorName else referral.receivingDoctorName
+    val counterpartPicture = if (direction == ReferralSubTab.RECEIVED) referral.referringDoctorPicture else referral.receivingDoctorPicture
+    val isBooked = referral.resultingAppointmentId != null
+
+    Card(
+        onClick = onClick,
+        enabled = isBooked,
+        modifier = modifier.fillMaxWidth(),
+        shape = ShapeCard,
+        colors = CardDefaults.cardColors(
+            containerColor = CardBackground,
+            disabledContainerColor = CardBackground,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            disabledContentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp, pressedElevation = 6.dp),
+    ) {
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(Primary40),
+            )
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (direction == ReferralSubTab.RECEIVED) "Referred by" else "Referred to",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(ShapePill)
+                            .background(statusBg)
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                    ) {
+                        Text(text = statusLabel, style = MaterialTheme.typography.labelSmall, color = statusColor)
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(32.dp).clip(CircleShape).background(Tertiary90),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (counterpartPicture != null) {
+                            AsyncImage(
+                                model = counterpartPicture,
+                                contentDescription = counterpartName,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            )
+                        } else {
+                            Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Tertiary40, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Dr. ${counterpartName ?: "Unknown"}",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(20.dp).clip(CircleShape).background(Secondary90),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (referral.patientProfilePicture != null) {
+                            AsyncImage(
+                                model = referral.patientProfilePicture,
+                                contentDescription = referral.patientName,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            )
+                        } else {
+                            Icon(imageVector = Icons.Filled.Person, contentDescription = null, tint = Secondary40, modifier = Modifier.size(12.dp))
+                        }
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = referral.patientName ?: "Patient",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = referral.reason,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = when {
+                        isBooked -> "Booked — tap to view appointment"
+                        referral.status.uppercase() == "DECLINED" -> "Declined by patient"
+                        referral.status.uppercase() == "ACCEPTED" -> "Accepted — awaiting booking"
+                        else -> "Awaiting patient response"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isBooked) Primary40 else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun BookingCard(appointment: Appointment, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val (dotColor, statusLabel, statusColor, statusBg) = when (appointment.status) {
         AppointmentStatus.BOOKED -> Quadruple(Tertiary40, "Booked", Tertiary40, Tertiary40.copy(alpha = 0.12f))
@@ -268,6 +557,37 @@ private fun BookingCard(appointment: Appointment, onClick: () -> Unit, modifier:
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                         color = Primary40,
                     )
+                }
+                if (appointment.referralId != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier.size(20.dp).clip(CircleShape).background(Tertiary90),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (appointment.referredByDoctorPicture != null) {
+                                AsyncImage(
+                                    model = appointment.referredByDoctorPicture,
+                                    contentDescription = appointment.referredByDoctorName,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Filled.Person,
+                                    contentDescription = null,
+                                    tint = Tertiary40,
+                                    modifier = Modifier.size(12.dp),
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "Referred by: ${appointment.referredByDoctorName ?: "another doctor"}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

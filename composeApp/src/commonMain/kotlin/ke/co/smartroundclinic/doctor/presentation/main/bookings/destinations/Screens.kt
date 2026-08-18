@@ -15,3 +15,9 @@ data class MedicalRecordDetail(
     val consultationId: String?,
     val patientId: String,
 ) : NavKey
+
+@Serializable
+data class ReferralReason(val appointmentId: String) : NavKey
+
+@Serializable
+data class ReferralDoctorPicker(val appointmentId: String, val reason: String) : NavKey

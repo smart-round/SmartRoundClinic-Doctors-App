@@ -1,6 +1,7 @@
 package ke.co.smartroundclinic.doctor.core.notification
 
 import io.github.aakira.napier.Napier
+import ke.co.smartroundclinic.doctor.domain.repository.DoctorChatRepository
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.CancelCallUseCase
 import ke.co.smartroundclinic.doctor.domain.usecase.consultation.DeclineCallUseCase
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +21,7 @@ object CallActionDispatcher : KoinComponent {
     private const val TAG = "CallActionDispatcher"
     private val declineCallUseCase: DeclineCallUseCase by inject()
     private val cancelCallUseCase: CancelCallUseCase by inject()
+    private val doctorChatRepository: DoctorChatRepository by inject()
     private val scope = CoroutineScope(Dispatchers.IO)
 
     fun decline(otherUserId: String, callId: String) {
@@ -33,6 +35,20 @@ object CallActionDispatcher : KoinComponent {
         scope.launch {
             val result = cancelCallUseCase(otherUserId, callId)
             Napier.d(tag = TAG, message = "Cancel result: $result")
+        }
+    }
+
+    fun declineDoctorCall(threadId: String, callId: String) {
+        scope.launch {
+            val result = doctorChatRepository.declineCall(threadId, callId)
+            Napier.d(tag = TAG, message = "Decline doctor call result: $result")
+        }
+    }
+
+    fun cancelDoctorCall(threadId: String, callId: String) {
+        scope.launch {
+            val result = doctorChatRepository.cancelCall(threadId, callId)
+            Napier.d(tag = TAG, message = "Cancel doctor call result: $result")
         }
     }
 }

@@ -12,12 +12,19 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
 import ke.co.smartroundclinic.doctor.domain.model.IncomingCall
+import ke.co.smartroundclinic.doctor.domain.model.IncomingDoctorCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingCallActionReceiver
 import ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingCallActivity
+import ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingDoctorCallActionReceiver
+import ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingDoctorCallActivity
 import org.koin.core.context.GlobalContext
 
 private const val CALL_CHANNEL_ID = "incoming_calls"
 private const val CALL_NOTIFICATION_ID = 9001
+
+// Separate id from CALL_NOTIFICATION_ID so a doctor-to-doctor invite never collides with (or gets
+// silently replaced by) a concurrent patient-call notification, or vice versa.
+private const val DOCTOR_CALL_NOTIFICATION_ID = 9002
 
 /**
  * Android's reliable incoming-call path: a full-screen-intent notification on a dedicated
@@ -52,6 +59,7 @@ actual object IncomingCallHandler {
         callId: String,
         callerId: String,
         callerName: String?,
+        callerPicture: String?,
         doctorId: String,
         patientId: String,
         isVideo: Boolean,
@@ -62,6 +70,7 @@ actual object IncomingCallHandler {
                 callId = callId,
                 callerId = callerId,
                 callerName = callerName,
+                callerPicture = callerPicture,
                 doctorId = doctorId,
                 patientId = patientId,
                 isVideo = isVideo,
@@ -77,6 +86,7 @@ actual object IncomingCallHandler {
             putExtra(IncomingCallActivity.EXTRA_CALL_ID, callId)
             putExtra(IncomingCallActivity.EXTRA_CALLER_ID, callerId)
             putExtra(IncomingCallActivity.EXTRA_CALLER_NAME, callerName)
+            putExtra(IncomingCallActivity.EXTRA_CALLER_PICTURE, callerPicture)
             putExtra(IncomingCallActivity.EXTRA_DOCTOR_ID, doctorId)
             putExtra(IncomingCallActivity.EXTRA_PATIENT_ID, patientId)
             putExtra(IncomingCallActivity.EXTRA_IS_VIDEO, isVideo)
@@ -97,6 +107,7 @@ actual object IncomingCallHandler {
             putExtra(IncomingCallActivity.EXTRA_CALL_ID, callId)
             putExtra(IncomingCallActivity.EXTRA_CALLER_ID, callerId)
             putExtra(IncomingCallActivity.EXTRA_CALLER_NAME, callerName)
+            putExtra(IncomingCallActivity.EXTRA_CALLER_PICTURE, callerPicture)
             putExtra(IncomingCallActivity.EXTRA_DOCTOR_ID, doctorId)
             putExtra(IncomingCallActivity.EXTRA_PATIENT_ID, patientId)
             putExtra(IncomingCallActivity.EXTRA_IS_VIDEO, isVideo)
@@ -158,5 +169,112 @@ actual object IncomingCallHandler {
     actual fun onCallCancelled(callId: String) {
         IncomingCallState.clear(callId)
         NotificationManagerCompat.from(context()).cancel(CALL_NOTIFICATION_ID)
+    }
+
+    // Doctor-to-doctor equivalent of onCallInvite above — same full-screen-intent mechanism, a
+    // separate notification id/target Activity so it never collides with a patient call, and
+    // either direction can be the caller (unlike patient calls, where the doctor never rings).
+    actual fun onDoctorCallInvite(
+        callId: String,
+        callerId: String,
+        callerName: String?,
+        callerPicture: String?,
+        threadId: String,
+        isVideo: Boolean,
+        ringTimeoutSeconds: Long,
+    ) {
+        IncomingDoctorCallState.ring(
+            IncomingDoctorCall(
+                callId = callId,
+                callerId = callerId,
+                callerName = callerName,
+                callerPicture = callerPicture,
+                threadId = threadId,
+                isVideo = isVideo,
+                ringTimeoutSeconds = ringTimeoutSeconds,
+            )
+        )
+
+        val context = context()
+        ensureChannel(context)
+
+        val fullScreenIntent = Intent(context, IncomingDoctorCallActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(IncomingDoctorCallActivity.EXTRA_CALL_ID, callId)
+            putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_ID, callerId)
+            putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_NAME, callerName)
+            putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_PICTURE, callerPicture)
+            putExtra(IncomingDoctorCallActivity.EXTRA_THREAD_ID, threadId)
+            putExtra(IncomingDoctorCallActivity.EXTRA_IS_VIDEO, isVideo)
+        }
+        val fullScreenPendingIntent = PendingIntent.getActivity(
+            context,
+            callId.hashCode(),
+            fullScreenIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val answerIntent = Intent(context, IncomingDoctorCallActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(IncomingDoctorCallActivity.EXTRA_CALL_ID, callId)
+            putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_ID, callerId)
+            putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_NAME, callerName)
+            putExtra(IncomingDoctorCallActivity.EXTRA_CALLER_PICTURE, callerPicture)
+            putExtra(IncomingDoctorCallActivity.EXTRA_THREAD_ID, threadId)
+            putExtra(IncomingDoctorCallActivity.EXTRA_IS_VIDEO, isVideo)
+            putExtra(IncomingDoctorCallActivity.EXTRA_AUTO_ACCEPT, true)
+        }
+        val answerPendingIntent = PendingIntent.getActivity(
+            context,
+            (callId + "_answer").hashCode(),
+            answerIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val declineIntent = Intent(context, IncomingDoctorCallActionReceiver::class.java).apply {
+            action = IncomingDoctorCallActionReceiver.ACTION_DECLINE
+            putExtra(IncomingDoctorCallActionReceiver.EXTRA_CALL_ID, callId)
+            putExtra(IncomingDoctorCallActionReceiver.EXTRA_THREAD_ID, threadId)
+        }
+        val declinePendingIntent = PendingIntent.getBroadcast(
+            context,
+            (callId + "_decline").hashCode(),
+            declineIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val caller = Person.Builder().setName(callerName ?: "Doctor").setImportant(true).build()
+        val callStyle = NotificationCompat.CallStyle.forIncomingCall(caller, declinePendingIntent, answerPendingIntent)
+
+        val notification = NotificationCompat.Builder(context, CALL_CHANNEL_ID)
+            .setSmallIcon(context.applicationInfo.icon)
+            .setContentTitle(callerName?.let { "Dr. $it" } ?: "Doctor")
+            .setContentText(if (isVideo) "Incoming video call" else "Incoming call")
+            .setStyle(callStyle)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setFullScreenIntent(fullScreenPendingIntent, true)
+            .setContentIntent(answerPendingIntent)
+            .setOngoing(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(DOCTOR_CALL_NOTIFICATION_ID, notification)
+    }
+
+    // Received by the CALLER — mirrors onCallAnswered above.
+    actual fun onDoctorCallAnswered(callId: String) {
+        OutgoingDoctorCallState.answered(callId)
+    }
+
+    // Received by the CALLER — mirrors onCallDeclined above.
+    actual fun onDoctorCallDeclined(callId: String) {
+        OutgoingDoctorCallState.declined(callId)
+    }
+
+    // Received by the CALLEE — mirrors onCallCancelled above.
+    actual fun onDoctorCallCancelled(callId: String) {
+        IncomingDoctorCallState.clear(callId)
+        NotificationManagerCompat.from(context()).cancel(DOCTOR_CALL_NOTIFICATION_ID)
     }
 }
