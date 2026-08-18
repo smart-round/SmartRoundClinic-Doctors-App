@@ -20,8 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.HourglassTop
+import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,14 +71,17 @@ import ke.co.smartroundclinic.doctor.presentation.main.bookings.BookingsRoot
 import ke.co.smartroundclinic.doctor.presentation.main.chat.ChatRoot
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Call
 import ke.co.smartroundclinic.doctor.presentation.main.chat.destinations.Conversation
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorCall
+import ke.co.smartroundclinic.doctor.presentation.main.chat.otherdoctors.destinations.DoctorConversation
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Articles
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Bookings
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Chat
 import ke.co.smartroundclinic.doctor.presentation.main.destinations.Home
-import ke.co.smartroundclinic.doctor.presentation.main.destinations.Wallet
+import ke.co.smartroundclinic.doctor.presentation.main.destinations.Services
 import ke.co.smartroundclinic.doctor.presentation.main.home.HomeRoot
 import ke.co.smartroundclinic.doctor.presentation.main.home.destinations.Notifications
-import ke.co.smartroundclinic.doctor.presentation.main.wallet.WalletRoot
+import ke.co.smartroundclinic.doctor.presentation.main.profile.PersonalInfoViewModel
+import ke.co.smartroundclinic.doctor.presentation.main.services.ServicesRoot
 import ke.co.smartroundclinic.doctor.presentation.rememberSvgPainter
 import ke.co.smartroundclinic.doctor.presentation.theme.Error40
 import ke.co.smartroundclinic.doctor.presentation.theme.GradientEnd
@@ -87,6 +90,7 @@ import ke.co.smartroundclinic.doctor.presentation.theme.Primary40
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.runtime.collectAsState
 import smartroundclinic.composeapp.generated.resources.Res
 import smartroundclinic.composeapp.generated.resources.bottom_bar_bookings
 import smartroundclinic.composeapp.generated.resources.bottom_bar_chat
@@ -106,10 +110,10 @@ private data class BottomTab(
 
 private val tabs = listOf(
     BottomTab(Home, "Home", TabIcon.Drawable(Res.drawable.bottom_bar_home)),
+    BottomTab(Services, "Services", TabIcon.Vector(Icons.Outlined.MedicalServices)),
     BottomTab(Bookings, "Bookings", TabIcon.Drawable(Res.drawable.bottom_bar_bookings)),
     BottomTab(Articles, "Articles", TabIcon.Drawable(Res.drawable.bottom_bar_cost_articles)),
     BottomTab(Chat, "Chat", TabIcon.Drawable(Res.drawable.bottom_bar_chat)),
-    BottomTab(Wallet, "Wallet", TabIcon.Vector(Icons.Outlined.AccountBalanceWallet))
 )
 
 @Composable
@@ -121,6 +125,9 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
     var pendingHomeDestinations by remember { mutableStateOf<List<NavKey>>(emptyList()) }
     var pendingChatConversation by remember { mutableStateOf<Conversation?>(null) }
     var pendingCall by remember { mutableStateOf<Call?>(null) }
+    var pendingDoctorChatDoctorId by remember { mutableStateOf<String?>(null) }
+    var pendingDoctorConversation by remember { mutableStateOf<DoctorConversation?>(null) }
+    var pendingDoctorCall by remember { mutableStateOf<DoctorCall?>(null) }
     var pendingBookingId by remember { mutableStateOf<String?>(null) }
     var pendingSupportTicketId by remember { mutableStateOf<String?>(null) }
     var inComplianceFixMode by remember { mutableStateOf(false) }
@@ -160,6 +167,15 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                     selectTab(Chat)
                     pendingChatConversation = Conversation(event.patientId, event.patientName, event.appointmentId)
                     pendingCall = Call(event.patientId, isVideo = true)
+                }
+                is NotificationEvent.ToDoctorConversation -> {
+                    selectTab(Chat)
+                    pendingDoctorConversation = DoctorConversation(event.threadId, event.counterpartName, null)
+                }
+                is NotificationEvent.ToDoctorCall -> {
+                    selectTab(Chat)
+                    pendingDoctorConversation = DoctorConversation(event.threadId, event.counterpartName, null)
+                    pendingDoctorCall = DoctorCall(event.threadId, isVideo = event.isVideo)
                 }
                 is NotificationEvent.ToArticles -> selectTab(Articles)
                 is NotificationEvent.ToSupportTicket -> {
@@ -225,6 +241,20 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                         onPendingSupportTicketNavigated = { pendingSupportTicketId = null },
                     )
                 }
+                entry<Services> {
+                    val personalInfoViewModel: PersonalInfoViewModel = koinViewModel()
+                    val user by personalInfoViewModel.user.collectAsState()
+                    ServicesRoot(
+                        selfDoctorId = user?.id,
+                        onAtRootChanged = { isAtRoot = it },
+                        onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
+                        onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
+                        onPrimaryAction = { doctor ->
+                            selectTab(Chat)
+                            pendingDoctorChatDoctorId = doctor.id
+                        },
+                    )
+                }
                 entry<Bookings> {
                     BookingsRoot(
                         onAtRootChanged = { isAtRoot = it },
@@ -241,13 +271,6 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                         onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
                     )
                 }
-                entry<Wallet> {
-                    WalletRoot(
-                        onAtRootChanged = { isAtRoot = it },
-                        onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
-                        onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
-                    )
-                }
                 entry<Chat> {
                     ChatRoot(
                         onAtRootChanged = { isAtRoot = it },
@@ -255,6 +278,12 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                         onPendingNavigated = { pendingChatConversation = null },
                         pendingCall = pendingCall,
                         onPendingCallNavigated = { pendingCall = null },
+                        pendingDoctorChatDoctorId = pendingDoctorChatDoctorId,
+                        onPendingDoctorChatNavigated = { pendingDoctorChatDoctorId = null },
+                        pendingDoctorConversation = pendingDoctorConversation,
+                        onPendingDoctorConversationNavigated = { pendingDoctorConversation = null },
+                        pendingDoctorCall = pendingDoctorCall,
+                        onPendingDoctorCallNavigated = { pendingDoctorCall = null },
                         onProfileClick = { selectTab(Home); pendingHomeDestinations = listOf(ProfileList) },
                         onNotificationsClick = { selectTab(Home); pendingHomeDestinations = listOf(Notifications) },
                     )

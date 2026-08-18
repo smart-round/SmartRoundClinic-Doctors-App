@@ -51,6 +51,13 @@ import ke.co.smartroundclinic.doctor.data.repository.PatientBioRepositoryImpl
 import ke.co.smartroundclinic.doctor.domain.repository.PatientBioRepository
 import ke.co.smartroundclinic.doctor.data.repository.PatientRatingRepositoryImpl
 import ke.co.smartroundclinic.doctor.domain.repository.PatientRatingRepository
+import ke.co.smartroundclinic.doctor.data.repository.DoctorDirectoryRepositoryImpl
+import ke.co.smartroundclinic.doctor.domain.repository.DoctorDirectoryRepository
+import ke.co.smartroundclinic.doctor.data.repository.ReferralRepositoryImpl
+import ke.co.smartroundclinic.doctor.domain.repository.ReferralRepository
+import ke.co.smartroundclinic.doctor.data.repository.DoctorChatRepositoryImpl
+import ke.co.smartroundclinic.doctor.domain.repository.DoctorChatRepository
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 val repositoryModule = module {
@@ -71,7 +78,7 @@ val repositoryModule = module {
     single<ArticleLocalRepository> { ArticleLocalRepositoryImpl(get<AppDatabase>().articleDao) }
     single<ArticleCategoryLocalRepository> { ArticleCategoryLocalRepositoryImpl(get<AppDatabase>().articleCategoryDao) }
     single<LicenceRepository> { LicenceRepositoryImpl(get()) }
-    single<ConsultationRepository> { ConsultationRepositoryImpl(get()) }
+    single<ConsultationRepository> { ConsultationRepositoryImpl(get(), get(named(STORAGE_HTTP_CLIENT))) }
     single<NotificationRepository> { NotificationRepositoryImpl(get()) }
     single<WalletRepository> { WalletRepositoryImpl(get()) }
     single<SupportRepository> { SupportRepositoryImpl(get()) }
@@ -79,4 +86,7 @@ val repositoryModule = module {
     single<MedicalRecordRepository> { MedicalRecordRepositoryImpl(get()) }
     single<PatientBioRepository> { PatientBioRepositoryImpl(get()) }
     single<PatientRatingRepository> { PatientRatingRepositoryImpl(get()) }
+    single<DoctorDirectoryRepository> { DoctorDirectoryRepositoryImpl(get()) }
+    single<ReferralRepository> { ReferralRepositoryImpl(get()) }
+    single<DoctorChatRepository> { DoctorChatRepositoryImpl(get(), get(named(STORAGE_HTTP_CLIENT))) }
 }
