@@ -103,12 +103,6 @@ struct iOSApp: App {
 private final class RtkCallSessionImpl: NSObject, RtkMeetingRoomEventListener, RtkSelfEventListener, RtkParticipantsEventListener, IosCallSession {
     private let client: RealtimeKitClient
     private let listener: IosCallSessionListener
-    // Set only when this call activated RTCAudioSession itself in init() below (outgoing calls —
-    // see the comment there) so dispose() knows to balance that with a matching deactivate.
-    // Incoming calls are activated/deactivated by CallKitManager's didActivate/didDeactivate
-    // instead, so leaving this false there avoids double-counting RTCAudioSession's balanced
-    // activation bookkeeping.
-    private var didActivateAudioSession = false
     // Stashed so toggleAudio() can re-arm RTCAudioSession with the right mode (see toggleAudio()
     // below) — the mic/speaker button doubles as a manual "retry audio" affordance for the case
     // where automatic activation on CallKit answer silently failed to start the AURemoteIO unit.
@@ -120,16 +114,16 @@ private final class RtkCallSessionImpl: NSObject, RtkMeetingRoomEventListener, R
         self.isVideoCall = enableVideo
         super.init()
 
-        // Outgoing calls never go through CallKit in this app (no CXStartCallAction reporting),
-        // so nothing else will ever activate RTCAudioSession or flip isAudioEnabled for them now
-        // that CallKitManager has put RTCAudioSession in manual mode — drive it directly here.
+        // Report outgoing patient-doctor calls to CallKit too (previously only incoming calls
+        // did) — this gets them the system's native "return to call" background pill, and hands
+        // RTCAudioSession activation to CallKitManager's didActivate/didDeactivate instead of
+        // driving it manually here, so both directions go through the same audio-routing path.
         // Incoming calls are answered via CXAnswerCallAction first, so CallKitManager.shared's
         // didActivate (CallKitManager.swift) already owns that job for those by the time this
-        // runs — skip it here to avoid an unbalanced double-activation.
+        // runs — skip reporting here to avoid double-reporting the same call.
         NSLog("SRC-AUDIO: RtkCallSessionImpl.init enableAudio=\(enableAudio) isCallKitCallActive=\(CallKitManager.shared.isCallKitCallActive)")
         if enableAudio && !CallKitManager.shared.isCallKitCallActive {
-            configureAndActivateWebRTCAudioSession(isVideo: enableVideo)
-            didActivateAudioSession = true
+            CallKitManager.shared.reportOutgoingCall(isVideo: enableVideo, calleeName: nil)
         }
 
         client.addMeetingRoomEventListener(meetingRoomEventListener: self)
@@ -181,10 +175,22 @@ private final class RtkCallSessionImpl: NSObject, RtkMeetingRoomEventListener, R
         client.removeSelfEventListener(selfEventListener: self)
         client.removeParticipantsEventListener(participantsEventListener: self)
         client.release(onSuccess: {}, onFailure: { _ in })
+        // RTCAudioSession activation for both call directions now goes through CallKit's
+        // didActivate/didDeactivate (see init() above) — no manual deactivate needed here.
+        CallPictureInPictureManager.shared.stop()
+    }
 
-        if didActivateAudioSession {
-            deactivateWebRTCAudioSession()
+    // RealtimeKit hands back the remote participant's video view late (often not yet at
+    // room-join — see PlatformVideoView.ios.kt's own note on this), so this is called
+    // opportunistically from several event points below; CallPictureInPictureManager.start()
+    // no-ops once already armed.
+    private func armPictureInPictureIfPossible() {
+        guard isVideoCall else { return }
+        guard let videoView = client.participants.joined.first?.getVideoView() else {
+            NSLog("SRC-PIP: armPictureInPictureIfPossible — no remote video view yet")
+            return
         }
+        CallPictureInPictureManager.shared.start(remoteVideoView: videoView)
     }
 
     func localVideoView() -> UIView? {
@@ -218,6 +224,9 @@ private final class RtkCallSessionImpl: NSObject, RtkMeetingRoomEventListener, R
 
     func onMeetingRoomJoinCompleted(meeting: RealtimeKitClient) {
         NSLog("SRC-AUDIO: onMeetingRoomJoinCompleted localAudioEnabled=\(meeting.localUser.audioEnabled) rtcAudioSessionEnabled=\(RTKRTCAudioSession.sharedInstance().isAudioEnabled)")
+        // No-op if this call was never reported as outgoing (i.e. it's the answered/incoming
+        // side, already tracked via CallKitManager's own answer flow).
+        CallKitManager.shared.reportOutgoingCallConnected()
         listener.onConnected()
         listener.onAudioUpdate(enabled: meeting.localUser.audioEnabled)
         listener.onVideoUpdate(enabled: meeting.localUser.videoEnabled)
@@ -228,6 +237,7 @@ private final class RtkCallSessionImpl: NSObject, RtkMeetingRoomEventListener, R
                 videoEnabled: participant.videoEnabled
             )
         }
+        armPictureInPictureIfPossible()
     }
 
     func onMeetingRoomJoinFailed(error: MeetingError) {
@@ -283,6 +293,7 @@ private final class RtkCallSessionImpl: NSObject, RtkMeetingRoomEventListener, R
             audioEnabled: participant.audioEnabled,
             videoEnabled: participant.videoEnabled
         )
+        armPictureInPictureIfPossible()
     }
 
     func onParticipantLeave(participant: RtkRemoteParticipant) {
@@ -295,6 +306,7 @@ private final class RtkCallSessionImpl: NSObject, RtkMeetingRoomEventListener, R
 
     func onVideoUpdate(participant: RtkRemoteParticipant, isEnabled: Bool) {
         listener.onRemoteParticipantUpdate(name: participant.name, audioEnabled: participant.audioEnabled, videoEnabled: isEnabled)
+        armPictureInPictureIfPossible()
     }
 
     func onScreenShareUpdate(participant: RtkRemoteParticipant, isEnabled: Bool) {}

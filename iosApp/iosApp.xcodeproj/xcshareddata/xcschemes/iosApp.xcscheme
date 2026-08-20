@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "40C49414B3E7C96AB775FA4C"
-               BuildableName = "SR Clinic Dr..app"
+               BuildableName = "Smart Round - Doctor.app"
                BlueprintName = "iosApp"
                ReferencedContainer = "container:iosApp.xcodeproj">
             </BuildableReference>
@@ -44,7 +44,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "40C49414B3E7C96AB775FA4C"
-            BuildableName = "SR Clinic Dr..app"
+            BuildableName = "Smart Round - Doctor.app"
             BlueprintName = "iosApp"
             ReferencedContainer = "container:iosApp.xcodeproj">
          </BuildableReference>

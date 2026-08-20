@@ -51,6 +51,7 @@ final class CallKitManager: NSObject {
 
     private let pushRegistry = PKPushRegistry(queue: .main)
     private let provider: CXProvider
+    private let callController = CXCallController()
 
     private var uuidByCallId: [String: UUID] = [:]
     private var callIdByUuid: [UUID: String] = [:]
@@ -75,12 +76,18 @@ final class CallKitManager: NSObject {
     // uses. Without this guard, that silent system rejection was being forwarded to the backend
     // as if the callee had explicitly declined.
     private var reportedCallIds: Set<String> = []
+    // Outgoing patient-doctor calls (this device placed them) never went through the
+    // ringing-invite maps above — by the time RtkCallSessionImpl reports one, the patient has
+    // already answered via signaling (see RtkCallController.ios.kt's start()), so there's no
+    // separate "decline" affordance to track, only "end". Doctor-to-doctor calling is a
+    // separate module and does not go through this path.
+    private var outgoingCallUUID: UUID?
 
-    /// True while a CallKit-answered call is ongoing — lets RtkCallSessionImpl (iOSApp.swift)
-    /// tell whether *it* needs to drive RTCAudioSession activation itself (outgoing calls, which
-    /// never go through CallKit in this app) or whether CallKit already owns that job (incoming,
-    /// answered via CXAnswerCallAction below).
-    var isCallKitCallActive: Bool { activeCallId != nil }
+    /// True while a CallKit-reported call (incoming, answered via CXAnswerCallAction, or
+    /// outgoing, reported via [reportOutgoingCall]) is ongoing — lets RtkCallSessionImpl
+    /// (iOSApp.swift) tell whether CallKit already owns RTCAudioSession activation (it does,
+    /// for both directions now) rather than needing to drive it manually.
+    var isCallKitCallActive: Bool { activeCallId != nil || outgoingCallUUID != nil }
 
     private override init() {
         let config = CXProviderConfiguration()
@@ -159,13 +166,53 @@ final class CallKitManager: NSObject {
         cleanup(callId: callId, uuid: uuid)
     }
 
+    /// Reports an outgoing patient-doctor call to CallKit — gives it the OS's native
+    /// "return to call" background affordance (previously incoming-only) and hands
+    /// RTCAudioSession activation to didActivate/didDeactivate below instead of
+    /// RtkCallSessionImpl driving it manually. Called from RtkCallSessionImpl.init
+    /// (iOSApp.swift) right as the RealtimeKit session itself starts — the patient already
+    /// answered via signaling by this point, so this is purely for system call-state/
+    /// audio-routing integration, not gating the actual connect.
+    func reportOutgoingCall(isVideo: Bool, calleeName: String?) {
+        let uuid = UUID()
+        outgoingCallUUID = uuid
+        activeCallIsVideo = isVideo
+
+        let handle = CXHandle(type: .generic, value: calleeName ?? "Patient")
+        let startAction = CXStartCallAction(call: uuid, handle: handle)
+        startAction.isVideo = isVideo
+        callController.request(CXTransaction(action: startAction)) { [weak self] error in
+            if let error = error {
+                print("CallKitManager: reportOutgoingCall failed — \(error.localizedDescription)")
+                self?.outgoingCallUUID = nil
+            }
+        }
+    }
+
+    /// Tells CallKit an outgoing call's media actually connected — call once RealtimeKit
+    /// confirms the room join (RtkCallSessionImpl.onMeetingRoomJoinCompleted).
+    func reportOutgoingCallConnected() {
+        guard let uuid = outgoingCallUUID else { return }
+        provider.reportOutgoingCall(with: uuid, connectedAt: nil)
+    }
+
+    private func endOutgoingCall() {
+        guard let uuid = outgoingCallUUID else { return }
+        provider.reportCall(with: uuid, endedAt: nil, reason: .remoteEnded)
+        outgoingCallUUID = nil
+    }
+
     /// Called once the in-app Call screen tears down (hangup tap, remote leaving, connection
-    /// ending — see ConsultationViewModel.endCall() / ActiveCallNotifier). Without this, CallKit
-    /// still thinks the call it reported is ongoing even after our own UI has moved on, so its
-    /// call state (status bar indicator, Recents entry, Dynamic Island) never clears.
+    /// ending — see ConsultationViewModel.endCall() / ActiveCallNotifier), for both incoming
+    /// and outgoing calls. Without this, CallKit still thinks the call it reported is ongoing
+    /// even after our own UI has moved on, so its call state (status bar indicator, Recents
+    /// entry, Dynamic Island, "return to call" pill) never clears.
     func endActiveCall() {
-        guard let callId = activeCallId else { return }
-        endCall(callId: callId)
+        if let callId = activeCallId {
+            endCall(callId: callId)
+            return
+        }
+        endOutgoingCall()
     }
 
     private func cleanup(callId: String, uuid: UUID) {
@@ -218,6 +265,7 @@ extension CallKitManager: PKPushRegistryDelegate {
             else { return }
 
             let callerName = data["callerName"] as? String
+            let callerPicture = data["callerPicture"] as? String
             let isVideo = (data["isVideo"] as? String) == "true"
             let ringTimeoutSeconds = Int64((data["ringTimeoutSeconds"] as? String) ?? "") ?? 45
 
@@ -227,6 +275,7 @@ extension CallKitManager: PKPushRegistryDelegate {
                 callId: callId,
                 callerId: callerId,
                 callerName: callerName,
+                callerPicture: callerPicture,
                 doctorId: doctorId,
                 patientId: patientId,
                 isVideo: isVideo,
@@ -252,6 +301,7 @@ extension CallKitManager: PKPushRegistryDelegate {
             else { return }
 
             let callerName = data["callerName"] as? String
+            let callerPicture = data["callerPicture"] as? String
             let isVideo = (data["isVideo"] as? String) == "true"
             let ringTimeoutSeconds = Int64((data["ringTimeoutSeconds"] as? String) ?? "") ?? 45
 
@@ -261,6 +311,7 @@ extension CallKitManager: PKPushRegistryDelegate {
                 callId: callId,
                 callerId: callerId,
                 callerName: callerName,
+                callerPicture: callerPicture,
                 threadId: threadId,
                 isVideo: isVideo,
                 ringTimeoutSeconds: ringTimeoutSeconds
@@ -288,6 +339,17 @@ extension CallKitManager: CXProviderDelegate {
         threadIdByCallId.removeAll()
         reportedCallIds.removeAll()
         activeCallId = nil
+        outgoingCallUUID = nil
+    }
+
+    // The call has already been placed via signaling (WS invite + answer) by the time
+    // RtkCallSessionImpl reports it — this just confirms it to CallKit and hands audio-session
+    // activation to didActivate below.
+    func provider(_ provider: CXProvider, perform action: CXStartCallAction) {
+        NSLog("SRC-AUDIO: CXStartCallAction perform")
+        provider.reportOutgoingCall(with: action.callUUID, startedConnectingAt: nil)
+        action.fulfill()
+        NSLog("SRC-AUDIO: CXStartCallAction fulfilled")
     }
 
     func provider(_ provider: CXProvider, perform action: CXAnswerCallAction) {
@@ -316,6 +378,17 @@ extension CallKitManager: CXProviderDelegate {
     }
 
     func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
+        // The system's own End button (Dynamic Island, lock screen, CarPlay) for a
+        // patient-doctor call this device placed — end the live RealtimeKit session via the
+        // same hook the in-app "End call" button uses, not the ringing-invite decline path
+        // below (which doesn't apply — this call was already answered).
+        if action.callUUID == outgoingCallUUID {
+            ActiveCallSignal.shared.onEndCall?()
+            outgoingCallUUID = nil
+            action.fulfill()
+            return
+        }
+
         guard let callId = callIdByUuid[action.callUUID] else {
             action.fulfill()
             return

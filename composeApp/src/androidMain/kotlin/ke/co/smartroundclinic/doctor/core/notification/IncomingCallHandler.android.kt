@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
+import io.github.aakira.napier.Napier
 import ke.co.smartroundclinic.doctor.domain.model.IncomingCall
 import ke.co.smartroundclinic.doctor.domain.model.IncomingDoctorCall
 import ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingCallActionReceiver
@@ -19,6 +20,7 @@ import ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingDoctorC
 import ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingDoctorCallActivity
 import org.koin.core.context.GlobalContext
 
+private const val TAG = "IncomingCallHandler"
 private const val CALL_CHANNEL_ID = "incoming_calls"
 private const val CALL_NOTIFICATION_ID = 9001
 
@@ -55,6 +57,25 @@ actual object IncomingCallHandler {
         manager.createNotificationChannel(channel)
     }
 
+    // NotificationManagerCompat.notify() silently no-ops if notifications are globally disabled
+    // or this channel was blocked/downgraded (by the user or an older app version) — with no
+    // exception and no other visible symptom. Logging it here is the only way to tell "the push
+    // arrived but got silently dropped here" apart from "the push never arrived at all" in
+    // real-device logs.
+    private fun logIfNotificationsBlocked(context: Context) {
+        val notifications = NotificationManagerCompat.from(context)
+        if (!notifications.areNotificationsEnabled()) {
+            Napier.w(tag = TAG, message = "Notifications are disabled for this app — incoming call notification will not be shown")
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = context.getSystemService(NotificationManager::class.java)?.getNotificationChannel(CALL_CHANNEL_ID)
+            if (channel != null && channel.importance == NotificationManager.IMPORTANCE_NONE) {
+                Napier.w(tag = TAG, message = "'$CALL_CHANNEL_ID' notification channel is blocked by the user — incoming call notification will not be shown")
+            }
+        }
+    }
+
     actual fun onCallInvite(
         callId: String,
         callerId: String,
@@ -80,6 +101,7 @@ actual object IncomingCallHandler {
 
         val context = context()
         ensureChannel(context)
+        logIfNotificationsBlocked(context)
 
         val fullScreenIntent = Intent(context, IncomingCallActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -197,6 +219,7 @@ actual object IncomingCallHandler {
 
         val context = context()
         ensureChannel(context)
+        logIfNotificationsBlocked(context)
 
         val fullScreenIntent = Intent(context, IncomingDoctorCallActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP

@@ -2,10 +2,13 @@ package ke.co.smartroundclinic.doctor.android
 
 import android.Manifest
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,6 +27,9 @@ import com.google.android.play.core.ktx.isImmediateUpdateAllowed
 import com.mmk.kmpnotifier.extensions.onCreateOrOnNewIntent
 import com.mmk.kmpnotifier.notification.NotifierManager
 import ke.co.smartroundclinic.doctor.App
+import ke.co.smartroundclinic.doctor.presentation.main.chat.call.ActiveCallSignal
+import ke.co.smartroundclinic.doctor.presentation.main.chat.call.PipModeState
+import ke.co.smartroundclinic.doctor.presentation.main.chat.call.buildCallPipParams
 
 // Extends FragmentActivity (not ComponentActivity) so the Cloudflare RealtimeKit
 // UI Kit can attach its meeting fragment.
@@ -43,6 +49,7 @@ class MainActivity : FragmentActivity() {
         NotifierManager.onCreateOrOnNewIntent(intent)
         requestNotificationPermission()
         requestFullScreenIntentPermissionIfNeeded()
+        requestIgnoreBatteryOptimizationsIfNeeded()
         setContent {
             App()
         }
@@ -81,9 +88,51 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    // Without this exemption, OEM battery managers (and stock Android Doze on standby
+    // buckets) can defer or drop the high-priority FCM data message an incoming call relies
+    // on while the app is backgrounded/killed — the app never wakes to show the ringing UI
+    // even though the push was sent. This is why calls only "worked" after the doctor placed
+    // an outgoing call first (which keeps a chat WebSocket + CallForegroundService alive) but
+    // failed on a cold background/killed start otherwise. iOS has no equivalent restriction —
+    // VoIP PushKit pushes are guaranteed to wake the app regardless of power state.
+    private fun requestIgnoreBatteryOptimizationsIfNeeded() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
+        if (powerManager.isIgnoringBatteryOptimizations(packageName)) return
+
+        // Ask once, ever — same rationale as the full-screen-intent prompt above.
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_BATTERY_OPTIMIZATION_ASKED, false)) return
+        prefs.edit().putBoolean(KEY_BATTERY_OPTIMIZATION_ASKED, true).apply()
+
+        runCatching {
+            startActivity(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+            )
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         NotifierManager.onCreateOrOnNewIntent(intent)
+    }
+
+    // Fires right before the Activity backgrounds from a user action (Home press, app switch,
+    // recents) — not on rotation/other config changes. WhatsApp-style: shrink an active video
+    // call into a floating PiP window instead of just disappearing behind whatever's next.
+    // Audio-only calls have no video worth showing in a PiP window — CallForegroundService
+    // already keeps those alive in the background with just a notification.
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (ActiveCallSignal.isConnected.value && ActiveCallSignal.isVideo.value) {
+            runCatching { enterPictureInPictureMode(buildCallPipParams(this)) }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        PipModeState.set(isInPictureInPictureMode)
     }
 
     override fun onResume() {
@@ -121,5 +170,6 @@ class MainActivity : FragmentActivity() {
     private companion object {
         const val PREFS_NAME = "app_permission_prompts"
         const val KEY_FULL_SCREEN_INTENT_ASKED = "full_screen_intent_asked"
+        const val KEY_BATTERY_OPTIMIZATION_ASKED = "battery_optimization_asked"
     }
 }

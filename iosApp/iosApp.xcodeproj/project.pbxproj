@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		AA1122334455667788990033 /* RealtimeKit in Frameworks */ = {isa = PBXBuildFile; productRef = AA1122334455667788990022 /* RealtimeKit */; };
 		FB00000000000000000000A3 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = FB00000000000000000000A2 /* FirebaseMessaging */; };
+		FB00000000000000000000A5 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FB00000000000000000000A4 /* FirebaseCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +49,7 @@
 			files = (
 				AA1122334455667788990033 /* RealtimeKit in Frameworks */,
 				FB00000000000000000000A3 /* FirebaseMessaging in Frameworks */,
+				FB00000000000000000000A5 /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -96,6 +98,7 @@
 			packageProductDependencies = (
 				AA1122334455667788990022 /* RealtimeKit */,
 				FB00000000000000000000A2 /* FirebaseMessaging */,
+				FB00000000000000000000A4 /* FirebaseCore */,
 			);
 			productName = iosApp;
 			productReference = 7F12873E73E082BA875ACB9A /* SR Clinic Dr..app */;
@@ -459,6 +462,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = FB00000000000000000000A1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
+		};
+		FB00000000000000000000A4 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FB00000000000000000000A1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

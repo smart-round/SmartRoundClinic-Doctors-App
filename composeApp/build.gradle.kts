@@ -54,6 +54,9 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.ui.tooling)
+            // BackHandler — used to redirect the system back gesture during an active call
+            // into a minimize instead of letting it fall through to a nav-backstack pop.
+            implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.ktor.content.negotiation)

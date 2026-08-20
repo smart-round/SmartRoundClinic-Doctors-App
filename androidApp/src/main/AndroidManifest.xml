@@ -17,6 +17,7 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:name="ke.co.smartroundclinic.doctor.android.SmartRoundApp"
@@ -31,7 +32,9 @@
         <activity
             android:exported="true"
             android:name="ke.co.smartroundclinic.doctor.android.MainActivity"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:supportsPictureInPicture="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|uiMode|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -76,6 +79,12 @@
 
         <receiver
             android:name="ke.co.smartroundclinic.doctor.presentation.main.chat.call.IncomingDoctorCallActionReceiver"
+            android:exported="false" />
+
+        <!-- Handles the Picture-in-Picture window's own mute/end-call RemoteAction taps
+             (see CallPictureInPicture.android.kt). -->
+        <receiver
+            android:name="ke.co.smartroundclinic.doctor.presentation.main.chat.call.CallPipActionReceiver"
             android:exported="false" />
     </application>
 
