@@ -9,7 +9,9 @@ import kotlinx.serialization.Serializable
 // here — patientId identifies the permanent thread. latestAppointmentId is only used to enrich the
 // header (fallback profile picture) from the appointments list.
 @Serializable data class Conversation(val patientId: String, val patientName: String, val latestAppointmentId: String) : NavKey
-@Serializable data class Call(val otherUserId: String, val isVideo: Boolean) : NavKey
+// callId identifies the invite this join is answering/completing — required by the backend's
+// atomic-join gate (POST .../call/join now rejects a join with no live invite behind it).
+@Serializable data class Call(val otherUserId: String, val isVideo: Boolean, val callId: String) : NavKey
 
 // Ringing screen shown to the caller between InviteToCallUseCase and the callee answering —
 // see OutgoingCallState. otherUserId doubles as the patientId (doctor app is doctor-only).

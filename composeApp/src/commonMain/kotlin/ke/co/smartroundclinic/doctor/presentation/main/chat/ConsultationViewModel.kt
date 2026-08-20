@@ -538,11 +538,11 @@ class ConsultationViewModel(
         }
     }
 
-    fun joinCall(otherUserId: String) {
+    fun joinCall(otherUserId: String, callId: String) {
         if (callJoinState is Resource.Success) return
         viewModelScope.launch {
             callJoinState = Resource.Loading()
-            callJoinState = joinCallUseCase(otherUserId)
+            callJoinState = joinCallUseCase(otherUserId, callId)
         }
     }
 

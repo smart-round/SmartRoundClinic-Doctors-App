@@ -175,9 +175,11 @@ class DoctorChatRepositoryImpl(
         }
     }
 
-    override suspend fun joinCall(threadId: String): Resource<CallJoinInfo> = withContext(Dispatchers.IO) {
+    override suspend fun joinCall(threadId: String, callId: String): Resource<CallJoinInfo> = withContext(Dispatchers.IO) {
         try {
-            val res = client.post("doctor-chat/threads/$threadId/call/join").body<JoinDoctorCallResponse>()
+            val res = client.post("doctor-chat/threads/$threadId/call/join") {
+                setBody(DoctorCallActionReq(callId))
+            }.body<JoinDoctorCallResponse>()
             if (res.status && res.data != null) Resource.Success(res.data.toDomain(), res.message) else Resource.Error(res.message)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to join call")

@@ -124,7 +124,7 @@ class IncomingDoctorCallActivity : ComponentActivity() {
 
     private fun acceptCall(callId: String, threadId: String, callerName: String?, isVideo: Boolean) {
         NotificationDeepLink.signal(
-            NotificationEvent.ToDoctorCall(threadId = threadId, counterpartName = callerName ?: "Doctor", isVideo = isVideo)
+            NotificationEvent.ToDoctorCall(threadId = threadId, counterpartName = callerName ?: "Doctor", isVideo = isVideo, callId = callId)
         )
         packageManager.getLaunchIntentForPackage(packageName)?.let { launchIntent ->
             launchIntent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or

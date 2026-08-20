@@ -166,7 +166,7 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                 is NotificationEvent.ToCall -> {
                     selectTab(Chat)
                     pendingChatConversation = Conversation(event.patientId, event.patientName, event.appointmentId)
-                    pendingCall = Call(event.patientId, isVideo = true)
+                    pendingCall = Call(event.patientId, isVideo = true, callId = event.callId)
                 }
                 is NotificationEvent.ToDoctorConversation -> {
                     selectTab(Chat)
@@ -175,7 +175,7 @@ fun MainRoot(modifier: Modifier = Modifier, onSignOut: () -> Unit = {}) {
                 is NotificationEvent.ToDoctorCall -> {
                     selectTab(Chat)
                     pendingDoctorConversation = DoctorConversation(event.threadId, event.counterpartName, null)
-                    pendingDoctorCall = DoctorCall(event.threadId, isVideo = event.isVideo)
+                    pendingDoctorCall = DoctorCall(event.threadId, isVideo = event.isVideo, callId = event.callId)
                 }
                 is NotificationEvent.ToArticles -> selectTab(Articles)
                 is NotificationEvent.ToSupportTicket -> {

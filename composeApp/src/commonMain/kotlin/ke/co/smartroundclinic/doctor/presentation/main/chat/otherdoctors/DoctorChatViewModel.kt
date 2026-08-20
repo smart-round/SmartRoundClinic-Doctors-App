@@ -576,11 +576,11 @@ class DoctorChatViewModel(
         viewModelScope.launch { repository.cancelCall(threadId, callId) }
     }
 
-    fun joinCall(threadId: String) {
+    fun joinCall(threadId: String, callId: String) {
         if (callJoinState is Resource.Success) return
         viewModelScope.launch {
             callJoinState = Resource.Loading()
-            callJoinState = repository.joinCall(threadId)
+            callJoinState = repository.joinCall(threadId, callId)
         }
     }
 

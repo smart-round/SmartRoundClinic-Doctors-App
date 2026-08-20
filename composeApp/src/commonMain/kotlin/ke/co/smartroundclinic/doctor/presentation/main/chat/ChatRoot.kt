@@ -264,7 +264,7 @@ fun ChatRoot(
                         is OutgoingDoctorCallStatus.Answered -> {
                             OutgoingDoctorCallState.clear()
                             backStack.removeLastOrNull()
-                            backStack.add(DoctorCall(dest.threadId, isVideo = dest.isVideo))
+                            backStack.add(DoctorCall(dest.threadId, isVideo = dest.isVideo, callId = s.callId))
                         }
                         is OutgoingDoctorCallStatus.Declined -> {
                             OutgoingDoctorCallState.clear()
@@ -272,7 +272,7 @@ fun ChatRoot(
                         }
                         is OutgoingDoctorCallStatus.Calling -> {
                             // Mirrors the backend's RedisKeys.CALL_INVITE_TTL_SECONDS ring timeout.
-                            delay(45_000L)
+                            delay(60_000L)
                             if (OutgoingDoctorCallState.current.value == s) {
                                 doctorChatVm.cancelOutgoingCall(dest.threadId, s.callId)
                                 backStack.removeLastOrNull()
@@ -308,7 +308,7 @@ fun ChatRoot(
                     selfPicture = doctorChatVm.currentUserProfilePicture,
                     isVideo = dest.isVideo,
                     joinState = doctorChatVm.callJoinState,
-                    onJoin = { doctorChatVm.joinCall(dest.threadId) },
+                    onJoin = { doctorChatVm.joinCall(dest.threadId, dest.callId) },
                     onEnd = {
                         doctorChatVm.endCall(dest.threadId)
                         backStack.removeLastOrNull()
@@ -385,7 +385,7 @@ fun ChatRoot(
                         is OutgoingCallStatus.Answered -> {
                             OutgoingCallState.clear()
                             backStack.removeLastOrNull()
-                            backStack.add(Call(dest.otherUserId, isVideo = dest.isVideo))
+                            backStack.add(Call(dest.otherUserId, isVideo = dest.isVideo, callId = s.callId))
                         }
                         is OutgoingCallStatus.Declined -> {
                             OutgoingCallState.clear()
@@ -394,7 +394,7 @@ fun ChatRoot(
                         is OutgoingCallStatus.Calling -> {
                             // Ring timeout mirrors the backend's RedisKeys.CALL_INVITE_TTL_SECONDS —
                             // if nobody answers in time, cancel on the caller's own initiative too.
-                            delay(45_000L)
+                            delay(60_000L)
                             if (OutgoingCallState.current.value == s) {
                                 vm.cancelOutgoingCall(dest.otherUserId, s.callId)
                                 backStack.removeLastOrNull()
@@ -432,7 +432,7 @@ fun ChatRoot(
                     selfPicture = vm.currentUserProfilePicture,
                     isVideo = dest.isVideo,
                     joinState = vm.callJoinState,
-                    onJoin = { vm.joinCall(dest.otherUserId) },
+                    onJoin = { vm.joinCall(dest.otherUserId, dest.callId) },
                     onEnd = {
                         vm.endCall()
                         backStack.removeLastOrNull()

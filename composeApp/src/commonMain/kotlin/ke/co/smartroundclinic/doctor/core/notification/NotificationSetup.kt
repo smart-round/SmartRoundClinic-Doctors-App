@@ -10,10 +10,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlin.time.Duration.Companion.seconds
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 private const val TAG = "NotificationSetup"
+
+// Push transport TTLs (see the backend's ApnsVoipClient/PushNotificationRepositoryImpl) already
+// stop a stale invite from being delivered at all in the common case, but this is a second,
+// independent line of defense for anything that slips through (e.g. a push held right at the TTL
+// boundary) — a device just back online should never ring for a call the caller already gave up
+// on. A few extra seconds of slack absorbs clock skew between this device and the backend.
+private val STALE_INVITE_GRACE = 5.seconds
+
+/** True if an invite this old (relative to its own ring window) is stale and should be dropped rather than rung. */
+fun isStaleInvite(createdAt: String?, ringTimeoutSeconds: Long): Boolean {
+    val createdInstant = createdAt?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: return false
+    val age = Clock.System.now() - createdInstant
+    return age > ringTimeoutSeconds.seconds + STALE_INVITE_GRACE
+}
 
 fun setupNotificationListener() {
     val scope = CoroutineScope(Dispatchers.IO)
@@ -41,6 +58,11 @@ fun setupNotificationListener() {
                 "Incoming Video Call" -> {
                     val doctorId = data["doctorId"]?.toString() ?: return
                     val patientId = data["patientId"]?.toString() ?: return
+                    val ringTimeoutSeconds = data["ringTimeoutSeconds"]?.toString()?.toLongOrNull() ?: 60L
+                    if (isStaleInvite(data["createdAt"]?.toString(), ringTimeoutSeconds)) {
+                        Napier.w(tag = TAG, message = "Dropping stale Incoming Video Call push callId=$callId — invite already past its ring window")
+                        return
+                    }
                     IncomingCallHandler.onCallInvite(
                         callId = callId,
                         callerId = data["callerId"]?.toString() ?: return,
@@ -49,7 +71,7 @@ fun setupNotificationListener() {
                         doctorId = doctorId,
                         patientId = patientId,
                         isVideo = data["isVideo"]?.toString()?.toBooleanStrictOrNull() ?: true,
-                        ringTimeoutSeconds = data["ringTimeoutSeconds"]?.toString()?.toLongOrNull() ?: 45L,
+                        ringTimeoutSeconds = ringTimeoutSeconds,
                     )
                 }
                 "Call Answered" -> IncomingCallHandler.onCallAnswered(callId)
@@ -57,6 +79,11 @@ fun setupNotificationListener() {
                 "Call Cancelled" -> IncomingCallHandler.onCallCancelled(callId)
                 "Incoming Doctor Call" -> {
                     val threadId = data["threadId"]?.toString() ?: return
+                    val ringTimeoutSeconds = data["ringTimeoutSeconds"]?.toString()?.toLongOrNull() ?: 60L
+                    if (isStaleInvite(data["createdAt"]?.toString(), ringTimeoutSeconds)) {
+                        Napier.w(tag = TAG, message = "Dropping stale Incoming Doctor Call push callId=$callId — invite already past its ring window")
+                        return
+                    }
                     IncomingCallHandler.onDoctorCallInvite(
                         callId = callId,
                         callerId = data["callerId"]?.toString() ?: return,
@@ -64,7 +91,7 @@ fun setupNotificationListener() {
                         callerPicture = data["callerPicture"]?.toString()?.takeIf { it.isNotBlank() },
                         threadId = threadId,
                         isVideo = data["isVideo"]?.toString()?.toBooleanStrictOrNull() ?: true,
-                        ringTimeoutSeconds = data["ringTimeoutSeconds"]?.toString()?.toLongOrNull() ?: 45L,
+                        ringTimeoutSeconds = ringTimeoutSeconds,
                     )
                 }
                 "Doctor Call Answered" -> IncomingCallHandler.onDoctorCallAnswered(callId)
@@ -85,6 +112,7 @@ fun setupNotificationListener() {
             // title does, e.g. "New message from Dr. X") — fall back to a generic label rather than
             // mislabeling the other doctor as "Patient".
             val counterpartName = (data["patientName"] ?: data["callerName"] ?: data["senderName"])?.toString() ?: "Doctor"
+            val callId = data["callId"]?.toString()
 
             Napier.d(tag = TAG, message = "Notification tapped — event=$event appointmentId=$appointmentId threadId=$threadId patientId=$patientId ticketId=$ticketId")
 
@@ -103,9 +131,13 @@ fun setupNotificationListener() {
                 else NotificationEvent.ToNotifications
             }
 
+            // A join now requires a live invite's callId (see the backend's atomic-join gate) — if
+            // this notification didn't carry one (or it's since expired), there's nothing this tap
+            // can join into, so land on the conversation instead of a CallScreen with no callId.
             suspend fun toCall(appointmentId: String?): NotificationEvent {
                 val resolved = resolvedPatientId(appointmentId)
-                return if (!resolved.isNullOrBlank()) NotificationEvent.ToCall(resolved, patientName, appointmentId.orEmpty())
+                return if (!resolved.isNullOrBlank() && !callId.isNullOrBlank()) NotificationEvent.ToCall(resolved, patientName, appointmentId.orEmpty(), callId)
+                else if (!resolved.isNullOrBlank()) NotificationEvent.ToConversation(resolved, patientName, appointmentId.orEmpty())
                 else NotificationEvent.ToNotifications
             }
 

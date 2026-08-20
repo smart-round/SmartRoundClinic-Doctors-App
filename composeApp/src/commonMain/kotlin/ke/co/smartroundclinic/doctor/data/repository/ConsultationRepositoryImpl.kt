@@ -64,9 +64,11 @@ class ConsultationRepositoryImpl(
         }
     }
 
-    override suspend fun joinCall(otherUserId: String): Resource<CallJoinInfo> = withContext(Dispatchers.IO) {
+    override suspend fun joinCall(otherUserId: String, callId: String): Resource<CallJoinInfo> = withContext(Dispatchers.IO) {
         try {
-            val res = client.post("chat/$otherUserId/call/join").body<JoinCallResponse>()
+            val res = client.post("chat/$otherUserId/call/join") {
+                setBody(CallActionReq(callId = callId))
+            }.body<JoinCallResponse>()
             if (res.status && res.data != null) Resource.Success(res.data.toDomain(), res.message)
             else Resource.Error(res.message)
         } catch (e: Exception) {

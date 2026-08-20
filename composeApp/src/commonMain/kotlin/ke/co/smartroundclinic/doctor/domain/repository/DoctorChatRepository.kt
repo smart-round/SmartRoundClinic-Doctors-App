@@ -22,7 +22,7 @@ interface DoctorChatRepository {
         onProgress: (sent: Long, total: Long) -> Unit = { _, _ -> },
     ): Resource<DoctorChatMessage>
 
-    suspend fun joinCall(threadId: String): Resource<CallJoinInfo>
+    suspend fun joinCall(threadId: String, callId: String): Resource<CallJoinInfo>
     suspend fun inviteToCall(threadId: String, isVideo: Boolean): Resource<DoctorCallInvite>
     suspend fun declineCall(threadId: String, callId: String): Resource<Unit>
     suspend fun cancelCall(threadId: String, callId: String): Resource<Unit>
