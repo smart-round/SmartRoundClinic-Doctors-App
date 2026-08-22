@@ -40,6 +40,17 @@ kotlin {
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
+        // The release framework link (Xcode Archive) OOMs specifically inside
+        // DevirtualizationAnalysis's constraint-graph build — Firebase/RealtimeKit/
+        // KMPNotifier's combined ObjC interop surface makes the call graph too large for
+        // this pass to fit in any heap that also leaves room for Xcode on a 16GB Mac.
+        // Only disable the phase that actually OOMs; leaving EscapeAnalysis/BuildDFG/DCE
+        // enabled avoids a release-only SIGSEGV (raw `ldr [x8]` on x8=8, a corrupted
+        // direct-TSD-style thread-local access) caused by those passes running against
+        // state EscapeAnalysis didn't get to normalize.
+        iosTarget.compilerOptions {
+            freeCompilerArgs.add("-Xdisable-phases=DevirtualizationAnalysis,Devirtualization,RemoveRedundantCallsToStaticInitializersPhase")
+        }
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
